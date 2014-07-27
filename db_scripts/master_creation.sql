@@ -40,6 +40,7 @@ DROP TABLE IF EXISTS ProcessTable;
 
 CREATE TABLE ProcessTable ( ID        SERIAL    PRIMARY KEY,
        	     		    Project   TEXT      NOT NULL UNIQUE,
+			    Version   SMALLINT  NOT NULL,
 			    Command   TEXT      NOT NULL,
        	     		    Frequency INT       NOT NULL,
 			    EMail     TEXT      NOT NULL,
@@ -98,8 +99,9 @@ CREATE OR REPLACE FUNCTION DefineProject( project_name TEXT NOT NULL,
 				       	  resource     HSTORE NOT NULL DEFAULT '',
 				       	  enabled      BOOLEAN NOT NULL DEFAULT TRUE) RETURNS INT AS $$
 DECLARE
-myBool BOOLEAN;
-myInt  INT;
+myBool    BOOLEAN;
+myInt     INT;
+myVersion SMALLINT;
 BEGIN
   -- Make sure frequency is positive
   IF frequency < 0 THEN
@@ -121,13 +123,23 @@ BEGIN
     RETURN -1;
   END IF;
 
+  -- Get the version number
+  SELECT MAX(Version) FROM ProcessTable WHERE Project = project_name INTO myVersion;
+  IF myVersion IS NULL:
+    myVersion  = 0;
+  ELSE
+    myVersion += 1;
+  END IF;
+
   -- Insert into ProcessTable
-  INSERT INTO ProcessTable (Project,Command,Frequency,Email,Resource,Enabled,Running) VALUES (project_name, command, frequency, email, resource, enabled, FALSE);
+  INSERT INTO ProcessTable (Project,Command,Version,Frequency,Email,Resource,Enabled,Running) VALUES (project_name, command, myVersion, frequency, email, resource, enabled, FALSE);
   SELECT ID FROM ProcessTable WHERE Project = project_name INTO myInt;
   IF myInt IS NULL THEN
     RAISE EXCEPTION '+++++++++ Somehow failed to insert project %! +++++++++', project_name;
     RETURN -1;
   END IF;
+
+  SELECT MAX(ID) FROM ProcessTable WHERE Project = project_name INTO myInt;
   RETURN myInt;
 
 END;
@@ -137,11 +149,37 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
-DROP FUNCTION IF EXISTS ProjectResource(project_name TEXT) RETURNS HSTORE AS $$
+DROP FUNCTION IF EXISTS ProjectResource( project_name TEXT, 
+     	      	 			 version SMALLINT DEFAULT -1) RETURNS HSTORE AS $$
 DECLARE
   params HSTORE;
 BEGIN
-  SELECT Resource FROM ProcessTable WHERE Project = project_name INTO params;
+  IF version < 0:
+    SELECT Resource FROM ProcessTable WHERE Project = project_name ORDER BY Version DESC LIMIT 1 INTO params;
+    IF params IS NULL THEN
+      RAISE WARNING '+++++++++ Project % not found ++++++++++', project_name;
+      params := ''::HSTORE;
+    END IF;
+  ELSE
+    SELECT Resource FROM ProcessTable WHERE Project = project_name AND Version = version INTO params;
+    IF params IS NULL THEN
+      RAISE WARNING '+++++++++ Project % Version % not found ++++++++++', project_name, version;
+      params := ''::HSTORE;
+    END IF;
+  RETURN params;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS ProjectVersion( project_name TEXT, 
+     	      	 		 	version SMALLINT DEFAULT -1) RETURNS HSTORE AS $$
+DECLARE
+  params HSTORE;
+BEGIN
+  SELECT Version FROM ProcessTable WHERE Project = project_name INTO params ORDER BY Version DESC LIMIT 1;
   IF params IS NULL THEN
     RAISE WARNING '+++++++++ Project % not found ++++++++++', project_name;
     RETURN ''::HSTORE;
