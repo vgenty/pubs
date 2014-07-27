@@ -1,6 +1,7 @@
+from pub_env import *
 import logging, logging.handlers, sys
 
-class _MSG_FORMAT(logging.Formatter):
+class _MSG_FORMAT_SCREEN(logging.Formatter):
 
     _fmt_DEBUG    = logging.Formatter("\033[1;34;40m[ %(levelname)-8s]\033[00m %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
     _fmt_INFO     = logging.Formatter("\033[1;35;40m[ %(levelname)-8s]\033[00m %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
@@ -20,39 +21,60 @@ class _MSG_FORMAT(logging.Formatter):
         else:
             return self._fmt_CRITICAL.format(record)
 
+class _MSG_FORMAT_FILE(logging.Formatter):
+
+    _fmt_DEBUG    = logging.Formatter("[ %(levelname)-8s] %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
+    _fmt_INFO     = logging.Formatter("[ %(levelname)-8s] %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
+    _fmt_WARNING  = logging.Formatter("[ %(levelname)-8s] %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
+    _fmt_ERROR    = logging.Formatter("[ %(levelname)-8s] %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
+    _fmt_CRITICAL = logging.Formatter("[ %(levelname)-8s] %(module)s (L: %(lineno)-3d) >> {%(funcName)s} %(message)s")
+
+    def format(self,record):
+        if record.levelno <= 10:
+            return self._fmt_DEBUG.format(record)
+        elif record.levelno <= 20:
+            return self._fmt_INFO.format(record)
+        elif record.levelno <= 30:
+            return self._fmt_WARNING.format(record)
+        elif record.levelno <= 40:
+            return self._fmt_ERROR.format(record)
+        else:
+            return self._fmt_CRITICAL.format(record)
+
 class pub_logger:
 
     _loggers={}
     _fileHandlers={}
     _streamHandlers={}
-    _globalLevel=0
-    _logFormat=_MSG_FORMAT()
+    _globalLevel=kLOGGER_LEVEL
+    _logFormatScreen=_MSG_FORMAT_SCREEN()
+    _logFormatFile=_MSG_FORMAT_FILE()
 
     # Attach a logger for itself.
     _logger=logging.getLogger(__name__)
     _streamHandler = logging.StreamHandler(sys.stdout)
-    _streamHandler.setFormatter(_logFormat)
+    _streamHandler.setFormatter(_logFormatScreen)
     _logger.addHandler(_streamHandler)
     
     @classmethod
-    def get_logger(cls,name,fname='',fCounts=0):
+    def get_logger(cls,name,dest=kLOGGER_DRAIN,fCounts=0):
         name=cls._correctName(name)
         cls._logger.info('Requested to add a logger for: %s' % name)
 
         if not name in cls._loggers.keys():
-            cls._add_logger(name,fname,fCounts)
+            cls._add_logger(name,dest,fCounts)
         return cls._loggers[name]
 
     @classmethod
-    def _add_logger(cls,name,fname='',fCounts=0):
+    def _add_logger(cls,name,dest,fCounts):
         if not name in cls._loggers.keys():
             cls._logger.info('Adding a Logger: %s' % name)
             cls._loggers[name]=logging.getLogger(str(name))
-            if fname:
-                cls._openFile(str(name),fname,fCounts)
+            if dest == kLOGGER_FILE:
+                cls._openFile(str(name),str(name),1e8,fCounts)
             else:
                 cls._openStream(str(name))
-            cls._loggers[str(name)].setLevel((cls._globalLevel)*10)
+            cls._loggers[str(name)].setLevel(cls._globalLevel)
             cls._loggers[name].info("OPENED LOGGER %s" % name)
 
     @classmethod
@@ -61,7 +83,7 @@ class pub_logger:
         if not str(name) in cls._loggers.keys():
             return False
         cls._streamHandlers[name] = logging.StreamHandler(sys.stdout)
-        cls._streamHandlers[name].setFormatter(cls._logFormat)
+        cls._streamHandlers[name].setFormatter(cls._logFormatScreen)
         cls._loggers[name].addHandler(cls._streamHandlers[name])    
 
     @classmethod
@@ -74,7 +96,7 @@ class pub_logger:
         cls._fileHandlers[name] = logging.handlers.RotatingFileHandler(filename = '%s.log' % fname, 
                                                                        maxBytes = size, 
                                                                        backupCount = fCounts)
-        cls._fileHandlers[name].setFormatter(cls._logFormat)
+        cls._fileHandlers[name].setFormatter(cls._logFormatFile)
         cls._loggers[name].addHandler(cls._fileHandlers[name])
         cls._loggers[name].info('OPENED LOGFILE name = %s.log' % str(fname))
         cls._loggers[name].info('OPENED LOGFILE size = %s' % str(size))
