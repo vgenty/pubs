@@ -165,6 +165,9 @@ $$ LANGUAGE PLPGSQL;
 --This function looks at all project tables supplied arrayOfTables, 
 --and for each project table you ask for a specific status supplied in arrayOfStatuses.
 --The function returns the run/subrun #s when each project has that respective status
+--ALSO REQUIRING that ALL sequence numbers for that run/subrun have that status
+--IE ALL of the jobs (sequences) need to be finished for this function to return
+--that run and subrun number
 
 CREATE TYPE RunSubrunList AS (myRun INT, mySubrun INT);
 
@@ -172,11 +175,13 @@ CREATE OR REPLACE FUNCTION GetRuns(arrayOfTables TEXT[], arrayOfStatuses SMALLIN
 DECLARE
 iTable TEXT;
 dummy TEXT;
+dummyTableName TEXT;
 myRunSubrunList RunSubrunList;
 myRecord RECORD;
 loopCounter INT;
 
 BEGIN
+
   --make sure all of the tables exist
   FOREACH iTable IN ARRAY arrayOfTables LOOP
     IF NOT DoesTableExist(iTable) THEN
@@ -189,18 +194,27 @@ BEGIN
     RAISE EXCEPTION 'Your input tables array is different length than input status array.';
   END IF;
 
-  --build a query to inner join each table with the first to get the end result.
-  dummy := format('SELECT %s.run, %s.subrun FROM %s',arrayOfTables[1],arrayOfTables[1],arrayOfTables[1]);
+  --create a temporary table for each table, then INNER JOIN them to get end result
+  --[1] is the first element in psql, not [0]!  
   loopCounter := 1;
   FOREACH iTable IN ARRAY arrayOfTables LOOP
-    --skip the first table... don't need to INNER JOIN it with itself
-    --[1] is the first element in psql, not [0]!  
+    dummyTableName = 'temp'||iTable;
+    dummy := format('CREATE TEMPORARY TABLE %s AS (SELECT RUN,SUBRUN FROM (SELECT DISTINCT run,subrun,COUNT(SEQ) AS SEQ_COUNT, SUM(STATUS) AS STATUS_SUM FROM %s GROUP BY RUN, SUBRUN) AS FOO WHERE SEQ_COUNT*%s = STATUS_SUM)',dummyTableName,arrayOfTables[loopCounter],arrayOfStatuses[loopCounter]);
+   EXECUTE dummy;
+   loopCounter := loopCounter + 1;
+  END LOOP;
+ 
+  --now do the inner joining:
+  --build a query to inner join each table with the first to get the end result.
+  dummy := format('SELECT * FROM %s','temp'||arrayOfTables[1]);
+  loopCounter := 1;
+  FOREACH iTable IN ARRAY arrayOfTables LOOP
+    --skip the first temporary table... don't need to INNER JOIN it with itself
     IF iTable = arrayOfTables[1] THEN 
       loopCounter := loopCounter + 1; 
       CONTINUE;
     END IF;
-  
-  dummy := format('%s INNER JOIN %s ON %s.run = %s.run AND %s.subrun = %s.subrun AND %s.status = %s AND %s.status = %s',dummy,iTable,arrayOfTables[1],iTable,arrayOfTables[1],iTable,arrayOfTables[1],arrayOfStatuses[1],arrayOfTables[loopCounter],arrayOfStatuses[loopCounter]);
+  dummy := format('%s INNER JOIN %s ON %s.run = %s.run AND %s.subrun = %s.subrun',dummy,'temp'||iTable,'temp'||arrayOfTables[1],'temp'||iTable,'temp'||arrayOfTables[1],'temp'||iTable,'temp'||arrayOfTables[1]);
 
   loopCounter := loopCounter + 1;
   END LOOP;
@@ -214,6 +228,12 @@ BEGIN
     RETURN NEXT myRunSubrunList;
   END LOOP;
 
+
+  --drop all of the temporary tables... this is dangerous! don't drop the actual tables...
+  FOREACH iTable in ARRAY arrayOfTables LOOP
+    dummy := format('DROP TABLE %s','temp'||iTable);
+    EXECUTE dummy;
+  END LOOP;
 
 END;
 $$ LANGUAGE PLPGSQL;
