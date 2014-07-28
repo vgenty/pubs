@@ -1,0 +1,109 @@
+/* ---------------------------------------- */
+/*                                          */
+/*  This style is provided by               */
+/*                                          */
+/*       Professor Decowski, Patrick        */
+/*                                          */
+/*  His work stolen by                      */
+/*                                          */
+/*       Kazuhiro Terao                     */
+/*                                          */
+/*  Patrick have generously forgiven Kazu.  */
+/*                                          */
+/* ---------------------------------------- */
+
+body {}
+
+p  { 
+//font-size: 12px; 
+font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular;
+}
+
+a:link{color: blue; 
+//font-size: 12px; 
+font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular;}
+a:visited{color: purple;
+font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular;}
+a:active{color: purple;
+font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular;}
+
+
+td {}
+
+.payload {
+  width: 500;
+  font: Verdana, Arial;
+  border: 5px #708090 solid;
+  text-align: left; 
+  background-color: white;
+  padding: 1em;
+  font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular
+ }
+
+.internal {  
+  text-align: center;
+  background-color: #c0d6ff;
+}
+
+.sidebar {
+  text-align: left;
+  font-size: 15px;
+  background-color: #444589;
+  margin-left: 10px;
+  height: 25px;
+  filter:alpha(opacity=85); 
+  -moz-opacity:0.85; 
+  -khtml-opacity: 0.85; 
+  opacity: 0.85; 
+}
+
+a.sidebar:link { color: #ffffff; }
+a.sidebar:visited { color: #ffffff; }
+
+
+.birdie{color: #000000; 
+	font-family: Arial, Helvetica; 
+	font-size:20px; } 
+
+.birdietitle{color: #000000;
+	text-align: center, 
+	font-family: Arial, Helvetica; 
+	font-size:25px } 
+
+.caption{ color: #336; 
+	text-align: center; 
+	font-size: 10px; 
+	font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular }
+.caption1{ color: #000000; 
+	text-align: center; 
+	font-size: 10px; 
+	font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular }
+.caption2{ color: #336; 
+	text-align: center; 
+	font-size: 12px; 
+	font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular }
+
+.question{ color: #336; 
+	font-size: 16px; 
+	font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular }
+
+.sitelink { color: #FFFFFF; font-size: 16px; font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular}
+
+a.sitelink:link{ color: white; font-size: 16px; font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular}
+a.sitelink:visited{ color: #708090;}
+a.sitelink:active{ color: blue;}
+
+a.paperlink:link{color: #990000; font-size: 16px; font-family: Arial, Helvetica, Geneva, Swiss, SunSans-Regular}
+a.paperlink:visited{ color: #660000;}
+a.paperlink:active{ color: blue;}
+
+.table_row_odd { background-color: #FFFFFF; }
+.table_row_even { background-color: #EEEEEE; }
+
+DIV.diagnostics {
+    border: thin black solid;
+    background-color: #EEEEEE;
+    padding-left: 1em;
+    padding-right: 1em;
+    padding-bottom: 1em;
+}
