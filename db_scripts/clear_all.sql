@@ -1,5 +1,5 @@
 
-DROP TABLE MainRun IF EXISTS;
+DROP TABLE IF EXISTS MainRun;
 SELECT RemoveProcessDB();
 
 

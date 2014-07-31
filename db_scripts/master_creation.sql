@@ -333,7 +333,7 @@ BEGIN
 
   IF NOT frequency IS NULL THEN
     query_field := query_field || 'Frequency,';
-    query_value := format('%s%d,',query_value,frequency);
+    query_value := format('%s%s,',query_value,frequency);
   END IF;
 
   IF NOT email IS NULL THEN
@@ -358,7 +358,7 @@ BEGIN
   query_field := TRIM( TRAILING ',' FROM query_field);
   query_value := TRIM( TRAILING ',' FROM query_value);    
 
-  query := format('UPDATE ProcessTable SET (%s) = (%s) WHERE ProjectVer = %d',query_field,query_value,project_ver);
+  query := format('UPDATE ProcessTable SET (%s) = (%s) WHERE ProjectVer = %s',query_field,query_value,project_ver);
 
   EXECUTE query;
 
@@ -431,7 +431,7 @@ BEGIN
   current_ver := current_ver + 1;
 
 
-  query := format('INSERT INTO ProcessTable (Project,Command,ProjectVer,Frequency,TimeStart,Email,Resource,Enabled,Running) VALUES (%s, %s, %d, %d, ''%s'', %s, %s, %s, FALSE)',project_name,command,current_ver,frequency,start_time::TEXT,email,resource::TEXT,enabled::TEXT);
+  query := format('INSERT INTO ProcessTable (Project,Command,ProjectVer,Frequency,TimeStart,Email,Resource,Enabled,Running) VALUES (%s, %s, %s, %s, ''%s'', %s, %s, %s, FALSE)',project_name,command,current_ver,frequency,start_time::TEXT,email,resource::TEXT,enabled::TEXT);
  
   EXECUTE query;
 
@@ -476,7 +476,7 @@ BEGIN
     END IF;
   END IF;
   
-  query := format('SELECT %s FROM ProcessTable WHERE Project=%s AND ProjectVer=%d',project_info,project_name,project_ver);
+  query := format('SELECT %s FROM ProcessTable WHERE Project=%s AND ProjectVer=%s',project_info,project_name,project_ver);
   EXECUTE query INTO rec;
   RETURN rec;
 END;
