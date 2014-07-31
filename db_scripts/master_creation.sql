@@ -314,17 +314,11 @@ BEGIN
   END IF;
 
   SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO project_ver; 
-  IF myversion IS NOT NULL AND myversion >= project_ver THEN 
-
-  IF NOT project_ver IS NULL THEN
-    IF myversion IS NOT NULL THEN
-    SELECT ProjectVer FROM ProcessTable WHERE Project = project_name AND ProjectVer = myversion INTO project_ver;
-    IF project_ver IS NULL THEN
-      RAISE WARNING '+++++++++ Project % does not have a version number % +++++++++',project_name,myversion;
-      RETURN FALSE;
-    END IF;
+  IF myversion IS NULL THEN
+    myversion := project_ver + 1;
+  ELSIF myversion < project_ver THEN
+      RAISE EXCEPTION '+++++++++ Project % already have the version number % +++++++++',project_name,myversion;
   END IF;
-
 
   IF NOT command IS NULL THEN
     query_field := query_field || 'Command,';
