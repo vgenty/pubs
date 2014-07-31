@@ -4,7 +4,7 @@ import os
 # Reader default configuration
 #
 kREADER_HOST = 'localhost'
-kREADER_DB   = 'testdb'
+kREADER_DB   = 'procdb'
 kREADER_USER = os.environ['USER']
 kREADER_PASS = ''
 
@@ -24,7 +24,7 @@ if 'PUB_PSQL_READER_PASS' in os.environ.keys():
 # Writer default configuration
 #
 kWRITER_HOST = 'localhost'
-kWRITER_DB   = 'testdb'
+kWRITER_DB   = 'procdb'
 kWRITER_USER = os.environ['USER']
 kWRITER_PASS = ''
 

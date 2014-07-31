@@ -1,15 +1,22 @@
-import inspect
+import inspect,logging,psycopg2
 from pub_util import pub_logger
-from pubdb_conn import pubdb_conn, pubdb_conn_info
-from pubdb_data import pubdb_status_info
+from pubdb_exception import DBException
+from pubdb_conn import pubdb_conn
+from pubdb_data import pubdb_conn_info
 
-class pubdb_reader:
+class pubdb_reader(object):
 
-    def __init__(self,conn_info):
-        self._name   = '%s' % inspect.stack()[1][3]
+    def __init__(self,conn_info,logger=None):
         self._cursor = pubdb_conn.cursor(conn_info)
-        self._logger = pub_logger.get_logger(self._name)
-        self._row_id = -1
+        self._conn_info = conn_info
+        self._logger = logger
+          
+        if not self._logger:
+            self._logger = pub_logger.get_logger('pubdb')
+            
+        elif not isinstance(logger,logging.Logger):
+            pub_logger.get_logger('pubdb').critical('Invalid logger!')
+            raise DBException()
 
     def __iter__(self):
         return self._cursor
@@ -17,49 +24,38 @@ class pubdb_reader:
     def next(self):
         return self._cursor.next()        
 
+
     def __del__(self):
         self._cursor.close()
-        self._logger.debug('%s reader cursor destroyed.' % self._name)
+        self._logger.debug('Reader cursor destroyed.')
 
-    def get_runs(self,table_v, status_v):
-        pass
-        
+    def execute(self,query,throw=False):
+        try:
+            self._cursor.execute(query)
+        except psycopg2.ProgrammingError as e:
+            self._logger.error(e.pgerror)
+            if throw: raise
+            return False
+        except psycopg2.InternalError as e:
+            self._logger.error(e.pgerror)
+            if throw: raise
+            return False
+        return True
+
 class pubdb_writer(pubdb_reader):
 
-    def __init__(self,conn_info):
+    def commit(self,query,throw=False):
+        try:
+            self.execute(query)
+            pubdb_conn.commit(self._conn_info)
+        except psycopg2.ProgrammingError as e:
+            self._logger.error(e.pgerror)
+            if throw: raise
+            return False
+        except psycopg2.InternalError as e:
+            self._logger.error(e.pgerror)
+            if throw: raise
+            return False
+        return True
 
-        self._name   = '%s' % inspect.stack()[1][3]
-        self._cursor = pubdb_conn.cursor(conn_info)
-        self._logger = pub_logger.get_logger(self._name)
-
-    def __del__(self):
-        self._cursor.close()
-        self._logger.debug('%s writer cursor destroyed.' % self._name)
-
-    def log_status(self,run,subrun,status,project):
-        pass
-
-class pubdb_master(pubdb_reader):
-
-    def __init__(self,conn_info):
-
-        self._name   = '%s' % inspect.stack()[1][3]
-        self._cursor = pubdb_conn.cursor(conn_info)
-        self._logger = pub_logger.get_logger(self._name)
-
-    def __del__(self):
-        self._cursor.close()
-        self._logger.debug('%s master cursor destroyed.' % self._name)
-
-    def query(self,query):
-        self._logger.warning('Executing: \'%s\'' % query)
-        self._cursor.execute(query)
-#        self._cursor.commit()
-
-    def insert_newrun(self, info):
-
-        if not isinstance(info,pubdb_status_info):
-            self._logger.exception('Must provide pubdb_status_info data type instance!')
-            raise DBException()
     
-        
