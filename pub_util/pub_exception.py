@@ -5,7 +5,7 @@ class pub_exception(Exception):
         self.v = v
 
     def __str__(self):
-        return repr(self.value)
+        return repr(self.v)
 
 
         
