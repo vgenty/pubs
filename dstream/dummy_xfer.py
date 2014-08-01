@@ -1,7 +1,12 @@
+# python include
+import time
+# dstream class include
 from ds_exception import DSException
 from ds_proc_base import ds_proc_base
 from ds_data import ds_status
-import time
+# pub_dbi package include
+from pub_dbi import DBException
+
 
 class dummy_xfer(ds_proc_base):
 
@@ -11,12 +16,17 @@ class dummy_xfer(ds_proc_base):
         self._project = self.__class__.__name__
         self._nruns   = int(nruns)
 
-
     def process_newruns(self):
 
+        try:
+            self.connect()
+        except DBException as e:
+            self.error('Connection failed! Aborting...')
+            return
+        
         ctr = self._nruns
         for x in self.get_runs(self._project,1):
-            print x
+            print 'processing new runs...',x
             if not x[0]: break
             ctr -=1
             self.log_status(ds_status(self._project,
@@ -29,9 +39,15 @@ class dummy_xfer(ds_proc_base):
             
     def process_ongoing_runs(self):
 
+        try:
+            self.connect()
+        except DBException as e:
+            self.error('Connection failed! Aborting...')
+            return
+
         ctr = self._nruns
         for x in self.get_runs(self._project,10):
-            print x
+            print 'processing on-going runs...',x
             if not x[0]: break
             ctr -=1
             self.log_status(ds_status(self._project,

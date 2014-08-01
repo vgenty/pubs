@@ -74,11 +74,19 @@ class ds_writer(pubdb_writer,ds_reader):
         
         if not self._check_info(info): return False
 
-        query = 'SELECT UpdateProjStatus(\'%s\',%d,%d,%d::SMALLINT,%d::SMALLINT);' % ( info._project,
-                                                                                       info._run,
-                                                                                       info._subrun,
-                                                                                       info._seq,
-                                                                                       info._status )
+        query = 'SELECT UpdateProjStatus(\'%s\',%d,%d,%d::SMALLINT,%d::SMALLINT);'
+        query = query % ( info._project,
+                          info._run,
+                          info._subrun,
+                          info._seq,
+                          info._status )
+
         return self.commit(query)
 
+class ds_master(pubdb_writer,ds_reader):
+    
+    def list_projects(self):
 
+        query = 'SELECT Project,Command,Frequency,Email,Resource FROM ListEnabledProject()'
+    
+        return self.execute(query)
