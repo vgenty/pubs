@@ -128,6 +128,21 @@ class ds_master(pubdb_writer,ds_reader):
     ## Fetch a list of projects for execution
     def list_projects(self):
 
-        query = 'SELECT Project,Command,Frequency,Email,Resource FROM ListEnabledProject()'
+        query = 'SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource FROM ListEnabledProject()'
     
         return self.execute(query)
+
+    ## Define a new project
+    def define_project(self,project,command,frequency,email):
+        
+        query = ' SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\');' % (project,command,frequency,email)
+        
+        return self.commit(query)
+
+
+    ## Define a new project
+    def update_project(self, project, command='NULL', frequency='NULL'):
+        
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d);' % (project,command,frequency)
+        
+        return self.commit(query)

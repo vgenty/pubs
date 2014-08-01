@@ -10,15 +10,15 @@ from pub_dbi  import pubdb_conn_info,DBException
 # pub_util package include
 from pub_util     import pub_logger
 
-import inspect
-from pub_util import pub_logger
-
 class ds_project(object):
 
-    def __init__(self, name, cmd, period, email, params={}):
+    def __init__(self, name, cmd, period, 
+                 run, subrun, email, params={}):
         self._name   = str(name)
         self._cmd    = str(cmd)
         self._period = int(period)
+        self._run    = int(run)
+        self._subrun = int(subrun)
         self._email  = str(email)
         self._proc   = None
         self._params = params
@@ -81,7 +81,8 @@ class ds_daemon(ds_base):
                 continue
 
             self.debug('Updating project %s information' % x[0])
-            self._project_v[x[0]]  = ds_project(x[0],x[1],x[2],x[3],x[4])
+            self._project_v[x[0]] = ds_project(x[0],x[1],x[2],
+                                               x[3],x[4],x[5],x[6])
             if not x[0] in self._exe_time_v:
                 self._exe_time_v[x[0]] = None
 

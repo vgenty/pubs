@@ -471,9 +471,12 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
        	  	  	   RETURNS TABLE ( Project TEXT, 
 			   	   	   Command TEXT, 
 					   Frequency INT,
+					   StartRun INT,
+					   StartSubRun INT,
 					   Email TEXT, 
 					   Resource HSTORE) AS $$
-  SELECT A.Project, A.Command, A.Frequency, A.Email, A.Resource 
+  SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
+  	 A.Email, A.Resource 
   FROM ProcessTable AS A JOIN 
   (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
   AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
