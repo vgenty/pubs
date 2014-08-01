@@ -34,7 +34,7 @@ if 'PUB_LOGGER_DRAIN' in os.environ.keys():
 #
 kLOGGER_FILE_LOCATION = os.environ['PWD']
 if 'PUB_LOGGER_FILE_LOCATION' in os.environ.keys():
-    exec('kLOGGER_FILE_LOCATION=%s' % os.environ['PUB_LOGGER_FILE_LOCATION'])
+    exec('kLOGGER_FILE_LOCATION=\'%s\'' % os.environ['PUB_LOGGER_FILE_LOCATION'])
     if not os.path.isdir(kLOGGER_FILE_LOCATION):
         sys.stderr.write('PUB_LOGGER_FILE_LOCATION env. value is non-existing directory (%s)!' % os.environ['PUB_LOGGER_FILE_LOCATION'])
         sys.exit(1)
