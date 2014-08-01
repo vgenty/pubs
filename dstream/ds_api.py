@@ -4,7 +4,7 @@
 # an end-user.
 
 # python import
-import psycopg2
+import psycopg2, sys
 # pub_util package import
 from pub_util import pub_logger
 # pub_dbi package import
@@ -132,17 +132,56 @@ class ds_master(pubdb_writer,ds_reader):
     
         return self.execute(query)
 
-    ## Define a new project
+    ## @brief Define a new project
+    # project .... string, name of a project
+    # command .... string, command to be executed
+    # frequency .. integer, period between command executions
+    # email ...... string, email address to which message is sent upon error
     def define_project(self,project,command,frequency,email):
         
         query = ' SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\');' % (project,command,frequency,email)
         
         return self.commit(query)
 
+    ## @brief remove project from process database
+    # project .... string, name of a project
+    def remove_project(self,project):
 
-    ## Define a new project
-    def update_project(self, project, command='NULL', frequency='NULL'):
+        if not self.project_exist(project):
+            self._logger.error('Project %s not found!' % project)
+            return
+
+        self._logger.warning('About to remove project %s from DB. Really want to proceed? ' % project)
+        user_input = ''
+        while not user_input:
+            sys.stdout.write('Answer [y/n]: ')
+            sys.stdout.flush()
+            user_input=sys.stdin.readline().rstrip('\n').rstrip(' ')
+            if user_input in ['y','Y']:
+                break
+            elif user_input in ['n','N']:
+                return
+            else:
+                self._logger.error('Invalid input command: %s' % user_input)
+                user_input=''
+                continue
+                
+        query = ' SELECT RemoveProject(\'%s\');' % project
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d);' % (project,command,frequency)
+        return self.commit(query)
+
+
+    ## @brief Define a new project
+    # project .... string, name of a project
+    # command .... string, command to be executed
+    # frequency .. integer, period between command execution
+    # email ...... string, email address to which message is sent upon error
+    def update_project(self, project, command, frequency, email):
+
+        if not self.project_exist(project):
+            self._logger.error('Project %s not found!' % project)
+            return
+        
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\');' % (project,command,frequency,email)
         
         return self.commit(query)

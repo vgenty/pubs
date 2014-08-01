@@ -26,6 +26,38 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 -- Function to clear ALL projects registered in ProcessTable
+DROP FUNCTION IF EXISTS RemoveProject(project_name TEXT);
+CREATE OR REPLACE FUNCTION RemoveProject(project_name TEXT) RETURNS VOID AS $$
+DECLARE
+myBool  BOOLEAN;
+myRec   RECORD;
+myQuery TEXT;
+BEGIN
+  -- Check if ProcessTable exists. If not, don't throw exception but simply return
+  SELECT DoesTableExist('ProcessTable') INTO myBool;
+  IF myBool IS NULL THEN
+    RAISE INFO '+++++++++ ProcessTable does not exist yet++++++++++';
+    RETURN;
+  END IF;
+
+  SELECT DoesTableExist(project_name) INTO myBool;
+  IF myBool IS NULL THEN
+    RAISE INFO '+++++++++ Project % table does not exist but found in ProcessTable ?! +++++++++++', project_name;
+  ELSE
+    myQuery := format('DROP TABLE %s',project_name);
+    EXECUTE myQuery;
+    RAISE INFO 'Dropped table project %',project_name;
+    DELETE FROM ProcessTable WHERE Project = project_name;
+    RAISE INFO 'Dropped project %',project_name;
+  END IF;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- Function to clear ALL projects registered in ProcessTable
 DROP FUNCTION IF EXISTS RemoveProcessDB();
 CREATE OR REPLACE FUNCTION RemoveProcessDB() RETURNS VOID AS $$
 DECLARE
@@ -42,16 +74,7 @@ BEGIN
 
   -- For projects in ProcessTable, attempt to drop its project table & remove entry from ProcessTable
   FOR myRec IN SELECT Project FROM ProcessTable LOOP
-    SELECT DoesTableExist(myRec.Project) INTO myBool;
-    IF myBool IS NULL THEN
-      RAISE INFO '+++++++++ Project % table does not exist but found in ProcessTable ?! +++++++++++',myRec.Project;
-    ELSE
-      myQuery := format('DROP TABLE %s',myRec.Project);
-      EXECUTE myQuery;
-      RAISE INFO 'Dropped table project %',myRec.Project;
-      DELETE FROM ProcessTable WHERE Project = myRec.Project;
-      RAISE INFO 'Dropped project %',myRec.Project;
-    END IF;
+    SELECT RemoveProject(myRec.Project);
   END LOOP;
   DROP TABLE ProcessTable;
   RETURN;
@@ -283,6 +306,7 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
+
 -- Function to update project version
 DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
      	      	 		       	     command      TEXT,
@@ -292,13 +316,20 @@ DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
 				       	     enabled      BOOLEAN,
 					     version      INT);
 
+-- Function to update project version
+DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
+     	      	 		       	     command      TEXT,
+				       	     frequency    INT,
+				       	     email        TEXT,
+				       	     resource     HSTORE,
+				       	     enabled      BOOLEAN);
+
 CREATE OR REPLACE FUNCTION UpdateProjectConfig( project_name TEXT,
      	      	 		       	     	command      TEXT DEFAULT NULL,
 				       	     	frequency    INT  DEFAULT NULL,
 				       	     	email        TEXT DEFAULT NULL,
 				       	     	resource     HSTORE  DEFAULT NULL,
-				       	     	enabled      BOOLEAN DEFAULT NULL,
-					     	myversion    INT  DEFAULT NULL) RETURNS BOOLEAN AS $$
+				       	     	enabled      BOOLEAN DEFAULT NULL) RETURNS BOOLEAN AS $$
 DECLARE
 query_field TEXT;
 query_value TEXT;
@@ -315,11 +346,6 @@ BEGIN
   END IF;
 
   SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO project_ver; 
-  IF myversion IS NULL THEN
-    myversion := project_ver + 1;
-  ELSIF myversion < project_ver THEN
-      RAISE EXCEPTION '+++++++++ Project % already have the version number % +++++++++',project_name,myversion;
-  END IF;
 
   IF NOT command IS NULL THEN
     query_field := query_field || 'Command,';
@@ -481,6 +507,35 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
   (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
   AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
 $$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS ProjectInfo(project TEXT);
+
+CREATE OR REPLACE FUNCTION ProjectInfo(project_name TEXT) 
+       	  	  	   RETURNS TABLE ( Project TEXT, 
+			      	     	   Command TEXT, 
+					   Frequency INT,
+					   StartRun INT,
+					   StartSubRun INT,
+					   Email TEXT, 
+					   Resource HSTORE,
+					   ProjectVer INT) AS $$
+DECLARE
+is_there BOOLEAN;
+
+BEGIN
+  IF NOT DoesTableExist(Project) THEN
+    RAISE EXCEPTION 'Project % does not exist!',project_name;
+  END IF;
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
+  	       	      A.Email, A.Resource, A.ProjectVer 
+		      FROM ProcessTable AS A WHERE Project = project_name 
+	 	      ORDER BY ProjectVer DESC LIMIT 1;
+END;
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--

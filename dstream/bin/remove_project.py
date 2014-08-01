@@ -15,5 +15,5 @@ k=ds_master(pubdb_conn_info.writer_info(),
 k.connect()
 
 # Define a project
-k.define_project(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4])
+k.remove_project(sys.argv[1])
 
