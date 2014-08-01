@@ -25,6 +25,13 @@ class ds_status(object):
 
     def is_valid(self):
         
-        if not self._project or self._run < 0 or self._subrun < 0 or self._seq < 0 or self._seq < 0:
+        if ( not self._project or 
+             self._run    < 0  or 
+             self._subrun < 0  or 
+             self._seq    < 0  or 
+             self._seq    < 0 ):
+
             return False
+
         else: return True
+

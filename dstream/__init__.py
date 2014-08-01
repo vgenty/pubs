@@ -1,3 +1,3 @@
-from ds_data import ds_status
-from ds_api  import ds_reader, ds_writer
+from dummy_xfer import dummy_xfer
+from ds_daemon import ds_daemon
 
