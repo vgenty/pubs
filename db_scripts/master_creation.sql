@@ -156,8 +156,8 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 -- (Re-)create ProcessTable
 
-CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL    PRIMARY KEY,
-       	     		    		  Project     TEXT      NOT NULL UNIQUE,
+CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL,
+       	     		    		  Project     TEXT      NOT NULL,
 			    		  ProjectVer  SMALLINT  NOT NULL,
 			    		  Command     TEXT      NOT NULL,
        	     		    		  Frequency   INT       NOT NULL,
@@ -167,7 +167,8 @@ CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL    PRIMARY KEY,
 			    		  StartSubRun INT       NOT NULL DEFAULT 0,
 			    		  Enabled     BOOLEAN   DEFAULT TRUE,
 			    		  Running     BOOLEAN   NOT NULL,
-			    		  LogTime     TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+			    		  LogTime     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					  PRIMARY KEY(ID,Project,ProjectVer));
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
@@ -366,20 +367,22 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 -- Function to update project version
 DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
-     	      	 		       	      command      TEXT,
-				       	      frequency    INT,
-				       	      email        TEXT,
-					      start_time   TIMESTAMP,
+     	      	 		       	      new_cmd      TEXT,
+				       	      new_freq     INT,
+				       	      new_email    TEXT,
+					      new_run      INT,
+					      new_subrun   INT,
 				       	      resource     HSTORE,
-				       	      enabled      BOOLEAN);
+				       	      new_en       BOOLEAN);
 
 CREATE OR REPLACE FUNCTION ProjectVersionUpdate( project_name TEXT,
-     	      	 		       	      	 command      TEXT DEFAULT NULL,
-				       	      	 frequency    INT  DEFAULT NULL,
-				       	      	 email        TEXT DEFAULT NULL,
-					      	 start_time   TIMESTAMP DEFAULT NULL,
-				       	      	 resource     HSTORE DEFAULT NULL,
-				       	    	 enabled      BOOLEAN DEFAULT NULL) RETURNS INT AS $$
+     	      	 		       	      	 new_cmd      TEXT DEFAULT NULL,
+				       	      	 new_freq     INT  DEFAULT NULL,
+				       	      	 new_email    TEXT DEFAULT NULL,
+						 new_run      INT  DEFAULT NULL,
+						 new_subrun   INT  DEFAULT NULL,
+				       	      	 new_src      HSTORE DEFAULT NULL,
+				       	    	 new_en       BOOLEAN DEFAULT NULL) RETURNS INT AS $$
 DECLARE
   current_ver  INT;
   value_int    INT;
@@ -388,10 +391,6 @@ DECLARE
   query_values TEXT;
   query        TEXT;
 BEGIN
-
-  IF start_time IS NULL THEN
-    start_time := '2014-01-01 00:00:00'::TIMESTAMP;
-  END IF;
 
   -- Make sure project exists in ProcessTable
   SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO value_bool;
@@ -402,30 +401,57 @@ BEGIN
 
   SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO current_ver;
 
-  IF command IS NULL THEN
-    SELECT Command FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO command;
+  IF new_cmd IS NULL THEN
+    SELECT Command FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_cmd;
   END IF;
 
-  IF frequency IS NULL THEN
-    SELECT Frequency FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO frequency;
+  IF new_freq IS NULL THEN
+    SELECT Frequency FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_freq;
   END IF;
 
-  IF email IS NULL THEN
-    SELECT Email FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO email;
+  IF new_email IS NULL THEN
+    SELECT Email FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_email;
   END IF;
 
-  IF resource IS NULL THEN
-    SELECT Resource FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO resource;
+  IF new_src IS NULL THEN
+    SELECT Resource FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_src;
   END IF;
 
-  IF enabled IS NULL THEN
-    SELECT Enabled FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO enabled;
+  IF new_en IS NULL THEN
+    SELECT Enabled FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_en;
+  END IF;
+
+  IF new_run IS NULL THEN
+    SELECT StartRun FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_run;
+  END IF;
+
+  IF new_subrun IS NULL THEN
+    SELECT StartSubRun FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_subrun;
   END IF;
 
   current_ver := current_ver + 1;
 
-
-  query := format('INSERT INTO ProcessTable (Project,Command,ProjectVer,Frequency,TimeStart,Email,Resource,Enabled,Running) VALUES (%s, %s, %s, %s, ''%s'', %s, %s, %s, FALSE)',project_name,command,current_ver,frequency,start_time::TEXT,email,resource::TEXT,enabled::TEXT);
+  query := format('INSERT INTO ProcessTable ( Project,
+  	   		       		      Command,
+					      ProjectVer,
+					      Frequency,
+					      StartRun,
+					      StartSubRun,
+					      Email,
+					      Resource,
+					      Enabled,
+					      Running) 
+			       VALUES ( ''%s'', ''%s'', %s, %s, 
+			       	      	%s, %s, ''%s'', ''%s''::HSTORE, %s, FALSE)',
+			       project_name,
+			       new_cmd,
+			       current_ver,
+			       new_freq,
+			       new_run,
+			       new_subrun,
+			       new_email,
+			       new_src::TEXT,
+			       new_en::TEXT);
  
   EXECUTE query;
 
@@ -439,11 +465,30 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS ListEnabledProject();
+
+CREATE OR REPLACE FUNCTION ListEnabledProject() 
+       	  	  	   RETURNS TABLE ( Project TEXT, 
+			   	   	   Command TEXT, 
+					   Frequency INT,
+					   Email TEXT, 
+					   Resource HSTORE) AS $$
+  SELECT A.Project, A.Command, A.Frequency, A.Email, A.Resource 
+  FROM ProcessTable AS A JOIN 
+  (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
+  AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 DROP FUNCTION IF EXISTS ProjectInfo( project_name TEXT, 
      	      	 		     project_info TEXT,
      	      	 		     version SMALLINT);
 
 CREATE OR REPLACE FUNCTION ProjectInfo( project_name TEXT, 
+          	      	 		project_info TEXT,
      	      	 			version SMALLINT DEFAULT -1) RETURNS RECORD AS $$
 DECLARE
   project_validity BOOLEAN;
@@ -453,10 +498,14 @@ DECLARE
 BEGIN
 
   rec := NULL;
-
-  SELECT TRUE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME=project_name AND COLUMN_NAME=project_info INTO project_validity;
+  project_info := lower(project_info);
+  SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO project_validity;
   IF project_validity IS NULL THEN
-    RAISE WARNING '+++++++++ There is no such table/column: %/% +++++++++',project_name,project_info;
+    RAISE WARNING '+++++++++ There is no such project: % +++++++++',project_name;
+  END IF;
+  SELECT TRUE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='processtable' AND COLUMN_NAME=project_info INTO project_validity;
+  IF project_validity IS NULL THEN
+    RAISE WARNING '+++++++++ There is no such info: % +++++++++',project_info;
     RETURN rec;
   END IF;
 
@@ -470,7 +519,7 @@ BEGIN
     END IF;
   END IF;
   
-  query := format('SELECT %s FROM ProcessTable WHERE Project=%s AND ProjectVer=%s',project_info,project_name,project_ver);
+  query := format('SELECT %s FROM ProcessTable WHERE Project=''%s'' AND ProjectVer=%s',project_info,project_name,project_ver);
   EXECUTE query INTO rec;
   RETURN rec;
 END;
