@@ -1,21 +1,34 @@
+## @package dummy_xfer
+# @brief Defines a toy project class called dummy_xfer
+
 # python include
 import time
 # dstream class include
 from ds_exception import DSException
-from ds_proc_base import ds_proc_base
-from ds_data import ds_status
+from ds_proc_base import ds_project_base
+from ds_data      import ds_status
 # pub_dbi package include
 from pub_dbi import DBException
 
+## @class dummy_xfer
+# @brief A fake project class to serve as a demo
+# This class has only 2 methods to serve as a demo. It reads in run/subrun from
+# database with status=1 (i.e. new run), change status to 10. Another function
+# of this class can read in run/subrun with status 10 and change their status
+# to 0.
+class dummy_xfer(ds_project_base):
 
-class dummy_xfer(ds_proc_base):
-
+    ## @brief Default ctor defines project name & # of runs to process at a time
     def __init__(self,nruns):
 
         super(dummy_xfer,self).__init__()
         self._project = self.__class__.__name__
         self._nruns   = int(nruns)
-
+        
+    ##
+    # @brief One dummy function to change status.
+    # It process # runs specified @ ctor. Access those runs with status = 1,
+    # and change status = 10
     def process_newruns(self):
 
         try:
@@ -36,7 +49,10 @@ class dummy_xfer(ds_proc_base):
                                       10))
             time.sleep(0.5)
             if not ctr: break
-            
+    ##
+    # @brief Another dummy function to change status.
+    # It process # runs specified @ ctor. Access those runs with status = 10,
+    # and change status = 0
     def process_ongoing_runs(self):
 
         try:
