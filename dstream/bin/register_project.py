@@ -38,7 +38,7 @@ args = myparser.parse_args()
 
 # DB interface for altering ProcessTable
 k=ds_master(pubdb_conn_info.writer_info(),
-            pub_logger.get_logger('define_project'))
+            pub_logger.get_logger('register_project'))
 
 # Connect to DB
 k.connect()
