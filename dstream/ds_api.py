@@ -1,7 +1,11 @@
-## @package ds_api defines database API for dstream
-# The module defines three classes: 0) ds_reader, 1) ds_writer, 2) ds_master
-# These are API to interact with database, and not meant to be exposed to
-# an end-user.
+## @namespace dstream.ds_api 
+#  @ingroup dstream 
+#  @brief dstream dedicated database interface module
+#  @details
+#  The module defines three classes: 0) ds_reader, 1) ds_writer, 2) ds_master\n
+#  These are API to interact with database, and not meant to be exposed to\n
+#  an end-user.
+
 
 # python import
 import psycopg2, sys
@@ -14,9 +18,10 @@ from ds_data      import ds_status, ds_project
 from ds_exception import DSException
 
 ## @class ds_reader 
-# @brief This is a read-only API for dstream database
-# ds_reader implements dstream project specific read function to fetch
-# information from the database. This API may be used in some class/functions
+# @brief Most basic read-only API for dstream database
+# @details
+# ds_reader implements dstream project specific read function to fetch\n
+# information from the database. This API may be used in some class/functions\n
 # that only read from database.
 class ds_reader(pubdb_reader):
 
@@ -30,10 +35,10 @@ class ds_reader(pubdb_reader):
                 exist = x[0]
         return exist
 
-    ## Fetch run/subrun for a specified project with status
-    # Fetch run & sub-runs for a specified project (tname) with a specified status.
-    # Upon success, the underneath psycopg2 cursor contains returned rows.
-    # If you are writing a project implementation class, see ds_proc_base.
+    ## @brief Fetch run/subrun for a specified project with status
+    # Fetch run & sub-runs for a specified project (tname) with a specified status.\n
+    # Upon success, the underneath psycopg2 cursor contains returned rows.\n
+    # If you are writing a project implementation class, see ds_proc_base.\n
     def get_runs(self,tname,status):
 
         if not type(tname)==type(str()) or not type(status)==type(int()):
@@ -42,11 +47,11 @@ class ds_reader(pubdb_reader):
         query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d);' % (tname,status)
         return self._cursor.execute(query)
 
-    ## Fetch run/subrun for a set of specified project with status
-    # Fetch run & sub-runs for a group of projects and status.
-    # The first argument should be a list of strings each representing a name of project.
-    # The second argument should be a list of integers each representing a status of project.
-    # Upon success, the underneath psycopg2 cursor contains returned rows.
+    ## @brief Fetch run/subrun for a set of specified project with status
+    # Fetch run & sub-runs for a group of projects and status.\n
+    # The first argument should be a list of strings each representing a name of project.\n
+    # The second argument should be a list of integers each representing a status of project.\n
+    # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.
     def get_xtable_runs(self,table_v, status_v):
 
@@ -78,7 +83,7 @@ class ds_reader(pubdb_reader):
 
         return self.execute(query)
 
-    ## Fetch project information
+    ## Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
         
         project = str(project)
@@ -108,7 +113,7 @@ class ds_reader(pubdb_reader):
                           resource = x[5],
                           ver      = x[6])
         
-    ## Fetch a list of enabled projects for execution
+    ## Fetch a list of enabled projects for execution. Return is an array of ds_project.
     def list_projects(self):
 
         query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource'
@@ -132,15 +137,16 @@ class ds_reader(pubdb_reader):
         return info_array
 
 ## @class ds_writer
-# @brief This is a suitable API for project implementation class
-# ds_reader implements dstream project specific write function to fetch
-# information from the database. As it inherits from ds_reader, it has
-# all read functions implemented in that base class.
+# @brief Database API for dstream projects with partial write permission
+# @details
+# ds_reader implements dstream project specific write function to fetch\n
+# information from the database. As it inherits from ds_reader, it has\n
+# all read functions implemented in that base class.\n
 # This is the API for project classes.
 class ds_writer(pubdb_writer,ds_reader):
 
-    ## ds_status object validity checker
-    # An internal function to check if a provided status info is the right type,
+    ## @brief ds_status object validity checker
+    # An internal function to check if a provided status info is the right type,\n
     # namely ds_status class instance.
     def _check_info(self,info):
 
@@ -172,17 +178,14 @@ class ds_writer(pubdb_writer,ds_reader):
 
         return self.commit(query)
 
-## @class ds_writer
-# @brief This is a database API specialized for master scheduler process
-# ds_writer implements read/write functions needed for ds_daemon class specifically.
+## @class ds_master
+# @brief Database API specialized for master scheduler, not for projects
+# @details
+# ds_writer implements read/write functions needed for ds_daemon class specifically.\n
 # This should not be used by project class instances.
 class ds_master(pubdb_writer,ds_reader):
 
-    ## @brief Define a new project
-    # project .... string, name of a project
-    # command .... string, command to be executed
-    # frequency .. integer, period between command executions
-    # email ...... string, email address to which message is sent upon error
+    ## @brief Define a new project. Input is ds_project object.
     def define_project(self,project_info):
 
         if not isinstance(project_info,ds_project):
@@ -214,8 +217,7 @@ class ds_master(pubdb_writer,ds_reader):
         
         return self.commit(query)
 
-    ## @brief remove project from process database
-    # project .... string, name of a project
+    ## @brief remove project from process database.
     def remove_project(self,project):
 
         if not self.project_exist(project):
@@ -242,11 +244,7 @@ class ds_master(pubdb_writer,ds_reader):
         return self.commit(query)
 
 
-    ## @brief Define a new project
-    # project .... string, name of a project
-    # command .... string, command to be executed
-    # frequency .. integer, period between command execution
-    # email ...... string, email address to which message is sent upon error
+    ## @brief Update existing project. Input is a ds_project object.
     def update_project(self, info):
 
         if not isinstance(info,ds_project):
@@ -301,3 +299,5 @@ class ds_master(pubdb_writer,ds_reader):
         query = query % ( info._project, info._command, info._period, info._email )
 
         return self.commit(query)
+
+

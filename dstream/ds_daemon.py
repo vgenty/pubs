@@ -1,3 +1,9 @@
+## @namespace dstream.ds_daemon
+#  @ingroup dstream
+#  @brief Introduce simple daemon toolkit for executing projects
+#  @details
+#  Includes class ds_action (a unit process executor) and ds_daemon (a process manager)
+
 # Python include
 import time, copy
 from subprocess   import Popen, PIPE
@@ -12,10 +18,15 @@ from pub_dbi      import pubdb_conn_info,DBException
 from pub_util     import pub_logger
 # dstream module include
 
-
+## @class ds_action
+#  @brief A single process executor for a project
+#  @details
+#  Instantiated with project information, ds_action executes a project.\n
+#  Currently executed process's stdout and stderr are simply handled via pipe.\n
+#  One may improve this simple design to manage memory/cpu/wall-time of the process.\n
 class ds_action(ds_project):
 
-
+    ## default ctor accepting ds_project instance
     def __init__(self, project_info):
 
         if not isinstance(project_info,ds_project):
@@ -24,12 +35,17 @@ class ds_action(ds_project):
         self._info = copy.copy(project_info)
         self._proc = None
 
+    ## Simple method to access name of a project
     def name(self): return self._name
 
+    ## Boolean function to check if the project's execution process is alive or not
     def active(self):
         if self._proc is None: return False
         else: return (self._proc.poll() is None)
 
+    ## @brief Clears a project process, if exists, and returns (stdout,stderr). 
+    #  @details If process is active, it waits to finish. Use active() function\n
+    #  before calling this to avoid waiting time.
     def clear(self):
         if self._proc is None: return (None,None)
         (out,err) = self._proc.communicate()
@@ -37,6 +53,7 @@ class ds_action(ds_project):
         self._proc = None
         return (out,err)
 
+    ## Opens a sub-process to execute a project
     def execute(self):
         try:
             self._proc = Popen(self._info._command.split(None),
@@ -45,8 +62,15 @@ class ds_action(ds_project):
         except OSError as e:
             raise DSException()
 
+## @class ds_daemon
+#  @brief Simple daemon tool to run registered projects
+#  @details
+#  Contains one function to continue an indefinite loop of loading project information\n
+#  and execution at requested time. Loading of a project from DB is done in the other\n
+#  function.
 class ds_daemon(ds_base):
 
+    ## default ctor does not require any input
     def __init__(self):
 
         super(ds_daemon,self).__init__()
@@ -59,6 +83,7 @@ class ds_daemon(ds_base):
 
         self._load_period = int(120)
 
+    ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
         # First, remove project that is not active
@@ -78,6 +103,7 @@ class ds_daemon(ds_base):
             if not x._project in self._exe_time_v:
                 self._exe_time_v[x._project] = None
 
+    ## Initiate an indefinite loop of projects' info-loading & execution 
     def routine(self):
 
         ctr=0

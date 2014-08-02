@@ -1,7 +1,10 @@
-## @package ds_proc_base
-# Defines some base class used in dstream package.
-# - ds_base is a simple class with a logger & exception implementation
-# - ds_proc_base further implements ds_writer API, and is suitable for project base class
+## @namespace dstream.ds_proc_base
+#  @ingroup dstream 
+#  @brief defines some base class used in dstream package.
+#  @details 
+#  Include two data holder classes:
+#  - ds_base is a simple class with a logger & exception implementation
+#  - ds_proc_base further implements ds_writer API, and is suitable for project base class
 
 # pub_util package import
 from pub_util import pub_logger
@@ -11,6 +14,8 @@ from pub_dbi  import pubdb_conn_info
 from ds_api   import ds_writer
 
 ## @class ds_base
+#  @brief Data holder for project status 
+#  @details
 #  This class implements a common logger feature in dstream. Such feature includes
 #  a logger with name = class name, and exception throwing DSException.
 class ds_base(object):
@@ -37,14 +42,15 @@ class ds_base(object):
         self.critical(msg)
         raise DSException()
 
-## @class ds_proc_base
-# @brief This is a base class for a project.
-# Suitable for a project base class. 
-# In addition to the base ds_base class, this class implements API to interact
-# with database. As it is for a project, ds_writer API is used. Instead of
-# requiring inherited class to learn about how to use ds_writer API, this class
-# implements a practical usage of ds_writer and hence hide a complexity of 
-# database API.
+## @class ds_project_base
+#  @brief Data holder for project execution information
+#  @details
+#  Suitable for a project base class. 
+#  In addition to the base ds_base class, this class implements API to interact
+#  with database. As it is for a project, ds_writer API is used. Instead of
+#  requiring inherited class to learn about how to use ds_writer API, this class
+#  implements a practical usage of ds_writer and hence hide a complexity of 
+#  database API.
 class ds_project_base(ds_base):
 
     ## default ctor

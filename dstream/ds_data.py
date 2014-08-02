@@ -1,5 +1,10 @@
-## @package ds_data
-# @brief A package that defines data holder class for dstream package
+## @namespace dstream.ds_data
+#  @ingroup dstream
+#  @brief Defines data holder class for dstream package
+#  @details
+#  Contains two data classes:\n
+#  0) ds_status is used for logging the project status\n
+#  1) ds_project is used to pass project execution information\n
 
 # python import
 import inspect, copy
@@ -7,8 +12,9 @@ import inspect, copy
 from pub_util import pub_logger
 
 ## @class ds_status
-# @brief This class holds status of a project, and is used to log a status in DB.
-# Instance holds a project name, run, sub-run, seq, and status
+# @brief Holds status of a project, and is used to log a status in DB.
+# @details
+# Instance holds a project name, run, sub-run, seq, and status read from DB.
 class ds_status(object):
 
     ## @brief default ctor to specify all data members
@@ -47,8 +53,9 @@ class ds_status(object):
 
 ## @class ds_project
 # @brief This class holds a project information registered in ProcessTable.
-# Stored information include name, command, start run number, start sub-run number,
-# contact email, period between execution, version number, enable-flag, and resources
+# @details
+# Stored information include name, command, start run number, start sub-run number,\n
+# contact email, period between execution, version number, enable-flag, and resources\n
 class ds_project(object):
 
     ## @brief default ctor to specify all data members
