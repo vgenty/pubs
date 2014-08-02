@@ -38,3 +38,17 @@ if 'PUB_LOGGER_FILE_LOCATION' in os.environ.keys():
     if not os.path.isdir(kLOGGER_FILE_LOCATION):
         sys.stderr.write('PUB_LOGGER_FILE_LOCATION env. value is non-existing directory (%s)!' % os.environ['PUB_LOGGER_FILE_LOCATION'])
         sys.exit(1)
+
+#
+# Emailer config
+#
+kSMTP_ACCT = ''
+kSMTP_SRVR = ''
+kSMTP_PASS = ''
+if 'PUB_SMTP_ACCT' in os.environ.keys():
+    exec('kSMTP_ACCT=\'%s\'' % os.environ['PUB_SMTP_ACCT'])
+if 'PUB_SMTP_SRVR' in os.environ.keys():
+    exec('kSMTP_SRVR=\'%s\'' % os.environ['PUB_SMTP_SRVR'])
+if 'PUB_SMTP_PASS' in os.environ.keys():
+    exec('kSMTP_PASS=\'%s\'' % os.environ['PUB_SMTP_PASS'])
+
