@@ -60,7 +60,7 @@ class ds_action(ds_project):
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
-            raise DSException()
+            raise DSException(e.strerror)
 
 ## @class ds_daemon
 #  @brief Simple daemon tool to run registered projects
@@ -148,13 +148,15 @@ class ds_daemon(ds_base):
                         
                     if ( last_ts is None or 
                          last_ts < ( now_ts - proj_ptr._info._period) ):
-                        
+
+                        self._exe_time_v[x] = now_ts                        
                         try:
+                            self.info('Execute project %s @ %s' % (x,now_str))
                             proj_ptr.execute()
-                            self._exe_time_v[x] = now_ts
-                        except OSError as e:
-                            self.error('Error while executing a project %s @ %s' % (x,now_str))
-                            self.error(e.strerror)
+
+                        except DSException as e:
+                            self.error('Received error from project %s!' % x)
+                            self.error('%s' % e)
 
 
 if __name__ == '__main__':
