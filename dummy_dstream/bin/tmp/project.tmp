@@ -1,4 +1,4 @@
-## @namespace dummy.$PROJECT_NAME
+## @namespace dummy.$Project_Name
 #  @ingroup dummy
 #  @brief Defines a project $Project_Name
 #  @author $SHELL_USER_NAME
