@@ -52,7 +52,7 @@ class ds_project_base(ds_base):
     # Note it also imports connect method directly from ds_writer API.
     def __init__(self):
 
-        super(ds_proc_base,self).__init__()
+        super(ds_project_base,self).__init__()
 
         self._api = ds_writer(pubdb_conn_info.writer_info(),
                               logger=self._logger)

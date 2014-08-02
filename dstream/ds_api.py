@@ -6,11 +6,11 @@
 # python import
 import psycopg2, sys
 # pub_util package import
-from pub_util import pub_logger
+from pub_util     import pub_logger
 # pub_dbi package import
-from pub_dbi import pubdb_reader, pubdb_writer
+from pub_dbi      import pubdb_reader, pubdb_writer
 # dstream import
-from ds_data import ds_status
+from ds_data      import ds_status, ds_project
 from ds_exception import DSException
 
 ## @class ds_reader 
@@ -78,6 +78,59 @@ class ds_reader(pubdb_reader):
 
         return self.execute(query)
 
+    ## Fetch project information
+    def project_info(self,project,field_name=None):
+        
+        project = str(project)
+        if not self.project_exist(project):
+            self._logger.error('Project %s does not exist!' % project)
+
+        query = 'SELECT Command, Frequency, StartRun, StartSubRun, Email, Resource, ProjectVer'
+
+        if field_name:
+            
+            query += ' FROM ProjectInfo(\'%s\',\'%s\')' % (project,str(field_name))
+
+        else:
+            
+            query += ' FROM ProjectInfo(\'%s\')' % project
+
+        self.execute(query)
+
+        x = self.fetchone()
+        
+        return ds_project(project  = project,
+                          command  = x[0],
+                          period   = x[1],
+                          run      = x[2],
+                          subrun   = x[3],
+                          email    = x[4],
+                          resource = x[5],
+                          ver      = x[6])
+        
+    ## Fetch a list of enabled projects for execution
+    def list_projects(self):
+
+        query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource'
+        query += ' FROM ListEnabledProject()'
+
+        info_array = []
+
+        self.execute(query)
+
+        if not self.nrows() : return info_array
+
+        for x in self:
+            info_array.append( ds_project( project  = x[0],
+                                           command  = x[1],
+                                           period   = int(x[2]),
+                                           run      = int(x[3]),
+                                           subrun   = int(x[4]),
+                                           email    = x[5],
+                                           resource = x[6],
+                                           enable   = True ) )
+        return info_array
+
 ## @class ds_writer
 # @brief This is a suitable API for project implementation class
 # ds_reader implements dstream project specific write function to fetch
@@ -125,21 +178,39 @@ class ds_writer(pubdb_writer,ds_reader):
 # This should not be used by project class instances.
 class ds_master(pubdb_writer,ds_reader):
 
-    ## Fetch a list of projects for execution
-    def list_projects(self):
-
-        query = 'SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource FROM ListEnabledProject()'
-    
-        return self.execute(query)
-
     ## @brief Define a new project
     # project .... string, name of a project
     # command .... string, command to be executed
     # frequency .. integer, period between command executions
     # email ...... string, email address to which message is sent upon error
-    def define_project(self,project,command,frequency,email):
+    def define_project(self,project_info):
+
+        if not isinstance(project_info,ds_project):
+
+            self._logger.error('Invalid arg type: you must provide ds_project object!')
+            return False
+
+        elif not project_info.is_valid():
+            
+            self._logger.error('Provided project info contains invalid values!')
+            return False
         
-        query = ' SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\');' % (project,command,frequency,email)
+        query = 'SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\',%d,%d,\'%s\');'
+        
+        resource = ''
+        for x in project_info._resource.keys():
+            
+            resource += '\'%s\'=>\'%s\',' % (x, project_info._resource[x])
+            
+        resource = resource.rstrip(',')
+
+        query = query % ( project_info._project,
+                          project_info._command,
+                          project_info._period,
+                          project_info._email,
+                          project_info._run,
+                          project_info._subrun,
+                          resource )
         
         return self.commit(query)
 
@@ -149,7 +220,7 @@ class ds_master(pubdb_writer,ds_reader):
 
         if not self.project_exist(project):
             self._logger.error('Project %s not found!' % project)
-            return
+            return False
 
         self._logger.warning('About to remove project %s from DB. Really want to proceed? ' % project)
         user_input = ''
@@ -176,12 +247,57 @@ class ds_master(pubdb_writer,ds_reader):
     # command .... string, command to be executed
     # frequency .. integer, period between command execution
     # email ...... string, email address to which message is sent upon error
-    def update_project(self, project, command, frequency, email):
+    def update_project(self, info):
 
-        if not self.project_exist(project):
-            self._logger.error('Project %s not found!' % project)
-            return
+        if not isinstance(info,ds_project):
+
+            self._logger.error('Invalid arg type: you must provide ds_project object!')
+            return False
+
+        elif not info.is_valid():
+            
+            self._logger.error('Provided project info contains invalid values!')
+            return False
+
+        if not self.project_exist(info._project):
+            self._logger.error('Project %s not found!' % info._project)
+            return False
+
+        query = ' SELECT ProjectInfo(\'%s\')' % info._project
+
+        self.execute(query)
+
+        if not self.nrows():
+            self._logger.error('Failed to fetch project information for %s!',
+                               info._project)
+
+        orig_info = self.project_info(info._project)
+
+        info._run    = orig_info._run
+        info._subrun = orig_info._subrun
+        info._ver    = orig_info._ver
+
+        self._logger.warning('Attempting to alter project configuration...')
+        self._logger.info('Command : %s => %s' % (orig_info._command, info._command))
+        self._logger.info('Period  : %d => %d' % (orig_info._period,  info._period ))
+        self._logger.info('Email   : %s => %s' % (orig_info._email,   info._email  ))
+        self._logger.info('Enabled : %s => %s' % (orig_info._enable,  info._enable))
+
+        user_input = ''
+        while not user_input:
+            sys.stdout.write('Answer [y/n]: ')
+            sys.stdout.flush()
+            user_input=sys.stdin.readline().rstrip('\n').rstrip(' ')
+            if user_input in ['y','Y']:
+                break
+            elif user_input in ['n','N']:
+                return
+            else:
+                self._logger.error('Invalid input command: %s' % user_input)
+                user_input=''
+                continue
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\');' % (project,command,frequency,email)
-        
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\');'
+        query = query % ( info._project, info._command, info._period, info._email )
+
         return self.commit(query)

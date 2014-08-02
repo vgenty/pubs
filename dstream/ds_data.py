@@ -2,7 +2,7 @@
 # @brief A package that defines data holder class for dstream package
 
 # python import
-import inspect
+import inspect, copy
 # pub_util package import
 from pub_util import pub_logger
 
@@ -45,3 +45,56 @@ class ds_status(object):
 
         else: return True
 
+## @class ds_project
+# @brief This class holds a project information registered in ProcessTable.
+# Stored information include name, command, start run number, start sub-run number,
+# contact email, period between execution, version number, enable-flag, and resources
+class ds_project(object):
+
+    ## @brief default ctor to specify all data members
+    def __init__ (self, project, command='', run=0, subrun=0,
+                  email='', period=100, enable=True, resource={}, ver=-1):
+        if not resource: resource = {}
+        try:
+            if not type(resource) == type(dict()):
+                print type(resource)
+                print type({})
+                print 'aho'
+                raise ValueError
+            self._project  = str(project)
+            self._command  = str(command)
+            self._run      = int(run)
+            self._subrun   = int(subrun)
+            self._email    = str(email)
+            self._period   = int(period)
+            self._enable   = bool(enable)
+            self._resource = copy.copy(resource)
+            self._ver      = int(ver)
+        except ValueError:
+            name   = '%s' % inspect.stack()[1][3]
+            pub_logger.get_logger(name).critical('Invalid value type!')
+            raise DSException()
+
+    def __str__(self):
+        msg = ''
+        msg += 'Project : %s\n' % self._project
+        msg += 'Command : %s\n' % self._command
+        msg += 'Run     : %d\n' % self._run
+        msg += 'SubRun  : %d\n' % self._subrun
+        msg += 'Email   : %s\n' % self._email
+        return msg
+    
+    ## A method to make sure the instance is at least not stupid
+    def is_valid(self):
+        
+        if ( not self._project or 
+             not self._command or
+             self._run    < 0  or 
+             self._subrun < 0  or 
+             not self._email   or
+             self._period < 0 ):
+
+            return False
+
+        else: return True
+    

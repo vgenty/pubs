@@ -1,29 +1,28 @@
 # Python include
-import time
+import time, copy
 from subprocess   import Popen, PIPE
 # dstream include
 from ds_exception import DSException
 from ds_proc_base import ds_base
 from ds_api       import ds_master
+from ds_data      import ds_project
 # pub_dbi package include
-from pub_dbi  import pubdb_conn_info,DBException
+from pub_dbi      import pubdb_conn_info,DBException
 # pub_util package include
 from pub_util     import pub_logger
+# dstream module include
 
-class ds_project(object):
 
-    def __init__(self, name, cmd, period, 
-                 run, subrun, email, params={}):
-        self._name   = str(name)
-        self._cmd    = str(cmd)
-        self._period = int(period)
-        self._run    = int(run)
-        self._subrun = int(subrun)
-        self._email  = str(email)
-        self._proc   = None
-        self._params = params
-        if not params: 
-            self._params={}
+class ds_action(ds_project):
+
+
+    def __init__(self, project_info):
+
+        if not isinstance(project_info,ds_project):
+            raise ValueError
+
+        self._info = copy.copy(project_info)
+        self._proc = None
 
     def name(self): return self._name
 
@@ -40,7 +39,7 @@ class ds_project(object):
 
     def execute(self):
         try:
-            self._proc = Popen(self._cmd.split(None),
+            self._proc = Popen(self._info._command.split(None),
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
@@ -62,29 +61,22 @@ class ds_daemon(ds_base):
 
     def load_projects(self):
 
-        if not self._api.list_projects():
-            self.error('Failed loading projects from database...')
-        
-        if not self._api.nrows():
-            self.info('No projects found')
-
         # First, remove project that is not active
         for x in self._project_v.keys():
             if not self._project_v[x].active():
                 self._project_v.pop(x)
 
         # Second, load new/updated projects
-        for x in k._api:
-            
-            if x[0] in self._project_v.keys():
-                self.debug('Skipping update on project %s (still active)',x[0])
+        for x in self._api.list_projects():
+
+            if x._project in self._project_v.keys():
+                self.debug('Skipping update on project %s (still active)',x._project)
                 continue
 
-            self.debug('Updating project %s information' % x[0])
-            self._project_v[x[0]] = ds_project(x[0],x[1],x[2],
-                                               x[3],x[4],x[5],x[6])
-            if not x[0] in self._exe_time_v:
-                self._exe_time_v[x[0]] = None
+            self.debug('Updating project %s information' % x._project)
+            self._project_v[x._project] = ds_action(x)
+            if not x._project in self._exe_time_v:
+                self._exe_time_v[x._project] = None
 
     def routine(self):
 
@@ -129,7 +121,7 @@ class ds_daemon(ds_base):
                         print out,err
                         
                     if ( last_ts is None or 
-                         last_ts < ( now_ts - proj_ptr._period) ):
+                         last_ts < ( now_ts - proj_ptr._info._period) ):
                         
                         try:
                             proj_ptr.execute()

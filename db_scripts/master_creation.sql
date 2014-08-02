@@ -331,8 +331,6 @@ CREATE OR REPLACE FUNCTION UpdateProjectConfig( project_name TEXT,
 				       	     	resource     HSTORE  DEFAULT NULL,
 				       	     	enabled      BOOLEAN DEFAULT NULL) RETURNS BOOLEAN AS $$
 DECLARE
-query_field TEXT;
-query_value TEXT;
 project_ver INT;
 query       TEXT;
 myBool      BOOLEAN;
@@ -345,41 +343,42 @@ BEGIN
     RETURN FALSE;
   END IF;
 
+  IF command IS NULL AND frequency IS NULL AND email IS NULL AND resource IS NULL AND enabled IS NULL THEN
+    RAISE EXCEPTION '+++++++++ Nothing to update! +++++++++';
+    RETURN FALSE;
+  END IF;
+
   SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO project_ver; 
 
+  query := 'UPDATE ProcessTable SET ';
+
   IF NOT command IS NULL THEN
-    query_field := query_field || 'Command,';
-    query_value := query_value||''||command||''',';
+    query := format('%s Command=''%s'',',query,command);
   END IF;
 
   IF NOT frequency IS NULL THEN
-    query_field := query_field || 'Frequency,';
-    query_value := format('%s%s,',query_value,frequency);
+    query := format('%s Frequency=%s,',query,frequency);
   END IF;
 
   IF NOT email IS NULL THEN
-    query_field := query_field || 'Email,';
-    query_value := query_value||''||email||''',';
+    query := format('%s Email=''%s'',',query,email);
   END IF;
 
   IF NOT resource IS NULL THEN
-    query_field := query_field || 'Resource,';
-    query_value := query_value||''||resource||''',';
+    query := format('%s Resource=''%s''::HSTORE,',query,resource);
   END IF;
 
   IF NOT enabled IS NULL THEN
-    query_field := query_field || 'Enabled,';
-    IF enabled IS TRUE THEN
-      query_value := query_value || 'TRUE,';
+    IF enabled THEN
+      query := format('%s Enabled=TRUE,',query);
     ELSE
-      query_value := query_value || 'FALSE,';
+      query := format('%s Enabled=FALSE,',query);
     END IF;
   END IF;
 
-  query_field := TRIM( TRAILING ',' FROM query_field);
-  query_value := TRIM( TRAILING ',' FROM query_value);    
+  query := TRIM( TRAILING ',' FROM query);
 
-  query := format('UPDATE ProcessTable SET (%s) = (%s) WHERE ProjectVer = %s',query_field,query_value,project_ver);
+  query := format('%s WHERE ProjectVer=%s AND Project=''%s''',query,project_ver,project_name);
 
   EXECUTE query;
 
@@ -512,28 +511,38 @@ $$ LANGUAGE SQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
-DROP FUNCTION IF EXISTS ProjectInfo(project TEXT);
+DROP FUNCTION IF EXISTS ProjectInfo(project_name TEXT);
+DROP FUNCTION IF EXISTS ProjectInfo(project_name TEXT, project_ver INT);
 
-CREATE OR REPLACE FUNCTION ProjectInfo(project_name TEXT) 
-       	  	  	   RETURNS TABLE ( Project TEXT, 
-			      	     	   Command TEXT, 
-					   Frequency INT,
-					   StartRun INT,
-					   StartSubRun INT,
-					   Email TEXT, 
-					   Resource HSTORE,
-					   ProjectVer INT) AS $$
+CREATE OR REPLACE FUNCTION ProjectInfo( project_name TEXT,
+       	  	  	   		project_ver INT DEFAULT NULL)
+
+       	  	  	   		RETURNS TABLE ( Project TEXT, 
+			      	     	   	        Command TEXT, 
+					   	      	Frequency INT,
+					   	      	StartRun INT,
+					 	      	StartSubRun INT,
+					   	      	Email TEXT, 
+					   	      	Resource HSTORE,
+					   	      	ProjectVer SMALLINT) AS $$
 DECLARE
 is_there BOOLEAN;
-
 BEGIN
-  IF NOT DoesTableExist(Project) THEN
+  IF NOT DoesTableExist(project_name) THEN
     RAISE EXCEPTION 'Project % does not exist!',project_name;
   END IF;
-  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
-  	       	      A.Email, A.Resource, A.ProjectVer 
-		      FROM ProcessTable AS A WHERE Project = project_name 
-	 	      ORDER BY ProjectVer DESC LIMIT 1;
+  IF project_ver IS NULL THEN
+    SELECT A.ProjectVer FROM ProcessTable AS A
+    	   WHERE A.Project = project_name 
+	   ORDER BY A.ProjectVer 
+	   DESC LIMIT 1
+	   INTO project_ver;
+  END IF;
+
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, 
+  	       	      A.StartSubRun, A.Email, A.Resource, A.ProjectVer 
+		      FROM ProcessTable AS A 
+		      WHERE A.Project = project_name AND A.ProjectVer = project_ver;
 END;
 $$ LANGUAGE PLPGSQL;
 

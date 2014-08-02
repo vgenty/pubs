@@ -18,6 +18,10 @@ class pubdb_reader(object):
             pub_logger.get_logger('pubdb').critical('Invalid logger!')
             raise DBException()
 
+    def fetchone(self):
+        if not self._cursor: return None
+        return self._cursor.fetchone()
+
     def connect(self):
         if self._cursor: return True
         self._cursor = pubdb_conn.cursor(self._conn_info)
