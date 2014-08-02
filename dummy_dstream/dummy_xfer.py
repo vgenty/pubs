@@ -1,13 +1,13 @@
-## @namespace dstream.dummy_xfer
-#  @ingroup dstream
+## @namespace dummy_dstream.dummy_xfer
+#  @ingroup dummy_dstream
 #  @brief Defines a toy project class called dummy_xfer
 
 # python include
 import time
 # dstream class include
-from ds_exception import DSException
-from ds_proc_base import ds_project_base
-from ds_data      import ds_status
+from dstream import DSException
+from dstream import ds_project_base
+from dstream import ds_status
 # pub_dbi package include
 from pub_dbi import DBException
 

@@ -22,6 +22,7 @@
 #  Package dstream is a simple framework for running UB data processing.
 #  See each class description for details.
 
-from dummy_xfer import dummy_xfer
-from ds_daemon import ds_daemon
-
+from ds_daemon    import ds_daemon
+from ds_data      import ds_status, ds_project
+from ds_exception import DSException
+from ds_proc_base import ds_project_base
