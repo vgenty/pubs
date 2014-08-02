@@ -27,16 +27,14 @@ class dummy_xfer(ds_project_base):
         self._project = self.__class__.__name__
         self._nruns   = int(nruns)
         
-    ##
-    # @brief One dummy function to change status.
-    # It process # runs specified @ ctor. Access those runs with status = 1,\n
-    # and change status = 10
+    ## @brief One dummy function to change status.
+    #  @details
+    #  It process # runs specified @ ctor. Access those runs with status = 1,\n
+    #  and change status = 10
     def process_newruns(self):
 
-        try:
-            self.connect()
-        except DBException as e:
-            self.error('Connection failed! Aborting...')
+        if not self.connect():
+            self.error('Aborting...')
             return
         
         ctr = self._nruns
@@ -51,16 +49,14 @@ class dummy_xfer(ds_project_base):
                                       10))
             time.sleep(0.5)
             if not ctr: break
-    ##
-    # @brief Another dummy function to change status.
-    # It process # runs specified @ ctor. Access those runs with status = 10,\n
-    # and change status = 0
+    ## @brief Another dummy function to change status.
+    #  @details
+    #  It process # runs specified @ ctor. Access those runs with status = 10,\n
+    #  and change status = 0
     def process_ongoing_runs(self):
 
-        try:
-            self.connect()
-        except DBException as e:
-            self.error('Connection failed! Aborting...')
+        if not self.connect():
+            self.error('Aborting...')
             return
 
         ctr = self._nruns

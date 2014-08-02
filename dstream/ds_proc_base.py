@@ -20,10 +20,11 @@ from ds_api   import ds_writer
 #  a logger with name = class name, and exception throwing DSException.
 class ds_base(object):
 
-    ## Default ctor
-    # CTor is where it implements a common logger feature.
-    # Note logger functions (debug, info, warning, error, critical) are imported
-    # directly.
+    ## @brief Default ctor
+    #  @details
+    #  CTor is where it implements a common logger feature.
+    #  Note logger functions (debug, info, warning, error, critical) are imported
+    #  directly.
     def __init__(self):
 
         # Create attribute instances
@@ -36,8 +37,9 @@ class ds_base(object):
         self.error    = self._logger.error
         self.critical = self._logger.critical
 
-    ## Exception log & throw method
-    # This sends message in exception format + raise actual DSException
+    ## @brief Exception log & throw method
+    #  @details
+    #  This sends message in exception format + raise actual DSException
     def exception(self,msg):
         self.critical(msg)
         raise DSException()
@@ -53,9 +55,10 @@ class ds_base(object):
 #  database API.
 class ds_project_base(ds_base):
 
-    ## default ctor
-    # Constructor implements database API on top of base class logger feature.
-    # Note it also imports connect method directly from ds_writer API.
+    ## @brief default ctor
+    #  @details
+    #  Constructor implements database API on top of base class logger feature.
+    #  Note it also imports connect method directly from ds_writer API.
     def __init__(self):
 
         super(ds_project_base,self).__init__()
@@ -63,15 +66,27 @@ class ds_project_base(ds_base):
         self._api = ds_writer(pubdb_conn_info.writer_info(),
                               logger=self._logger)
 
-        # Import some of API function as is
+        # Import API's log_status as is
         self.log_status = self._api.log_status
-    
-        self.connect = self._api.connect
 
-    ## Get a list of run/subrun for a specified project with status
-    # Use ds_reader::get_runs() function to fetch run/subrun combination for
-    # a specified project with a specified status. Return is an array of int
-    # representing (Run, SubRun, Sequence, ProjectVersion).
+    ## @brief wrapper for connect() method in ds_writer
+    #  @details
+    #  A simple wrapper that returns True/False. This avoids a downstream class/function\n
+    #  to learn about underneath class structure (though if doesn't hide if one's interested in).
+    def connect(self):
+
+        try:
+            self._api.connect()
+            return True
+        except DBException as e:
+            self.error('Failed to connect DB!')
+            return False
+
+    ## @brief Get a list of run/subrun for a specified project with status
+    #  @details
+    #  Use ds_reader::get_runs() function to fetch run/subrun combination for
+    #  a specified project with a specified status. Return is an array of int
+    #  representing (Run, SubRun, Sequence, ProjectVersion).
     def get_runs(self,project,status):
 
         runs =[]

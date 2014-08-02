@@ -44,6 +44,10 @@ class ds_reader(pubdb_reader):
         if not type(tname)==type(str()) or not type(status)==type(int()):
             self._logger.critical('Invalid input data type!')
             return False
+        if not self.project_exist(tname):
+            self._logger.critical('Project %s does not exist!' % tname)
+            return False
+
         query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d);' % (tname,status)
         return self._cursor.execute(query)
 
