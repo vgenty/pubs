@@ -9,11 +9,11 @@ if not 'PUB_TOP_DIR' in os.environ.keys():
    sys.exit(1)
 
 name=sys.argv[1]
-target_dir='%s/dstream' % os.environ['PUB_TOP_DIR']
+target_dir='%s/dummy_dstream' % os.environ['PUB_TOP_DIR']
 source_dir='%s/bin/tmp' % target_dir
 
 if not os.path.exists(target_dir) or not os.path.exists(source_dir):
-   sys.stderr.write('Did not find dstream directory: %s\n' % target_dir)
+   sys.stderr.write('Did not find dummy directory: %s\n' % target_dir)
    sys.stderr.write('Check if your $PUB_TOP_DIR is set right...\n')
    sys.exit(1)
 
