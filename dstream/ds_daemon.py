@@ -64,7 +64,7 @@ class ds_action(object):
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
-            pub_smtp(receiver = self._info._email,
+            pub_smtp(receiver = self._info._email.split(None),
                      subject  = 'Failed execution of project %s' % self.name(),
                      text     = e.strerror)
             raise DSException(e.strerror)
