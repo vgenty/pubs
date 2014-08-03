@@ -94,18 +94,69 @@ BEGIN
 
   -- For projects in ProcessTable, attempt to drop its project table & remove entry from ProcessTable
   FOR myRec IN SELECT Project FROM ProcessTable LOOP
-    SELECT RemoveProject(myRec.Project);
+    EXECUTE RemoveProject(myRec.Project);
   END LOOP;
   DROP TABLE ProcessTable;
   RETURN;
 END;
 $$ LANGUAGE PLPGSQL;
 
-
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 -- (Re-)create TestRunTable
+DROP FUNCTION IF EXISTS CreateTestRunTable();
+
+CREATE OR REPLACE FUNCTION CreateTestRunTable() RETURNS VOID AS $$
+
+  DROP TABLE IF EXISTS MainRun;
+  
+  CREATE TABLE MainRun ( RunNumber    INT NOT NULL,
+       	     	    	 SubRunNumber INT NOT NULL,
+			 TimeStart    TIMESTAMP NOT NULL,
+			 TimeStop     TIMESTAMP NOT NULL,
+			 ConfigID     INT NOT NULL,
+			 PRIMARY KEY (RunNumber,SubRunNumber) );
+
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+DROP FUNCTION IF EXISTS InsertIntoTestRunTable( Run INT, SubRun INT, 
+     	      	 				TimeStart TIMESTAMP,
+						TimeEnd   TIMESTAMP);
+
+CREATE OR REPLACE FUNCTION InsertIntoTestRunTable( Run INT, SubRun INT, 
+     	      	 				   TStart TIMESTAMP,
+						   TEnd   TIMESTAMP) RETURNS VOID AS $$
+DECLARE
+  presence BOOLEAN;
+BEGIN
+
+  IF Run <= 0 OR SubRun <= 0 THEN
+    RAISE EXCEPTION 'Run/SubRun must be a positive integer!';
+  END IF;
+
+  IF NOT DoesTableExist('mainrun') THEN
+    RAISE EXCEPTION 'MainRun table does not exist!';
+  END IF;
+
+  SELECT TRUE FROM MainRun WHERE RunNumber = Run AND SubRunNumber = SubRun INTO presence;
+
+  IF presence IS NOT NULL THEN
+    RAISE EXCEPTION 'Specified (Run,SubRun) already exists in the MainRun Table!';
+  END IF;
+  INSERT INTO MainRun (RunNumber,SubRunNumber,TimeStart,TimeStop,ConfigID) 
+  	      VALUES  (Run, SubRun, TStart, TEnd, 0);
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- (Re-)create & fill TestRunTable
 
 DROP FUNCTION IF EXISTS FillTestRunTable( NumRuns    INT,
      	      	 			  NumSubRuns INT);
@@ -114,36 +165,44 @@ CREATE OR REPLACE FUNCTION FillTestRunTable( NumRuns    INT DEFAULT NULL,
      	      	 			     NumSubRuns INT DEFAULT NULL) RETURNS VOID AS $$
 DECLARE
   run_start TIMESTAMP;
+  run_end   TIMESTAMP;
   make_newone BOOLEAN;
 BEGIN
 
   IF NumRuns IS NULL THEN NumRuns := 100; END IF;
+
   IF NumSubRuns IS NULL THEN NumSubRuns := 10; END IF;
 
   IF NumRuns < 0 OR NumSubRuns < 0 THEN
     RAISE EXCEPTION 'Provide positive run/sub-run number (%/%)!',NumRuns,NumSubRuns;
   END IF;
 
-  --IF DoesTableExist('MainRun') THEN
-    --RAISE EXCEPTION 'MainRun table already exist!';
-  --END IF;
-  
-  DROP TABLE IF EXISTS MainRun;
-  
-  run_start := '2015-01-01 00:00:00'::TIMESTAMP;
+  EXECUTE 'SELECT CreateTestRunTable();';
 
-  CREATE TABLE MainRun ( RunNumber    INT NOT NULL,
-       	     	    	 SubRunNumber INT NOT NULL,
-			 TimeStart    TIMESTAMP NOT NULL,
-			 PRIMARY KEY (RunNumber,SubRunNumber) );
+  run_start := '2015-01-01 00:00:00'::TIMESTAMP;
 
   FOR run IN 1..NumRuns LOOP
     FOR subrun IN 1..NumSubRuns LOOP
       run_start := run_start + INTERVAL '20 minutes';
-      INSERT INTO MainRun (RunNumber,SubRunNumber,TimeStart) VALUES (run,subrun,run_start);
+      run_end   := run_start + INTERVAL '10 minutes';
+      EXECUTE InsertIntoTestRunTable(run,subrun,run_start,run_end);
     END LOOP;
   END LOOP;
 END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS GetRunTimeStamp(Run INT, SubRun INT);
+
+CREATE OR REPLACE FUNCTION GetRunTimeStamp ( Run INT, SubRun INT) 
+       	  	  RETURNS TABLE (TimeStart TIMESTAMP, TimeStop TIMESTAMP) AS $$
+DECLARE
+BEGIN
+ SELECT TimeStart, TimeStop FROM MainRun WHERE RunNumber = Run AND SubRunNumber = SubRun LIMIT 1;
+END
 $$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
@@ -583,7 +642,6 @@ BEGIN
 		    start_run,
 		    start_run,
 		    start_subrun);
-  RAISE INFO '%',query;
   EXECUTE query;
 END;
 $$ LANGUAGE PLPGSQL;
