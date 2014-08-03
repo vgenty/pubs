@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 
 # ds_util import
 from pub_env import kSMTP_ACCT, kSMTP_SRVR, kSMTP_PASS
-
+from pub_exception import BaseException;
 ## @function
 #  @brief Function 
 def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
@@ -36,13 +36,30 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
         msg.attach(MIMEText(text,'html'))
     else:
         msg.attach(MIMEText(text,'plain'))
-    server = smtplib.SMTP(smtp_domain)
-    server.ehlo()
-    server.starttls()
-    server.login('drinkingkazu.pubs',"pubs.drinkingkazu")
-    server.sendmail(sender,receiver,msg.as_string())
-    server.quit()
-
+    try:
+        server = smtplib.SMTP(smtp_domain)
+    except Exception as e:
+        raise BaseException("SMTP conn. failure (check domain info)! Email cannot be sent...")
+    try:
+        server.ehlo()
+        server.starttls()
+        server.login('drinkingkazu.pubs',"pubs.drinkingkazu")
+    except Exception as e:
+        raise BaseException("SMTP login failure (check login info)! Email cannot be sent...")
+    try:
+        server.sendmail(sender,receiver,msg.as_string())
+        server.quit()
+    except smtplib.SMTPRecipientsRefused as e:
+        msg=''
+        for x in e.recipients.keys():
+            msg += 'Recipient: %s...\n' % x
+            msg += e.recipients[x][1]
+        raise BaseException(msg)
+    except smtplib.SMTPSenderRefused as e:
+        raise BaseException('SMTP sender auth. failure! Email cannot be sent...')
+    except smtplib.SMTP as e:
+        raise BaseException('SMTP UNKNOWN ERROR! Email cannot be sent...')
+    
 if __name__=="__main__":
 
     if not len(sys.argv)==4:

@@ -9,7 +9,7 @@
 
 from pub_smtp      import pub_smtp
 from pub_logger    import pub_logger
-from pub_exception import pub_exception
+from pub_exception import BaseException
 
 
 
