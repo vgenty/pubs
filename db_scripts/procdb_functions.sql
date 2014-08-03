@@ -19,10 +19,11 @@ myQuery   TEXT;
 startTime TIMESTAMP;
 rec1      RECORD;
 rec2      RECORD;
+testbool  BOOLEAN;
 BEGIN
 
-  IF DoesProjectExist(myName) THEN
-    RAISE EXCEPTION 'Project table % already exists.',myName;
+  IF DoesTableExist(lower(myName)) THEN
+    RAISE EXCEPTION 'Project % already exists.',myName;
   ELSE
     myQuery := format('CREATE TABLE %s ( Run        INT       NOT NULL,
     	       		      	       	 SubRun     INT       NOT NULL,
@@ -32,14 +33,6 @@ BEGIN
 					 Data       TEXT DEFAULT NULL,
 					 PRIMARY KEY (Run,SubRun,Seq,ProjectVer))',myName);
     EXECUTE myQuery;
-    -- insert defaul set of runs
-    SELECT StartRun, StartSubRun FROM ProcessTable WHERE Project = myName ORDER BY ProjectVer DESC LIMIT 1 INTO rec1;
-    FOR rec2 IN SELECT RunNumber, SubRunNumber FROM MainRun 
-    	       WHERE RunNumber > rec1.StartRun 
-    	       OR (RunNumber = rec1.StartRun AND SubRunNumber > rec1.StartSubRun) LOOP
-      myQuery := format('INSERT INTO %s (Run,SubRun) VALUES (%s,%s)',myName,rec2.RunNumber,rec2.SubRunNumber);
-      EXECUTE myQuery;
-    END LOOP;
   END IF;
     
 RETURN 1;  	

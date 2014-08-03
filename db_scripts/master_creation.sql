@@ -12,7 +12,7 @@ doesExist BOOLEAN;
 
 BEGIN
 
-  SELECT TRUE FROM INFORMATION_SCHEMA.columns WHERE table_name = tname LIMIT 1 INTO doesExist;
+  SELECT TRUE FROM INFORMATION_SCHEMA.columns WHERE table_name = lower(tname) LIMIT 1 INTO doesExist;
   
   IF doesExist THEN
     RETURN TRUE;
@@ -31,6 +31,7 @@ DROP FUNCTION IF EXISTS DoesProcessExist(TEXT);
 CREATE OR REPLACE FUNCTION DoesProjectExist(tname TEXT) RETURNS BOOLEAN AS $$
 DECLARE
 doesExist BOOLEAN;
+rec  RECORD;
 BEGIN
 	
   IF NOT DoesTableExist('processtable') THEN
@@ -38,10 +39,10 @@ BEGIN
   END IF;
 
   SELECT TRUE FROM ProcessTable WHERE Project = tname LIMIT 1 INTO doesExist;
-  
-  IF doesExist THEN
+  IF doesExist IS NULL THEN
+    RETURN FALSE;
+  ELSE
     RETURN TRUE;
-  ELSE RETURN FALSE;
   END IF;
       	
 END;
@@ -518,13 +519,74 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
 					   StartRun INT,
 					   StartSubRun INT,
 					   Email TEXT, 
-					   Resource HSTORE) AS $$
+					   Resource HSTORE,
+					   ProjectVer SMALLINT) AS $$
   SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
-  	 A.Email, A.Resource 
+  	 A.Email, A.Resource, A.ProjectVer 
   FROM ProcessTable AS A JOIN 
   (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
   AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
 $$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS AllProjectRunSynch();
+
+CREATE OR REPLACE FUNCTION AllProjectRunSynch()
+       	  	  	   RETURNS VOID AS $$
+DECLARE
+  rec RECORD;
+BEGIN
+  FOR rec IN SELECT Project, ProjectVer, StartRun, StartSubRun  FROM ListEnabledProject() LOOP
+    EXECUTE OneProjectRunSynch(rec.Project, rec.ProjectVer, rec.StartRun, rec.StartSubRun);
+  END LOOP;
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTIOn IF EXISTS OneProjectRunSynch( project      TEXT,
+					    project_ver  SMALLINT,
+					    start_run    INT,
+					    start_subrun INT );
+
+CREATE OR REPLACE FUNCTION OneProjectRunSynch( project      TEXT,
+					       project_ver  SMALLINT,
+					       start_run    INT,
+					       start_subrun INT ) RETURNS VOID AS $$
+DECLARE
+  query TEXT;
+BEGIN
+  IF NOT DoesTableExist('mainrun') THEN
+    RAISE EXCEPTION 'MainRun table does not exist!';
+  END IF;
+
+  query := format(' INSERT INTO %s 
+  	   	    ( SELECT MainRun.RunNumber AS Run, MainRun.SubRunNumber AS SubRun, 0, %s, 1
+		       FROM MainRun LEFT JOIN %s ON %s.Run=MainRun.RunNumber AND %s.SubRun=MainRun.SubRunNumber
+		       WHERE %s.Run IS NULL AND 
+		       	     %s.SubRun IS NULL AND 
+			     (MainRun.RunNumber>%s OR (MainRun.RunNumber=%s AND MainRun.SubRunNumber>=%s))
+		       ORDER BY MainRun.RunNumber, MainRun.SubRunNumber)',
+		    project,
+		    project_ver,
+		    project,
+		    project,
+		    project,
+		    project,
+		    project,
+		    start_run,
+		    start_run,
+		    start_subrun);
+  RAISE INFO '%',query;
+  EXECUTE query;
+END;
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
