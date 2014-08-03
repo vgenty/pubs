@@ -43,13 +43,20 @@ class ds_reader(pubdb_reader):
 
         if not type(tname)==type(str()) or not type(status)==type(int()):
             self._logger.critical('Invalid input data type!')
-            return False
+            return []
         if not self.project_exist(tname):
             self._logger.critical('Project %s does not exist!' % tname)
-            return False
+            return []
 
         query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d);' % (tname,status)
-        return self._cursor.execute(query)
+
+        runs =[]
+        if not self.execute(query): return runs
+
+        if self.nrows():
+            for x in self:
+                runs.append(x)
+        return runs
 
     ## @brief Fetch run/subrun for a set of specified project with status
     # Fetch run & sub-runs for a group of projects and status.\n
@@ -85,7 +92,13 @@ class ds_reader(pubdb_reader):
 
         query = 'SELECT Run, SubRun FROM GetRuns(%s,%s);' % (query_table,query_status)
 
-        return self.execute(query)
+        runs = []
+        if not self.execute(query): return runs
+        
+        if self.nrows():
+            for x in self:
+                runs.append(x)
+        return x
 
     ## Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
@@ -123,9 +136,9 @@ class ds_reader(pubdb_reader):
         query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource'
         query += ' FROM ListEnabledProject()'
 
-        info_array = []
-
         self.execute(query)
+        
+        info_array = []
 
         if not self.nrows() : return info_array
 
@@ -139,6 +152,27 @@ class ds_reader(pubdb_reader):
                                            resource = x[6],
                                            enable   = True ) )
         return info_array
+
+    ## Fetch DAQ run start/end time stamp
+    def run_timestamp(self,run,subrun):
+
+        try:
+            run    = int(run)
+            subrun = int(subrun)
+            if run<= 0 or subrun <= 0:
+                raise ValueError
+        except ValueError:
+            self._logger.error('Run/SubRun must be positive integers!')
+            return (None,None)
+
+        query = 'SELECT TimeStart, TimeStop FROM GetRunTimeStamp(%d,%d)' % (run,subrun)
+
+        if not self.execute(query): return (None,None)
+
+        if self.nrows():
+            return self.fetch_one();
+        else:
+            return (None,None)
 
 ## @class ds_writer
 # @brief Database API for dstream projects with partial write permission
@@ -189,6 +223,24 @@ class ds_writer(pubdb_writer,ds_reader):
 # This should not be used by project class instances.
 class ds_master(pubdb_writer,ds_reader):
 
+    ## @brief internal method to ask a binary question to a user
+    def _ask_binary(self):
+
+        user_input=''
+        while not user_input:
+            sys.stdout.write('Proceed? [y/n]: ')
+            sys.stdout.flush()
+            user_input=sys.stdin.readline().rstrip('\n').rstrip(' ')
+            if user_input in ['y','Y']:
+                break
+            elif user_input in ['n','N']:
+                return False
+            else:
+                self._logger.error('Invalid input command: %s' % user_input)
+                user_input=''
+                continue
+        return True
+
     ## @brief Define a new project. Input is ds_project object.
     def define_project(self,project_info):
 
@@ -229,19 +281,8 @@ class ds_master(pubdb_writer,ds_reader):
             return False
 
         self._logger.warning('About to remove project %s from DB. Really want to proceed? ' % project)
-        user_input = ''
-        while not user_input:
-            sys.stdout.write('Answer [y/n]: ')
-            sys.stdout.flush()
-            user_input=sys.stdin.readline().rstrip('\n').rstrip(' ')
-            if user_input in ['y','Y']:
-                break
-            elif user_input in ['n','N']:
-                return
-            else:
-                self._logger.error('Invalid input command: %s' % user_input)
-                user_input=''
-                continue
+        
+        if not self._ask_binary(): return False
                 
         query = ' SELECT RemoveProject(\'%s\');' % project
         
@@ -285,19 +326,7 @@ class ds_master(pubdb_writer,ds_reader):
         self._logger.info('Email   : %s => %s' % (orig_info._email,   info._email  ))
         self._logger.info('Enabled : %s => %s' % (orig_info._enable,  info._enable))
 
-        user_input = ''
-        while not user_input:
-            sys.stdout.write('Answer [y/n]: ')
-            sys.stdout.flush()
-            user_input=sys.stdin.readline().rstrip('\n').rstrip(' ')
-            if user_input in ['y','Y']:
-                break
-            elif user_input in ['n','N']:
-                return
-            else:
-                self._logger.error('Invalid input command: %s' % user_input)
-                user_input=''
-                continue
+        if not self._ask_binary(): return False;
         
         query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\');'
         query = query % ( info._project, info._command, info._period, info._email )
@@ -310,3 +339,89 @@ class ds_master(pubdb_writer,ds_reader):
         query = ' SELECT AllProjectRunSynch(); '
         
         return self.commit(query)
+
+
+## @class death_star
+# @brief Database API for the dark lord. Don't use it if you don't understand.
+# @details
+# Don't use it. Even if you know what you are doing, I recommend you don't use it. OK?
+class death_star(pubdb_writer,ds_reader):
+
+    ## @brief Destroys an earth-sized planet in one shot. Your projects all disappear. Amen.
+    def superbeam(self):
+
+        self._logger.warning('Attempting to remove ALL project & ProcessTable...')
+
+        if not self._ask_binary(): return False
+        
+        query = ' SELECT RemoveProcessDB();'
+
+        return self.commit(query)
+
+    ## @brief Dark-side never disappears. Rebuild a new Anakin from scratch.
+    def recreate_death_star(self):
+
+        self._logger.warning('Attempting to re-build MainRunTable! (will be empty)...')
+        
+        if not self._ask_binary(): return False
+        
+        query = 'SELECT CreateTestRunTable();'
+
+        return self.commit(query)
+
+    ## @brief Contribute to a dark-side run-by-run.
+    def insert_into_death_star(self,run,subrun,ts_start,ts_end):
+
+        try:
+            time.strptime(str(ts_start),"%Y-%m-%d %H:%M:%S")
+            time.strptime(str(ts_end),"%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            self.error('TimeStamp not in the right format! (must be %Y-%m-%d %H:%M:%S)')
+            return False
+
+        query = 'SELECT InsertIntoTestRunTable(%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP'
+        
+        query = query % (run,subrun,str(ts_start),str(ts_end))
+
+        return self.commit(query)
+
+    ## @brief Dark-side can create anything, even real data, and you will not notice.
+    def refill_death_star(self,run,subrun):
+
+        try:
+            run=int(run)
+            subrun=int(subrun)
+            if run <= 0 or subrun <= 0:
+                raise ValueError
+        except ValueError:
+            self._logger.error('Provided (run,subrun) in an wrong type!' % (str(run),str(subrun)))
+            return False
+
+        self._logger.warning('Attempting to re-build MainRun table!')
+        self._logger.warning('Will be filled with %d runs (%d sub-runs each)!' % (run,subrun))
+
+        if not self._ask_binary(): return False
+
+        query = 'SELECT FillTestRunTable(%d,%d);' % (run,subrun)
+        
+        return self.commit(query)
+
+    ## @brief Turns a hero of the galaxy into dark-side. 
+    def tune_mc_and_publish(self):
+
+        self._logger.warning('Attempting to drop MainRun table!')
+        self._logger.warning('Requires to drop also all projects & ProcessTable!')
+
+        if not self._ask_binary(): return False
+
+        if self.commit('SELECT RemoveProcessDB();'):
+
+            return self.commit('DROP TABLE MainRun;');
+
+        return False
+
+
+
+
+
+

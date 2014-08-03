@@ -82,8 +82,17 @@ class ds_project_base(ds_base):
         self._api = ds_writer(pubdb_conn_info.writer_info(),
                               logger=self._logger)
 
-        ## @brief Import API's log_status as is.
+        ## @brief Import ds_reader.log_status as is.
         self.log_status = self._api.log_status
+
+        ## @brief Import API's ds_reader.get_runs as is.
+        self.get_runs = self._api.get_runs
+
+        ## @brief Import API's ds_reader.get_xtable_runs as is.
+        self.get_xtable_runs = self._api.get_xtable_runs
+
+        ## @brief Import API's ds_reader.run_timestamp as is.
+        self.run_timestamp = self._api.run_timestamp
 
     ## @brief wrapper for connect() method in ds_writer
     #  @details
@@ -97,20 +106,6 @@ class ds_project_base(ds_base):
         except DBException as e:
             self.error('Failed to connect DB!')
             return False
-
-    ## @brief Get a list of run/subrun for a specified project with status
-    #  @details
-    #  Use ds_reader::get_runs() function to fetch run/subrun combination for\n
-    #  a specified project with a specified status. Return is an array of int\n
-    #  representing (Run, SubRun, Sequence, ProjectVersion).
-    def get_runs(self,project,status):
-
-        runs =[]
-        self._api.get_runs(project,status)
-        if self._api.nrows():
-            for x in self._api:
-                runs.append(x)
-        return runs
 
         
 

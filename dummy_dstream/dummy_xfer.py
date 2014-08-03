@@ -24,6 +24,7 @@ class dummy_xfer(ds_project_base):
     def __init__(self,nruns):
 
         super(dummy_xfer,self).__init__()
+
         self._project = self.__class__.__name__
         self._nruns   = int(nruns)
         
@@ -60,6 +61,7 @@ class dummy_xfer(ds_project_base):
             return
 
         ctr = self._nruns
+
         for x in self.get_runs(self._project,10):
             print 'processing on-going runs...',x
             if not x[0]: break
