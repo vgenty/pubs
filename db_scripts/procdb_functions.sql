@@ -21,7 +21,7 @@ rec1      RECORD;
 rec2      RECORD;
 BEGIN
 
-  IF DoesTableExist(myName) THEN
+  IF DoesProjectExist(myName) THEN
     RAISE EXCEPTION 'Project table % already exists.',myName;
   ELSE
     myQuery := format('CREATE TABLE %s ( Run        INT       NOT NULL,
@@ -64,7 +64,7 @@ myBool  BOOLEAN;
 current_ver SMALLINT;
 BEGIN
   --make sure table exists  
-  IF NOT DoesTableExist(tname) THEN
+  IF NOT DoesProjectExist(tname) THEN
     RAISE EXCEPTION 'Table % does not exist.', tname;
   END IF;
 
@@ -112,7 +112,7 @@ myMaxSeq INT;
 myRecord RECORD;
 BEGIN
   --make sure table exists  
-  IF NOT DoesTableExist(tname) THEN
+  IF NOT DoesProjectExist(tname) THEN
     RAISE EXCEPTION 'Table % does not exist.', tname;
   END IF;
 
@@ -162,7 +162,7 @@ local_version INT;
 BEGIN
 
   --make sure table exists  
-  IF NOT DoesTableExist(tname) THEN
+  IF NOT DoesProjectExist(tname) THEN
     RAISE EXCEPTION 'Table % does not exist.', tname;
   END IF;
 
@@ -196,7 +196,7 @@ DECLARE
   rec     RECORD;
 --  res_row ProjectID;
 BEGIN
-  IF NOT DoesTableExist(project_name) THEN
+  IF NOT DoesProjectExist(project_name) THEN
     RAISE EXCEPTION 'Project % does not exist!',project_name;
   END IF;
 
@@ -253,7 +253,7 @@ BEGIN
 
   --make sure all of the tables exist
   FOREACH iTable IN ARRAY arrayOfTables LOOP
-    IF NOT DoesTableExist(iTable) THEN
+    IF NOT DoesProjectExist(iTable) THEN
       RAISE EXCEPTION 'Table % does not exist.', iTable;
     END IF;
     SELECT Max(ProjectVer) FROM ProcessTable WHERE Project = iTable INTO myversion;

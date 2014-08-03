@@ -28,9 +28,9 @@ class ds_reader(pubdb_reader):
     ## Checks if a specified project exists or not.
     def project_exist(self,project):
 
-        query = 'SELECT DoesTableExist(\'%s\')' % project
+        query = 'SELECT DoesProjectExist(\'%s\')' % project
         exist = False
-        if self.execute(query):
+        if self.execute(query,True):
             for x in self._cursor:
                 exist = x[0]
         return exist

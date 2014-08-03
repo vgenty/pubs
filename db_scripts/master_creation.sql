@@ -25,6 +25,31 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
+
+--Check if a table already exists. Used by many other functions here.
+DROP FUNCTION IF EXISTS DoesProcessExist(TEXT);
+CREATE OR REPLACE FUNCTION DoesProjectExist(tname TEXT) RETURNS BOOLEAN AS $$
+DECLARE
+doesExist BOOLEAN;
+BEGIN
+	
+  IF NOT DoesTableExist('processtable') THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT TRUE FROM ProcessTable WHERE Project = tname LIMIT 1 INTO doesExist;
+  
+  IF doesExist THEN
+    RETURN TRUE;
+  ELSE RETURN FALSE;
+  END IF;
+      	
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
 -- Function to clear ALL projects registered in ProcessTable
 DROP FUNCTION IF EXISTS RemoveProject(project_name TEXT);
 CREATE OR REPLACE FUNCTION RemoveProject(project_name TEXT) RETURNS VOID AS $$
@@ -33,16 +58,10 @@ myBool  BOOLEAN;
 myRec   RECORD;
 myQuery TEXT;
 BEGIN
-  -- Check if ProcessTable exists. If not, don't throw exception but simply return
-  SELECT DoesTableExist('ProcessTable') INTO myBool;
-  IF myBool IS NULL THEN
-    RAISE INFO '+++++++++ ProcessTable does not exist yet++++++++++';
-    RETURN;
-  END IF;
 
-  SELECT DoesTableExist(project_name) INTO myBool;
+  SELECT DoesProjectExist(project_name) INTO myBool;
   IF myBool IS NULL THEN
-    RAISE INFO '+++++++++ Project % table does not exist but found in ProcessTable ?! +++++++++++', project_name;
+    RAISE INFO '+++++++++ Project % table not found! +++++++++++', project_name;
   ELSE
     myQuery := format('DROP TABLE %s',project_name);
     EXECUTE myQuery;
@@ -66,7 +85,7 @@ myRec   RECORD;
 myQuery TEXT;
 BEGIN
   -- Check if ProcessTable exists. If not, don't throw exception but simply return
-  SELECT DoesTableExist('ProcessTable') INTO myBool;
+  SELECT DoesTableExist('processtable') INTO myBool;
   IF myBool IS NULL THEN
     RAISE INFO '+++++++++ ProcessTable does not exist yet++++++++++';
     RETURN;
@@ -143,7 +162,7 @@ DECLARE
   end_run      INT;
   end_subrun   INT;
 BEGIN
-  IF NOT DoesTableExist(project_name) THEN
+  IF NOT DoesProjectExist(project_name) THEN
     RAISE EXCEPTION 'Project % does not exist!', project_name;
   END IF;
 
@@ -213,7 +232,7 @@ BEGIN
   END IF;
   -- Check Project table presence
   FOR t IN SELECT DISTINCT Project FROM ProcessTable LOOP
-    IF NOT (SELECT DoesTableExist(t)) THEN 
+    IF NOT (SELECT DoesProjectExist(t)) THEN 
       RAISE WARNING 'Project % has no table! ',t;
       RETURN FALSE;
     END IF;
@@ -528,7 +547,7 @@ CREATE OR REPLACE FUNCTION ProjectInfo( project_name TEXT,
 DECLARE
 is_there BOOLEAN;
 BEGIN
-  IF NOT DoesTableExist(project_name) THEN
+  IF NOT DoesProjectExist(project_name) THEN
     RAISE EXCEPTION 'Project % does not exist!',project_name;
   END IF;
   IF project_ver IS NULL THEN
