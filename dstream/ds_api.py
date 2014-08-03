@@ -304,4 +304,9 @@ class ds_master(pubdb_writer,ds_reader):
 
         return self.commit(query)
 
+    ## @brief Method to synchronize all project tables with MainRun table
+    def runsynch(self):
 
+        query = ' SELECT AllProjectRunSynch(); '
+        
+        return self.commit(query)

@@ -15,7 +15,7 @@ from ds_data      import ds_project
 # pub_dbi package include
 from pub_dbi      import pubdb_conn_info, DBException
 # pub_util package include
-from pub_util     import pub_logger, pub_smtp
+from pub_util     import pub_logger, pub_smtp, BaseException
 # dstream module include
 
 ## @class ds_action
@@ -27,10 +27,14 @@ from pub_util     import pub_logger, pub_smtp
 class ds_action(object):
 
     ## default ctor accepting ds_project instance
-    def __init__(self, project_info):
+    def __init__(self, project_info,logger=None):
 
         if not isinstance(project_info,ds_project):
             raise ValueError
+
+        self._logger = logger
+        if not self._logger:
+            self._logger = pub_logger.get_logger(self.__class__.__name__)
 
         ## Project information
         self._info = copy.copy(project_info)
@@ -64,9 +68,17 @@ class ds_action(object):
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
-            pub_smtp(receiver = self._info._email.split(None),
-                     subject  = 'Failed execution of project %s' % self.name(),
-                     text     = e.strerror)
+
+            self._logger.error(e.strerror)
+            self._logger.error('Error executing %s! Sending e-mail report...' % self._info._project)
+            try:
+                pub_smtp(receiver = self._info._email.split(None),
+                         subject  = 'Failed execution of project %s' % self.name(),
+                         text     = e.strerror)
+            except BaseException as be:
+                self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
+                for line in be.v.split('\n'):
+                    self._logger.error(line)
             raise DSException(e.strerror)
 
 ## @class ds_daemon
@@ -95,6 +107,9 @@ class ds_daemon(ds_base):
         ## Constant time period [s] to update project information from database
         self._load_period = int(120)
 
+        ## Constant time period [s] to between a function call to synchronize project tables with MainRun table
+        self._runsynch_period = int(300)
+
     ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
@@ -111,9 +126,13 @@ class ds_daemon(ds_base):
                 continue
 
             self.debug('Updating project %s information' % x._project)
-            self._project_v[x._project] = ds_action(x)
+            self._project_v[x._project] = ds_action(x,self._logger)
             if not x._project in self._exe_time_v:
                 self._exe_time_v[x._project] = None
+
+    ## Access DB and bring all (enabled) project tables up-to-date with MainRun table
+    def runsynch_projects(self):
+        self._api.runsynch()
 
     ## Initiate an indefinite loop of projects' info-loading & execution 
     def routine(self):
@@ -144,6 +163,11 @@ class ds_daemon(ds_base):
                 self.info('Routine project update @ %s ' % now_str)
                 self.load_projects()
 
+            if (ctr-1) % self._runsynch_period == 0:
+
+                self.info('Routine RunSynch @ %s' % now_str)
+                self.runsynch_projects()
+
             for x in self._project_v.keys():
 
                 proj_ptr = self._project_v[x]
@@ -167,10 +191,7 @@ class ds_daemon(ds_base):
                             proj_ptr.execute()
 
                         except DSException as e:
-                            self.error('Received error from %s!' % x)
-                            self.error('Email report should have been sent.')
-                            self.error('%s' % e)
-
+                            self.critical('Call expert and review project %s' % x)
 
 if __name__ == '__main__':
     k=ds_daemon()
