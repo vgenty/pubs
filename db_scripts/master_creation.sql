@@ -587,11 +587,13 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
 					   ProjectVer SMALLINT) AS $$
 DECLARE
 BEGIN
-  SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
-  	 A.Email, A.Resource, A.ProjectVer 
-  FROM ProcessTable AS A JOIN 
-  (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
-  AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
+  	       	      A.Email, A.Resource, A.ProjectVer 
+  		      FROM ProcessTable AS A JOIN 
+  		      ( SELECT B.Project AS Project, MAX(B.ProjectVer) AS ProjectVer 
+    		      FROM ProcessTable AS B 
+    		      WHERE B.ENABLED GROUP BY B.Project) 
+  		      AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
 END;
 $$ LANGUAGE PLPGSQL;
 

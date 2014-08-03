@@ -140,7 +140,7 @@ class ds_reader(pubdb_reader):
         
         info_array = []
 
-        if not self.nrows() : return info_array
+        if not self.nrows() or self.nrows() <= 0: return info_array
 
         for x in self:
             info_array.append( ds_project( project  = x[0],
@@ -310,7 +310,7 @@ class ds_master(pubdb_writer,ds_reader):
 
         self.execute(query)
 
-        if not self.nrows():
+        if not self.nrows() or self.nrows() <= 0:
             self._logger.error('Failed to fetch project information for %s!',
                                info._project)
 
