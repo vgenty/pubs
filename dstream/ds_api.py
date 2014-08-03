@@ -345,9 +345,11 @@ class ds_master(pubdb_writer,ds_reader):
 # @brief Database API for the dark lord. Don't use it if you don't understand.
 # @details
 # Don't use it. Even if you know what you are doing, I recommend you don't use it. OK?
-class death_star(pubdb_writer,ds_reader):
+class death_star(ds_master):
 
     ## @brief Destroys an earth-sized planet in one shot. Your projects all disappear. Amen.
+    #  @details
+    #  Remove all projects and re-make an empty ProcessTable. MainRun is not touched.
     def superbeam(self):
 
         self._logger.warning('Attempting to remove ALL project & ProcessTable...')
@@ -356,9 +358,28 @@ class death_star(pubdb_writer,ds_reader):
         
         query = ' SELECT RemoveProcessDB();'
 
-        return self.commit(query)
+        result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT CreateProcessTable();'
+
+            result = self.commit(query)
+
+        if result:
+
+            self._logger.warning('Destroyed the planet Alderaan!')
+            
+        else:
+
+            self._logger.warning('SuperBeam broken and didn\'t work...')
+
+        return result
 
     ## @brief Dark-side never disappears. Rebuild a new Anakin from scratch.
+    #  @details
+    #  Drop & re-create MainRun table. This requires to drop all projects.\n
+    #  Outcome is an empty MainRun and ProcessTable.
     def recreate_death_star(self):
 
         self._logger.warning('Attempting to re-build MainRunTable! (will be empty)...')
@@ -367,9 +388,79 @@ class death_star(pubdb_writer,ds_reader):
         
         query = 'SELECT CreateTestRunTable();'
 
-        return self.commit(query)
+        result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT RemoveProcessDB();'
+
+            result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT CreateProcessTable();'
+
+            result = self.commit(query)
+
+        if result:
+
+            self._logger.warning('Death Star is re-born.')
+
+        else:
+
+            self._logger.warning('Failed re-building the Death Star.')
+
+        return result
+
+    ## @brief Dark-side can create anything, even real data, and you will not notice.
+    #  @detail
+    #  Recreate MainRun table. This requires to drop all projects first.\n
+    #  Outcome is a newly filled MainRun table with an empty ProcessTable
+    def refill_death_star(self,run,subrun):
+
+        try:
+            run=int(run)
+            subrun=int(subrun)
+            if run <= 0 or subrun <= 0:
+                raise ValueError
+        except ValueError:
+            self._logger.error('Provided (run,subrun) in an wrong type!' % (str(run),str(subrun)))
+            return False
+
+        self._logger.warning('Attempting to re-build MainRun table.')
+        self._logger.warning('Requires to drop all projects as well.')
+        self._logger.warning('Will be filled with %d runs (%d sub-runs each).' % (run,subrun))
+
+        if not self._ask_binary(): return False
+
+        query = 'SELECT RemoveProcessDB();'
+
+        result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT FillTestRunTable(%d,%d);' % (run,subrun)
+
+            result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT CreateProcessTable();'
+
+            result = self.commit(query)
+
+        if result:
+
+            self._logger.warning('Death Star is re-built and complete.')
+
+        else:
+
+            self._logger.warning('Death Star re-built failed. My god.')
+        
+        return result
 
     ## @brief Contribute to a dark-side run-by-run.
+    #  @details Fill the MainRun table with a specified run/sub-run number
     def insert_into_death_star(self,run,subrun,ts_start,ts_end):
 
         try:
@@ -383,43 +474,17 @@ class death_star(pubdb_writer,ds_reader):
         
         query = query % (run,subrun,str(ts_start),str(ts_end))
 
-        return self.commit(query)
-
-    ## @brief Dark-side can create anything, even real data, and you will not notice.
-    def refill_death_star(self,run,subrun):
-
-        try:
-            run=int(run)
-            subrun=int(subrun)
-            if run <= 0 or subrun <= 0:
-                raise ValueError
-        except ValueError:
-            self._logger.error('Provided (run,subrun) in an wrong type!' % (str(run),str(subrun)))
-            return False
-
-        self._logger.warning('Attempting to re-build MainRun table!')
-        self._logger.warning('Will be filled with %d runs (%d sub-runs each)!' % (run,subrun))
-
-        if not self._ask_binary(): return False
-
-        query = 'SELECT FillTestRunTable(%d,%d);' % (run,subrun)
+        result = self.commit(query)
         
-        return self.commit(query)
+        if result:
 
-    ## @brief Turns a hero of the galaxy into dark-side. 
-    def tune_mc_and_publish(self):
+            self._logger.warning('Thank you. Death Star became 1 run bigger.')
 
-        self._logger.warning('Attempting to drop MainRun table!')
-        self._logger.warning('Requires to drop also all projects & ProcessTable!')
+        else:
 
-        if not self._ask_binary(): return False
+            self._logger.warning('Sorry. Seems you failed to grow the Death Star.')
 
-        if self.commit('SELECT RemoveProcessDB();'):
-
-            return self.commit('DROP TABLE MainRun;');
-
-        return False
-
+        return result
 
 
 

@@ -87,7 +87,7 @@ myQuery TEXT;
 BEGIN
   -- Check if ProcessTable exists. If not, don't throw exception but simply return
   SELECT DoesTableExist('processtable') INTO myBool;
-  IF myBool IS NULL THEN
+  IF NOT myBool THEN
     RAISE INFO '+++++++++ ProcessTable does not exist yet++++++++++';
     RETURN;
   END IF;
@@ -258,6 +258,10 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 -- (Re-)create ProcessTable
 
+DROP FUNCTION IF EXISTS CreateProcessTable();
+
+CREATE OR REPLACE FUNCTION CreateProcessTable() RETURNS VOID AS $$
+
 CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL,
        	     		    		  Project     TEXT      NOT NULL,
 			    		  ProjectVer  SMALLINT  NOT NULL,
@@ -271,6 +275,7 @@ CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL,
 			    		  Running     BOOLEAN   NOT NULL,
 			    		  LogTime     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 					  PRIMARY KEY(ID,Project,ProjectVer));
+$$ LANGUAGE SQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
@@ -580,12 +585,15 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
 					   Email TEXT, 
 					   Resource HSTORE,
 					   ProjectVer SMALLINT) AS $$
+DECLARE
+BEGIN
   SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
   	 A.Email, A.Resource, A.ProjectVer 
   FROM ProcessTable AS A JOIN 
   (SELECT Project, MAX(ProjectVer) AS ProjectVer FROM ProcessTable WHERE ENABLED GROUP BY Project) 
   AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
-$$ LANGUAGE SQL;
+END;
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
