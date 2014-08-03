@@ -43,6 +43,9 @@ k=ds_master(pubdb_conn_info.writer_info(),
 # Connect to DB
 k.connect()
 
+resource = { 'a' : 'b',
+             'c' : 'd' }
+
 # Define a project
 k.define_project( ds_project( project = args.name,
                               command = args.cmd,
@@ -50,5 +53,6 @@ k.define_project( ds_project( project = args.name,
                               email   = args.email,
                               run     = args.run,
                               subrun  = args.subrun,
+                              resource = resource,
                               enable  = True ) )
 

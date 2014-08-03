@@ -120,6 +120,18 @@ class ds_reader(pubdb_reader):
         self.execute(query)
 
         x = self.fetchone()
+
+        resource = {}
+        
+        # handle resource string conversion into a map
+        if x[5]:
+        
+            for y in x[5].split(','):
+        
+                tmp = y.split("=>")
+                
+                exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+
         
         return ds_project(project  = project,
                           command  = x[0],
@@ -143,13 +155,25 @@ class ds_reader(pubdb_reader):
         if not self.nrows() or self.nrows() <= 0: return info_array
 
         for x in self:
+
+            resource = {}
+
+            # handle resource string conversion into a map
+            if x[6]:
+
+                for y in x[6].split(','):
+
+                    tmp = y.split("=>")
+
+                    exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+
             info_array.append( ds_project( project  = x[0],
                                            command  = x[1],
                                            period   = int(x[2]),
                                            run      = int(x[3]),
                                            subrun   = int(x[4]),
                                            email    = x[5],
-                                           resource = x[6],
+                                           resource = resource,
                                            enable   = True ) )
         return info_array
 
@@ -259,7 +283,7 @@ class ds_master(pubdb_writer,ds_reader):
         resource = ''
         for x in project_info._resource.keys():
             
-            resource += '\'%s\'=>\'%s\',' % (x, project_info._resource[x])
+            resource += '%s=>%s,' % (x, project_info._resource[x])
             
         resource = resource.rstrip(',')
 

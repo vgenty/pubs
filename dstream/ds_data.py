@@ -89,6 +89,10 @@ class ds_project(object):
         msg += 'Run     : %d\n' % self._run
         msg += 'SubRun  : %d\n' % self._subrun
         msg += 'Email   : %s\n' % self._email
+        msg += 'Resource list below...\n'
+        for x in self._resource.keys():
+            msg += "%s => %s\n" % (x,self._resource[x])
+
         return msg
     
     ## A method to make sure the instance is at least not stupid

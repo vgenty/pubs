@@ -26,13 +26,7 @@ if not projects:
 for x in projects:
 
     print
-    print 'Project ......', x._project
-    print 'Period [s] ...', x._period
-    print 'StartRun .....', x._run
-    print 'StartSubRun ..', x._subrun
-    print 'Command ......', x._command
-    print 'Email.........', x._email
-    print 'Enabled? .....', x._enable
+    print x
     
 print
 sys.exit(0)
