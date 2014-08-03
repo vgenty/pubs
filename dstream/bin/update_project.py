@@ -42,6 +42,7 @@ k.connect()
 
 if not k.project_exist(args.name):
     logger.critical('Project %s does not exist!' % args.name)
+    sys.exit(1)
 
 orig_info = k.project_info(args.name)
 
