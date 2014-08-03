@@ -32,7 +32,10 @@ class ds_action(object):
         if not isinstance(project_info,ds_project):
             raise ValueError
 
+        ## Project information
         self._info = copy.copy(project_info)
+
+        ## Process handle
         self._proc = None
 
     ## Simple method to access name of a project
@@ -79,12 +82,17 @@ class ds_daemon(ds_base):
 
         super(ds_daemon,self).__init__()
 
+        ## API for ds_daemon is ds_master to interact with ProcessTable
         self._api = ds_master(pubdb_conn_info.writer_info(),
                               logger=self._logger)
 
+        ## Array of ds_action instance (one per project)
         self._project_v  = {}
+
+        ## Array of execution timestamp (one per project)
         self._exe_time_v = {}
 
+        ## Constant time period [s] to update project information from database
         self._load_period = int(120)
 
     ## Access DB and load projects for execution + update pre-loaded project information
