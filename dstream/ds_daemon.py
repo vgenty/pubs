@@ -13,9 +13,9 @@ from ds_proc_base import ds_base
 from ds_api       import ds_master
 from ds_data      import ds_project
 # pub_dbi package include
-from pub_dbi      import pubdb_conn_info,DBException
+from pub_dbi      import pubdb_conn_info, DBException
 # pub_util package include
-from pub_util     import pub_logger
+from pub_util     import pub_logger, pub_smtp
 # dstream module include
 
 ## @class ds_action
@@ -24,7 +24,7 @@ from pub_util     import pub_logger
 #  Instantiated with project information, ds_action executes a project.\n
 #  Currently executed process's stdout and stderr are simply handled via pipe.\n
 #  One may improve this simple design to manage memory/cpu/wall-time of the process.\n
-class ds_action(ds_project):
+class ds_action(object):
 
     ## default ctor accepting ds_project instance
     def __init__(self, project_info):
@@ -36,7 +36,7 @@ class ds_action(ds_project):
         self._proc = None
 
     ## Simple method to access name of a project
-    def name(self): return self._name
+    def name(self): return self._info._project
 
     ## Boolean function to check if the project's execution process is alive or not
     def active(self):
@@ -47,11 +47,12 @@ class ds_action(ds_project):
     #  @details If process is active, it waits to finish. Use active() function\n
     #  before calling this to avoid waiting time.
     def clear(self):
-        if self._proc is None: return (None,None)
+        if self._proc is None: return (None,None,None)
         (out,err) = self._proc.communicate()
+        code = self._proc.poll()
         del self._proc
         self._proc = None
-        return (out,err)
+        return (code,out,err)
 
     ## Opens a sub-process to execute a project
     def execute(self):
@@ -60,6 +61,9 @@ class ds_action(ds_project):
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
+            pub_smtp(receiver = self._info._email,
+                     subject  = 'Failed execution of project %s' % self.name(),
+                     text     = e.strerror)
             raise DSException(e.strerror)
 
 ## @class ds_daemon
@@ -139,11 +143,11 @@ class ds_daemon(ds_base):
 
                 if not proj_ptr.active():
 
-                    (out,err) = proj_ptr.clear()
+                    (code,out,err) = proj_ptr.clear()
 
                     if out or err:
 
-                        self.info('Finished project %s @ %s' % (x,now_str))
+                        self.info(' %s returned %s @ %s' % (x,code,now_str))
                         print out,err
                         
                     if ( last_ts is None or 
@@ -151,11 +155,12 @@ class ds_daemon(ds_base):
 
                         self._exe_time_v[x] = now_ts                        
                         try:
-                            self.info('Execute project %s @ %s' % (x,now_str))
+                            self.info('Execute %s @ %s' % (x,now_str))
                             proj_ptr.execute()
 
                         except DSException as e:
-                            self.error('Received error from project %s!' % x)
+                            self.error('Received error from %s!' % x)
+                            self.error('Email report should have been sent.')
                             self.error('%s' % e)
 
 
