@@ -1,5 +1,5 @@
 # python import
-import argparse
+import argparse, sys
 # dstream import
 from dstream.ds_api import ds_master
 # pub_util import
