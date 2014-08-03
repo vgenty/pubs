@@ -2,9 +2,9 @@
 #  @ingroup dstream 
 #  @brief defines some base class used in dstream package.
 #  @details 
-#  Include two data holder classes:
-#  - ds_base is a simple class with a logger & exception implementation
-#  - ds_proc_base further implements ds_writer API, and is suitable for project base class
+#  Include two base classes handy for dstream classes to inherit from\n
+#  - ds_base is a simple class with a logger & exception implementation\n
+#  - ds_proc_base further implements ds_writer API, and is suitable for project base class\n
 
 # pub_util package import
 from pub_util import pub_logger
@@ -14,27 +14,42 @@ from pub_dbi  import pubdb_conn_info
 from ds_api   import ds_writer
 
 ## @class ds_base
-#  @brief Data holder for project status 
+#  @brief Base of ds_project_base (and some other dstream classes)
 #  @details
-#  This class implements a common logger feature in dstream. Such feature includes
+#  This class implements a common logger feature in dstream. Such feature includes\n
 #  a logger with name = class name, and exception throwing DSException.
 class ds_base(object):
 
     ## @brief Default ctor
     #  @details
-    #  CTor is where it implements a common logger feature.
-    #  Note logger functions (debug, info, warning, error, critical) are imported
+    #  CTor is where it implements a common logger feature.\n
+    #  Note logger functions (debug, info, warning, error, critical) are imported\n
     #  directly.
     def __init__(self):
 
-        # Create attribute instances
+        ## Attach a logger for each instance with a name = class name
         self._logger  = pub_logger.get_logger(self.__class__.__name__)
         
-        # Import message functions
+        # Import message functions from logger
+        
+        ## @brief pub_logger.debug function. 
+        #  @details Takes a string as an input for debug message
         self.debug    = self._logger.debug
+
+        ## @brief pub_logger.info function. 
+        #  @details Takes a string as an input for info message
         self.info     = self._logger.info
+
+        ## @brief pub_logger.warning function. 
+        #  @details Takes a string as an input for warning message
         self.warning  = self._logger.warning
+
+        ## @brief pub_logger.error function. 
+        #  @details Takes a string as an input for error message
         self.error    = self._logger.error
+
+        ## @brief pub_logger.critical function. 
+        #  @details Takes a string as an input for critical message
         self.critical = self._logger.critical
 
     ## @brief Exception log & throw method
@@ -45,28 +60,29 @@ class ds_base(object):
         raise DSException()
 
 ## @class ds_project_base
-#  @brief Data holder for project execution information
+#  @brief Recommended base class for a dstream project
 #  @details
-#  Suitable for a project base class. 
-#  In addition to the base ds_base class, this class implements API to interact
-#  with database. As it is for a project, ds_writer API is used. Instead of
-#  requiring inherited class to learn about how to use ds_writer API, this class
-#  implements a practical usage of ds_writer and hence hide a complexity of 
+#  Suitable for a project base class. \n
+#  In addition to the base ds_base class, this class implements API to interact\n
+#  with database. As it is for a project, ds_writer API is used. Instead of\n
+#  requiring inherited class to learn about how to use ds_writer API, this class\n
+#  implements a practical usage of ds_writer and hence hide a complexity of \n
 #  database API.
 class ds_project_base(ds_base):
 
     ## @brief default ctor
     #  @details
-    #  Constructor implements database API on top of base class logger feature.
+    #  Constructor implements database API on top of base class logger feature.\n
     #  Note it also imports connect method directly from ds_writer API.
     def __init__(self):
 
         super(ds_project_base,self).__init__()
 
+        ## @brief Use ds_writer API so inherit classes (projects) can log status
         self._api = ds_writer(pubdb_conn_info.writer_info(),
                               logger=self._logger)
 
-        # Import API's log_status as is
+        ## @brief Import API's log_status as is.
         self.log_status = self._api.log_status
 
     ## @brief wrapper for connect() method in ds_writer
@@ -84,8 +100,8 @@ class ds_project_base(ds_base):
 
     ## @brief Get a list of run/subrun for a specified project with status
     #  @details
-    #  Use ds_reader::get_runs() function to fetch run/subrun combination for
-    #  a specified project with a specified status. Return is an array of int
+    #  Use ds_reader::get_runs() function to fetch run/subrun combination for\n
+    #  a specified project with a specified status. Return is an array of int\n
     #  representing (Run, SubRun, Sequence, ProjectVersion).
     def get_runs(self,project,status):
 
