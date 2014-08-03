@@ -71,7 +71,10 @@ class pub_logger:
             cls._logger.info('Adding a Logger: %s' % name)
             cls._loggers[name]=logging.getLogger(str(name))
             if dest == kLOGGER_FILE:
-                cls._openFile(str(name),str(name),1e8,fCounts)
+                cls._openFile(str(name),
+                              '%s/%s' % (kLOGGER_FILE_LOCATION,str(name)),
+                              1e8,
+                              fCounts)
             else:
                 cls._openStream(str(name))
             cls._loggers[str(name)].setLevel(cls._globalLevel)
