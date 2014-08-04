@@ -35,7 +35,67 @@ class ds_reader(pubdb_reader):
                 exist = x[0]
         return exist
 
+    ## Function to get project's resource
+    def get_resource(self,project):
+        
+        query = 'SELECT ProjectResource(\'%s\');' % str(project)
+
+        resource = {}
+
+        if not self.execute(query):
+            return resource
+        if not self.nrows() or self.nrows()<0:
+            return resource
+
+        res = self.fetchone()
+        print res[0]
+        # handle resource string conversion into a map
+        if res[0]:
+        
+            for y in res[0].split(','):
+        
+                tmp = y.split("=>")
+                
+                exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+
+        return resource
+
+    ## @brief Fetch project information from run/sub-run/seq IDs.
+    #  @details
+    #  For a specified project, run, sub-run, seq numbers, return ds_status data product\n
+    #  filled with data & status.
+    def get_status(self,info):
+
+        if not isinstance(info,ds_status):
+            self._logger.error('Input argument must be ds_status data type!')
+            raise DSException()
+        elif not info.is_valid():
+            self._logger.error('ds_status::is_valid() returned False!')
+            raise DSException()
+
+        query = 'SELECT Status, Data FROM GetProjectData(\'%s\',%d,%d,%d::SMALLINT);'
+
+        query = query % (info._project, info._run, info._subrun, info._seq)
+
+        if not self.execute(query):
+            self._logger.error('Failed querying project status')
+            return info
+            
+        if not self.nrows() or self.nrows() < 0:
+            self._logger.error('No result for project %s (run,subrun,seq) = (%d,%d,%d)' % ( info._project,
+                                                                                            info._run,
+                                                                                            info._subrun,
+                                                                                            info._seq ) )
+            return info
+        
+        (status,data) = self.fetchone()
+
+        info._status = int(status)
+        info._data   = data
+        return info
+
     ## @brief Fetch run/subrun for a specified project with status
+    #  @details
     # Fetch run & sub-runs for a specified project (tname) with a specified status.\n
     # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.\n
@@ -59,6 +119,7 @@ class ds_reader(pubdb_reader):
         return runs
 
     ## @brief Fetch run/subrun for a set of specified project with status
+    #  @details
     # Fetch run & sub-runs for a group of projects and status.\n
     # The first argument should be a list of strings each representing a name of project.\n
     # The second argument should be a list of integers each representing a status of project.\n
@@ -192,8 +253,8 @@ class ds_reader(pubdb_reader):
 
         if not self.execute(query): return (None,None)
 
-        if self.nrows():
-            return self.fetch_one();
+        if self.nrows() and self.nrows()>=0:
+            return self.fetchone();
         else:
             return (None,None)
 
@@ -207,6 +268,7 @@ class ds_reader(pubdb_reader):
 class ds_writer(pubdb_writer,ds_reader):
 
     ## @brief ds_status object validity checker
+    #  @details
     # An internal function to check if a provided status info is the right type,\n
     # namely ds_status class instance.
     def _check_info(self,info):
@@ -229,13 +291,24 @@ class ds_writer(pubdb_writer,ds_reader):
     def log_status(self, info):
 
         if not self._check_info(info): return False
-
-        query = 'SELECT UpdateProjStatus(\'%s\',%d,%d,%d::SMALLINT,%d::SMALLINT);'
-        query = query % ( info._project,
-                          info._run,
-                          info._subrun,
-                          info._seq,
-                          info._status )
+        
+        query = ''
+        if not info._data:
+        
+            query = 'SELECT UpdateProjStatus(\'%s\',%d,%d,%d::SMALLINT,%d::SMALLINT);'
+            query = query % ( info._project,
+                              info._run,
+                              info._subrun,
+                              info._seq,
+                              info._status )
+        else:
+            query = 'SELECT UpdateProjStatus(\'%s\',%d,%d,%d::SMALLINT,%d::SMALLINT,\'%s\');'
+            query = query % ( info._project,
+                              info._run,
+                              info._subrun,
+                              info._seq,
+                              info._status,
+                              info._data)
 
         return self.commit(query)
 

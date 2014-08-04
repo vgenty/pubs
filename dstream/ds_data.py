@@ -23,14 +23,15 @@ class ds_status(object):
                   run     = -1,
                   subrun  = -1,
                   seq     = -1,
-                  status  = -1):
-        
+                  status  = -1,
+                  data    = ''):
         try:
             self._project = str(project)
             self._run     = int(run)
             self._subrun  = int(subrun)
             self._seq     = int(seq)
             self._status  = int(status)
+            self._data    = str(data)
         except ValueError:
             name   = '%s' % inspect.stack()[1][3]
             pub_logger.get_logger(name).critical('Invalid value type!')
