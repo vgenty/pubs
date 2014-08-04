@@ -60,13 +60,10 @@ class ds_project(object):
 
     ## @brief default ctor to specify all data members
     def __init__ (self, project, command='', run=0, subrun=0,
-                  email='', period=100, enable=True, resource={}, ver=-1):
+                  email='', period=0, enable=True, resource={}, ver=-1):
         if not resource: resource = {}
         try:
             if not type(resource) == type(dict()):
-                print type(resource)
-                print type({})
-                print 'aho'
                 raise ValueError
             self._project  = str(project)
             self._command  = str(command)
@@ -82,10 +79,40 @@ class ds_project(object):
             pub_logger.get_logger(name).critical('Invalid value type!')
             raise DSException()
 
+    def diff(self,info):
+    
+        if not isinstance(info,ds_project):
+            raise ValueError
+            
+        msg = ''
+        if not self._project == info._project:
+            msg += 'Name    : %s => %s\n' % (self._project, info._project)
+        if not self._command == info._command:
+            msg += 'Command : %s => %s\n' % (self._command, info._command)
+        if not self._period  == info._period:
+            msg += 'Period  : %d => %d\n' % (self._period, info._period)
+        if not self._run     == info._run:
+            msg += 'Run     : %d => %d\n' % (self._run, info._run)
+        if not self._subrun  == info._subrun:
+            msg += 'SubRun  : %d => %d\n' % (self._subrun, info._subrun)
+        if not self._email   == info._email:
+            msg += 'Email   : %s => %s\n' % (self._email,info._email)
+
+        for x in self._resource.keys():
+            if not x in info._resource.keys():
+                msg += 'Resource: Missing %s => %s\n' % (x,self._resource[x])
+            elif not self._resource[x] == info._resource[x]:
+                msg += 'Resource: Change  %s : %s => %s\n' % (x,self._resource[x],info._resource[x])
+        for x in info._resource.keys():
+            if not x in self._resource.keys():
+                msg += 'Resource: New %s => %s\n' % (x, info._resource[x])
+        return msg
+
     def __str__(self):
         msg = ''
         msg += 'Project : %s\n' % self._project
         msg += 'Command : %s\n' % self._command
+        msg += 'Period  : %d\n' % self._period
         msg += 'Run     : %d\n' % self._run
         msg += 'SubRun  : %d\n' % self._subrun
         msg += 'Email   : %s\n' % self._email
@@ -103,7 +130,7 @@ class ds_project(object):
              self._run    < 0  or 
              self._subrun < 0  or 
              not self._email   or
-             self._period < 0 ):
+             self._period <= 0 ):
 
             return False
 

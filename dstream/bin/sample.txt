@@ -1,0 +1,31 @@
+
+#
+# Comment
+#
+
+PROJECT_BEGIN
+NAME     kazu
+COMMAND  echo hello world
+CONTACT  kazuhiro@nevis.columbia.edu
+PERIOD   10
+RUN      1
+SUBRUN   1
+ENABLE   True
+RESOURCE a => b
+RESOURCE c => d
+PROJECT_END
+
+PROJECT_BEGIN
+NAME     kazu2
+COMMAND  echo hello world
+CONTACT  kazuhiro@nevis.columbia.edu
+PERIOD   10
+RUN      1
+SUBRUN   1
+ENABLE   True
+RESOURCE e => f
+RESOURCE g => h
+PROJECT_END
+
+
+
