@@ -180,6 +180,15 @@ def parse(contents):
             logger.warning('Project %s already exist in DB!' % v._project)
             orig_info = conn.project_info(v._project)
 
+            if not orig_info._run == project_v[-1]._run:
+                logger.error('Your configuration has different run number (not allowed)!')
+                logger.critical('Aborting...')
+                sys.exit(1)
+            if not orig_info._subrun == project_v[-1]._subrun:
+                logger.error('Your configuration has different sub-run number (not allowed)!')
+                logger.critical('Aborting...')
+                sys.exit(1)
+
             diff = orig_info.diff(v)
             if not diff:
                 logger.warning('Configuration is identical...')
