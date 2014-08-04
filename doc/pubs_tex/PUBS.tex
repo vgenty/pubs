@@ -1,0 +1,83 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage{lgrind}
+\pagestyle{plain}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{listings}
+\usepackage{cancel}
+\usepackage{appendix}
+\usepackage{fancyhdr}   
+\usepackage{url}
+\usepackage{path}
+\usepackage[dvipdfm]{graphicx}
+\usepackage{color}
+\usepackage{array}
+\usepackage{authblk}
+\usepackage[margin=2cm, head=2cm, foot=1cm]{geometry}
+\usepackage{verbatim}
+\setlength{\topmargin}{-2.5cm}
+\setlength{\textwidth}{17cm}
+\setlength{\oddsidemargin}{-0.5cm}
+\setlength{\evensidemargin}{-0.5cm}
+\setlength{\textheight}{22.5cm}
+\setlength{\footskip}{1cm}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\usepackage{hyperref}
+\usepackage{pdfpages}
+\lstset{columns=fullflexible,basicstyle=\ttfamily}
+
+\input{./src/new_commands.tex}
+
+\begin{document}
+
+\title{PUBS: Data Processing Software Framework}
+%\date{March 12th, 2014}
+\author{
+  Kazuhiro Terao, kazuhiro@nevis.columbia.edu
+}
+\maketitle
+
+\begin{abstract}
+This document describes about {\python/\php/\psql} UBooNE Software (a.k.a. \pubs) framework
+written for online data processing of the experiment. Each step of data processing, defined
+as a ``project'', carries a project-specific category of {\it state} and corresponding 
+actions to deliver data to a next step. Projects' state are stored in {\psql} database server
+with a dedicated procedures for data queries. {\pubs} provides a generic, {\python} based software 
+framework for development of ``project'' code. In addition, it provides necessary tools for
+project execution including a daemon program for parallel project execution and framework logger
+system. Monitoring of project execution is realized through a web-browser using a {\php} based 
+toolkit, which can be also used for experts to actively interface with currently running projects.
+Finally this document assumes you have a modest knowledge about {\python} and common programming 
+terminologies. 
+\end{abstract}
+
+% Table of Contents
+\tableofcontents
+
+\newpage
+
+% Prep
+\chapter{Preparation}
+\label{prep}
+\input{./src/Preparation/main}
+
+% Introduction
+\chapter{Basic of {\pubs}}
+\label{pubs}
+\input{./src/PUBS/main}
+
+% PUBS
+\chapter{Data Processing Framework}
+\label{dstream}
+\input{./src/DStream/main}
+
+% Bibliography
+\bibliographystyle{unsrt}
+
+\bibliography{PUBS}
+
+
+\end{document}
