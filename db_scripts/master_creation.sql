@@ -725,6 +725,31 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS ProjectResource(project_name TEXT);
+CREATE OR REPLACE FUNCTION ProjectResource( project_name TEXT)
+       	  	  	   RETURNS HSTORE AS $$
+DECLARE
+res_resource HSTORE;
+
+BEGIN
+  IF NOT DoesProjectExist(project_name) THEN
+    RAISE EXCEPTION 'Project % does not exist!',project_name;
+  END IF;
+
+  SELECT Resource FROM ProcessTable 
+  	 	  WHERE Project=project_name 
+		  ORDER BY ProjectVer DESC
+		  LIMIT 1
+		  INTO res_resource;
+
+  RETURN res_resource;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 DROP FUNCTION IF EXISTS ProjectInfo( project_name TEXT, 
      	      	 		     project_info TEXT,
      	      	 		     version SMALLINT);

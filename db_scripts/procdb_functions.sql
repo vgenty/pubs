@@ -144,11 +144,13 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --Update status entry in an existing row of Project table
 DROP FUNCTION IF EXISTS UpdateProjStatus(TEXT,INT,INT,SMALLINT,SMALLINT);
-CREATE OR REPLACE FUNCTION UpdateProjStatus( tname TEXT, 
-       	  	  	   		     myrun INT, 
+DROP FUNCTION IF EXISTS UpdateProjStatus(TEXT,INT,INT,SMALLINT,SMALLINT,TEXT);
+CREATE OR REPLACE FUNCTION UpdateProjStatus( tname    TEXT, 
+       	  	  	   		     myrun    INT, 
 					     mysubrun INT,
-					     myseq SMALLINT,
-					     mystatus SMALLINT ) RETURNS VOID AS $$
+					     myseq    SMALLINT,
+					     mystatus SMALLINT,
+					     mydata   TEXT DEFAULT NULL) RETURNS VOID AS $$
 DECLARE
 dummy TEXT;
 local_version INT;
@@ -166,11 +168,56 @@ BEGIN
   IF local_version IS NULL THEN
     RAISE EXCEPTION 'Project % has no (run,subrun,seq) = (%,%,%)!',tname,myrun,mysubrun,myseq;
   ELSE
-    dummy := format('UPDATE ONLY %s SET status = %s WHERE run = %s AND subrun = %s AND seq = %s AND ProjectVer = %s',tname,mystatus,myrun,mysubrun,myseq,local_version);
+    IF mydata IS NULL THEN
+      dummy := format( ' UPDATE ONLY %s SET status = %s 
+      	       	       	 WHERE run = %s AND subrun = %s AND seq = %s AND ProjectVer = %s',
+			 tname,mystatus,myrun,mysubrun,myseq,local_version);
+    ELSE
+      dummy := format( ' UPDATE ONLY %s SET status = %s, data=''%s''   
+      	       	       	 WHERE run = %s AND subrun = %s AND seq = %s AND ProjectVer = %s',
+			 tname,mystatus,mydata,myrun,mysubrun,myseq,local_version);
+    END IF;
     EXECUTE dummy;
   END IF;
 
   RETURN ;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS GetProjectData( project_name TEXT,
+     	      	 			run    INT,
+					subrun INT,
+					seq    SMALLINT);
+
+CREATE OR REPLACE FUNCTION GetProjectData( project_name TEXT,
+     	      	 			   run    INT,
+					   subrun INT,
+					   seq    SMALLINT DEFAULT 0)
+			   RETURNS TABLE ( Status SMALLINT, ProjectData TEXT) AS $$
+DECLARE
+  myquery  TEXT;
+  myrec    RECORD;
+BEGIN
+  IF NOT DoesProjectExist(project_name) THEN
+    RAISE EXCEPTION 'Project % does not exist!',project_name;
+  END IF;
+
+  myquery := format('SELECT Status, Data FROM %s 
+  	     		    	    	 WHERE Run=%s AND SubRun=%s AND Seq=%s
+				 	 ORDER BY ProjectVer DESC 
+				 	 LIMIT 1',
+		    project_name,
+		    run,
+		    subrun,
+		    seq );
+
+  EXECUTE myquery INTO myrec;
+  RETURN QUERY SELECT myrec.Status, myrec.Data;
+
 END;
 $$ LANGUAGE PLPGSQL;
 
