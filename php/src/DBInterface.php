@@ -5,6 +5,7 @@ class DBInterface
     
     private $myURL;
     private $myUSER;
+    private $myDBName;
     private $myPSWD;
     private static $myDBI=null;
     private $psql_link=null;
@@ -48,7 +49,7 @@ class DBInterface
     
     private function connect() {
         if($this->psql_link == null){
-            $conn_info = "host=" . $this->myURL . " user=" . $this->myUSER . " password=" . $this->myPSWD . " dbname=davidkaleko";
+            $conn_info = "host=" . $this->myURL . " user=" . $this->myUSER . " password=" . $this->myPSWD . " dbname=" . $this->myDBName;
             //          echo $conn_info . "<BR>\n";
             $this->psql_link = pg_connect($conn_info) or die(psql_error());
           }
@@ -73,23 +74,23 @@ class DBInterface
     
     private function readConnInfo($configFile=self::CONN_CONFIG)
     {
-        echo "<BR>\n" . $configFile . "\n<BR>\n";
+//        echo "<BR>\n" . $configFile . "\n<BR>\n";
         $fh = fopen((string) $configFile,'r');
         $removeChars  = array("\n"," "); 
         $this->myURL  = str_replace($removeChars,"",(string) fgets($fh));
+        $this->myDBName=str_replace($removeChars,"",(string) fgets($fh));
         $this->myUSER = str_replace($removeChars,"",(string) fgets($fh));
         $this->myPSWD = str_replace($removeChars,"",(string) fgets($fh));
-        echo "\n<BR>" . $this->myURL  . " " . $this->myUSER . " " . $this->myPSWD . "<BR>\n";
+//        echo "\n<BR>" . $this->myURL  . " " . $this->myUSER . " " . $this->myPSWD . "<BR>\n";
         fclose($fh);
     }
     
     public function query($cmd) {
-        echo "QUERY IS $cmd<BR>\n";
         $this->connect();
         $res=pg_query($this->psql_link,$cmd) or die(psql_error());
-        while($row = pg_fetch_row($res)) {
-            echo $row[0] . " " . $row[1] . " " . $row[2] . " " . $row[3] . "<BR>\n";
-        }
+//        while($row = pg_fetch_row($res)) {
+//            echo $row[0] . " " . $row[1] . " " . $row[2] . " " . $row[3] . "<BR>\n";
+//        }
         return $res;
     }
     
