@@ -1,4 +1,6 @@
 
+CREATE EXTENSION HSTORE;
+
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
@@ -593,6 +595,30 @@ BEGIN
   		      ( SELECT B.Project AS Project, MAX(B.ProjectVer) AS ProjectVer 
     		      FROM ProcessTable AS B 
     		      WHERE B.ENABLED GROUP BY B.Project) 
+  		      AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP FUNCTION IF EXISTS ListProject();
+
+CREATE OR REPLACE FUNCTION ListProject() 
+       	  	  RETURNS TABLE ( Project TEXT, 
+		   	   	  Command TEXT, 
+				  Frequency INT,
+				  StartRun INT,
+				  StartSubRun INT,
+				  Email TEXT, 
+				  Resource HSTORE,
+				  Enabled  BOOLEAN,
+				  ProjectVer SMALLINT) AS $$
+DECLARE
+BEGIN
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, A.StartSubRun,
+  	       	      A.Email, A.Resource, A.Enabled, A.ProjectVer 
+  		      FROM ProcessTable AS A JOIN 
+  		      ( SELECT B.Project AS Project, MAX(B.ProjectVer) AS ProjectVer 
+    		      FROM ProcessTable AS B 
+    		      GROUP BY B.Project) 
   		      AS FOO ON A.Project=FOO.Project AND A.ProjectVer = FOO.ProjectVer;
 END;
 $$ LANGUAGE PLPGSQL;
