@@ -1,0 +1,1 @@
+../../dstream/bin/register_project.py

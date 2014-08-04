@@ -1,0 +1,1 @@
+../../dstream/bin/update_project.py
