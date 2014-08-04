@@ -47,7 +47,7 @@ class GenHTML
     $cont="";
     $cont = $cont . "<HTML>\n<head>\n<title> Double Chooz DB WebViewer </title>\n";
     $cont = $cont . "<meta http-equiv=\"content-type\"<content=\"text/html; charset=ISO-8859-1\">\n";
-    $cont = $cont . "<link href=\"/Users/davidkaleko/Sites/src/DCStyleSheet.css\" rel=\"stylesheet\" media=\"screen\">\n";
+    $cont = $cont . "<link href=\"http://dcmonitor.in2p3.fr/src/DCStyleSheet.css\" rel=\"stylesheet\" media=\"screen\">\n";
     if($this->auto_reload>0)
       $cont = $cont . "<meta http-equiv=\"refresh\" content=\"" . (int)$this->auto_reload . "\" >\n";
     return $cont . $this->header . "</head>\n\n<body>\n\n";
