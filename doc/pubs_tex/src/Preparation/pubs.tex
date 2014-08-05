@@ -6,7 +6,7 @@ In this section we cover how to obtain {\pubs} and configure to use the tools.
 We also cover how to clean up your local database server (as far as {\pubs} concerns).
 
 \subsection{Obtain And Configure {\pubs}}
-
+\label{prep:pubs:conf}
 First of all, make a git account. Then let the author know about your account so he
 can add you as a collaborator, and you will have a write permission. This makes your
 life much easier.
@@ -39,6 +39,7 @@ server DNS, database name etc. configured differently than default, make
 your own configuration script!
 
 \subsection{Setting Up {\psql} Server For {\pubs}}
+\label{prep:pubs:sql}
 The {\psql} server interaction model in {\pubs} is to use a pre-defined set of functions 
 to make data queries rather than allow users to come up with a random (and probably wild)
 bare query strings. These functions are defined in {\sql} scripts:
@@ -68,3 +69,15 @@ Try this solution if something weird happened to your {\procdb} database.
 But just remember one thing: this operation removes {\it everything} including 
 all project tables. Be responsible ;)
 
+\subsection{Running {\pubs}}
+Make sure you have read and followed Sec.\ref{prep:pubs:conf} and \ref{prep:pubs:sql}.
+Now you should be ready to execute a test script to see things are set up correctly.
+Try:
+\begin{lstlisting}
+  > cd $PUB_TOP_DIR
+  > python dstream/ds_daemon.py
+\end{lstlisting}
+This should start-up a process that continues indefinitely making {\stdout} messages
+every second. The script you are running is actually one of core tools in {\pubs} that
+can execute all projects that you will develop (or developed by others) within {\pubs}.
+For now, this part is complete. We will come back to in the later chapters.
