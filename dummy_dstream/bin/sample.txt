@@ -4,28 +4,34 @@
 #
 
 PROJECT_BEGIN
-NAME     kazu
-COMMAND  echo hello world
+NAME     dummy_daq
+COMMAND  python dummy_dstream/dummy_daq.py
 CONTACT  kazuhiro@nevis.columbia.edu
-PERIOD   10
+PERIOD   120
 RUN      1
 SUBRUN   1
 ENABLE   True
-RESOURCE a => b
-RESOURCE c => d
+RESOURCE NRUNS => 5
+RESOURCE OUTDIR => /data
+RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_assembler.bin
 PROJECT_END
 
 PROJECT_BEGIN
-NAME     kazu2
-COMMAND  echo hello world
+NAME     dummy_nubin_xfer
+COMMAND  python dummy_dstream/dummy_nubin_xfer.py
 CONTACT  kazuhiro@nevis.columbia.edu
-PERIOD   10
+PERIOD   30
 RUN      1
 SUBRUN   1
 ENABLE   True
-RESOURCE e => f
-RESOURCE g => h
+RESOURCE SOURCE_PROJECT => dummy_daq
+RESOURCE NRUNS => 10
+RESOURCE INDIR => /data
+RESOURCE OUTDIR => /data
+RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_assembler.bin
+RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_near1.bin
 PROJECT_END
+
 
 
 
