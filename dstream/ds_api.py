@@ -510,7 +510,7 @@ class death_star(ds_master):
         return result
 
     ## @brief Dark-side can create anything, even real data, and you will not notice.
-    #  @detail
+    #  @details
     #  Recreate MainRun table. This requires to drop all projects first.\n
     #  Outcome is a newly filled MainRun table with an empty ProcessTable
     def refill_death_star(self,run,subrun):
