@@ -24,7 +24,7 @@ echo $mySelBox->genSelectBox();
 */
 
 $myweb=new GenHTML();
-
+$myweb->setAutoReload();
 echo $myweb->genWeb("QC","Quality Control");
 
 ?>

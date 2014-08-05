@@ -78,6 +78,13 @@ class GenHTML
     $cont = $cont . "Project list table from procdb Database:<BR>\n";
     $cont = $cont . GenProjectListTable::genTable();
 
+    $cont = $cont . "<BR><BR>\n\nRun/Status table for Project dummy_daq, Run 1:<BR>\n";
+
+    $myProjectRunStatusTable = new GenProjectRunStatusTable();
+    $myProjectRunStatusTable->setRunNum(1);
+    $myProjectRunStatusTable->setProjName("dummy_daq");
+    $cont = $cont . $myProjectRunStatusTable->genTable();
+  
     return $cont . $this->body;
   }
 
