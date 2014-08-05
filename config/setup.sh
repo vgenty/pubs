@@ -12,7 +12,8 @@ fi
 # Set PYTHONPATH
 export PYTHONPATH=$PUB_TOP_DIR:$PYTHONPATH
 # BIN executable directory
-export PUB_BIN_DIR=$PUB_TOP_DIR/dstream/bin
+export PUB_BIN_DIR=$PUB_TOP_DIR
+export PATH=$PUB_BIN_DIR:$PATH
 
 
 #
