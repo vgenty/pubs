@@ -28,15 +28,8 @@ class GenProjectRunStatusTable
   
     public function genTable()
     {
-
-        $this->selected_run_num=(int)1;
-        $this->selected_proj_name="dummy_daq";
-
         if($this->selected_run_num==null) return false;
-        
         if($this->selected_proj_name==null) return false;
-        
-
 
         $myTable = new GenHTML_Table();
         $myTable->setCellOption("align=center");

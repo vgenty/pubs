@@ -75,16 +75,43 @@ class GenHTML
     $cont = $cont . "<BR> PHP version " . (string)phpversion() . "\n";
     $cont = $cont . "<hr size=\"2\" width=\"100%\">\n\n";
 
-    $cont = $cont . "Project list table from procdb Database:<BR>\n";
+    $cont = $cont . "Project list table from procdb Database (green means enabled, red means disabled):<BR>\n";
     $cont = $cont . GenProjectListTable::genTable();
 
-    $cont = $cont . "<BR><BR>\n\nRun/Status table for Project dummy_daq, Run 1:<BR>\n";
 
-    $myProjectRunStatusTable = new GenProjectRunStatusTable();
-    $myProjectRunStatusTable->setRunNum(1);
-    $myProjectRunStatusTable->setProjName("dummy_daq");
-    $cont = $cont . $myProjectRunStatusTable->genTable();
-  
+/////////////////////////////////////////////////////////////////
+//scroll-down menu to pick which project you want to see a table for
+/////////////////////////////////////////////////////////////////
+    $cont = $cont . "<BR><BR><BR>\n\n\n";
+    $myScrollBox = new GenHTML_SelectBox();
+    $myScrollBox->setRunScript("scripts/CreateProjectRunStatusTable_script.php");
+    $myScrollBox->addScroll("Pick an enabled project to learn more about, then hit Select:","myProjScrollName");
+
+    $querystring = "SELECT Project FROM ListProject() WHERE Enabled='t'";
+    $myQueryResult = DBInterface::get()->query($querystring);
+    while($row = pg_fetch_row($myQueryResult)) {
+        $myScrollBox->appendScrollOption("myProjScrollName","$row[0]","$row[0]");
+    }
+
+/////////////////////////////////////////////////////////////////
+//scroll-down menu to pick which run you want to see
+/////////////////////////////////////////////////////////////////
+    $cont = $cont . "<BR>\n";
+    $myScrollBox->addScroll("Pick a run number:","myRunScrollName");
+
+    $querystring = "SELECT DISTINCT runnumber FROM mainrun ORDER BY runnumber";
+    $myQueryResult = DBInterface::get()->query($querystring);
+    while($row = pg_fetch_row($myQueryResult)) {
+        $myScrollBox->appendScrollOption("myRunScrollName","$row[0]","$row[0]");
+    }
+    $cont = $cont . $myScrollBox->genSelectBox();
+
+
+
+
+
+
+
     return $cont . $this->body;
   }
 
