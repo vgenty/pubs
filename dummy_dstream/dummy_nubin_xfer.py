@@ -1,5 +1,5 @@
-## @namespace dummy.dummy_nubin_xfer
-#  @ingroup dummy
+## @namespace dummy_dstream.dummy_nubin_xfer
+#  @ingroup dummy_dstream
 #  @brief Defines a project dummy_nubin_xfer
 #  @author kazuhiro
 
@@ -13,9 +13,10 @@ from dstream import ds_project_base
 from dstream import ds_status
 
 ## @class dummy_nubin_xfer
-#  @brief kazuhiro should give a brief comment here
+#  @brief A dummy nu bin file xfer project
 #  @details
-#  kazuhiro should give a detailed comment here
+#  This dummy project transfers dummy files created by dummy_daq project\n
+#  It simply copies dummy nu bin files with a different file name under $PUB_TOP_DIR/data.
 class dummy_nubin_xfer(ds_project_base):
 
     # Define project name as class attribute
@@ -34,6 +35,7 @@ class dummy_nubin_xfer(ds_project_base):
         self._infile_format = ''
         self._parent_project = ''
 
+    ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
 
         resource = self._api.get_resource(self._project)
@@ -45,7 +47,7 @@ class dummy_nubin_xfer(ds_project_base):
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['SOURCE_PROJECT']
 
-    ## @brief access DB and retrieves new runs
+    ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
 
         # Attempt to connect DB. If failure, abort
@@ -97,7 +99,7 @@ class dummy_nubin_xfer(ds_project_base):
             # Break from loop if counter became 0
             if not ctr: break
 
-    ## @brief access DB and retrieves new runs
+    ## @brief access DB and retrieves processed run for validation
     def validate(self):
 
         # Attempt to connect DB. If failure, abort
@@ -147,7 +149,7 @@ class dummy_nubin_xfer(ds_project_base):
             # Break from loop if counter became 0
             if not ctr: break
 
-    ## @brief access DB and retrieves new runs
+    ## @brief access DB and retrieves runs for which 1st process failed. Clean up.
     def error_handle(self):
 
         # Attempt to connect DB. If failure, abort

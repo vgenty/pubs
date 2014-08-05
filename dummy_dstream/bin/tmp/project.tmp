@@ -1,5 +1,5 @@
-## @namespace dummy.$Project_Name
-#  @ingroup dummy
+## @namespace dummy_dstream.$Project_Name
+#  @ingroup dummy_dstream
 #  @brief Defines a project $Project_Name
 #  @author $SHELL_USER_NAME
 

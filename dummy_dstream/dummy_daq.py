@@ -1,5 +1,5 @@
-## @namespace dummy.dummy_daq
-#  @ingroup dummy
+## @namespace dummy_dstream.dummy_daq
+#  @ingroup dummy_dstream
 #  @brief Defines a project dummy_daq
 #  @author kazuhiro
 
@@ -13,9 +13,9 @@ from dstream import ds_project_base
 from dstream import ds_status
 
 ## @class dummy_daq
-#  @brief kazuhiro should give a brief comment here
+#  @brief A fake DAQ process that makes a fake nu bin file.
 #  @details
-#  kazuhiro should give a detailed comment here
+#  This dummy project creates dummy nu bin data file under $PUB_TOP_DIR/data directory
 class dummy_daq(ds_project_base):
 
     # Define project name as class attribute
@@ -81,7 +81,7 @@ class dummy_daq(ds_project_base):
             if not ctr: break
 
 
-    ## @brief access DB and retrieves new runs
+    ## @brief access DB and validate finished runs
     def validate(self):
 
         # Attempt to connect DB. If failure, abort
