@@ -34,6 +34,8 @@ BEGIN
 					 PRIMARY KEY (Run,SubRun,Seq,ProjectVer))',myName);
     EXECUTE myQuery;
   END IF;
+
+  
     
 RETURN 1;  	
 END;
@@ -362,7 +364,10 @@ BEGIN
       loopCounter := loopCounter + 1; 
       CONTINUE;
     END IF;
-    dummy := format('%s INNER JOIN %s ON %s.run = %s.run AND %s.subrun = %s.subrun',dummy,'temp'||iTable,'temp'||iTable,'temp'||iTable,'temp'||iTable,'temp'||iTable,'temp'||iTable);
+    dummy := format(' %s INNER JOIN temp%s ON temp%s.run = temp%s.run AND temp%s.subrun = temp%s.subrun',
+    	     	      dummy, iTable, 
+		      arrayOfTables[1], iTable, 
+		      arrayOfTables[1], iTable );
 
     loopCounter := loopCounter + 1;
   END LOOP;

@@ -383,6 +383,9 @@ BEGIN
   END IF;
 
   SELECT MAX(ID) FROM ProcessTable WHERE Project = project_name INTO myInt;
+
+  EXECUTE OneProjectRunSynch(project_name, myVersion, start_run, start_subrun);
+
   RETURN myInt;
 
 END;
@@ -645,7 +648,7 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
-DROP FUNCTIOn IF EXISTS OneProjectRunSynch( project      TEXT,
+DROP FUNCTION IF EXISTS OneProjectRunSynch( project      TEXT,
 					    project_ver  SMALLINT,
 					    start_run    INT,
 					    start_subrun INT );
