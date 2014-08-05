@@ -48,7 +48,7 @@ class ds_reader(pubdb_reader):
             return resource
 
         res = self.fetchone()
-        print res[0]
+
         # handle resource string conversion into a map
         if res[0]:
         
@@ -140,7 +140,7 @@ class ds_reader(pubdb_reader):
             if x == table_v[0]:  
                 query_table += 'ARRAY[\'%s\'::TEXT' % x
             else:
-                query_table += (',%s::TEXT' % x )
+                query_table += (',\'%s\'::TEXT' % x )
         query_table += ']'
 
         query_status = ''
@@ -159,7 +159,7 @@ class ds_reader(pubdb_reader):
         if self.nrows():
             for x in self:
                 runs.append(x)
-        return x
+        return runs
 
     ## Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
