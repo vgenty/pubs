@@ -49,8 +49,8 @@ class DBInterface
     
     private function connect() {
         if($this->psql_link == null){
-            $conn_info = "host=" . $this->myURL . " user=" . $this->myUSER . " password=" . $this->myPSWD . " dbname=" . $this->myDBName;
-            //          echo $conn_info . "<BR>\n";
+            $conn_info = "host=" . $this->myURL . " user=" . $this->myUSER . " dbname=" . $this->myDBName;
+            //echo $conn_info . "<BR>\n";
             $this->psql_link = pg_connect($conn_info) or die(psql_error());
           }
         else if(!($this->checkConn())){

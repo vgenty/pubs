@@ -25,7 +25,7 @@ class GenHTML_Table
         if($opt==null)
             $this->cell_opt=null;
         else
-            $this->cell_opt= $this->cell_opt . " " . (string)$opt . " ";
+            $this->cell_opt= (string)$opt . " ";
     }
     
     public function setCellColor($col_def)
