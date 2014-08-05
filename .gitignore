@@ -12,6 +12,7 @@
 *.dat
 *.log
 *.info
+*.pdf
 *~
 *.pcm
 /GNUmakefile

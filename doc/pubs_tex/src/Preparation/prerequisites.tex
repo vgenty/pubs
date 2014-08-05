@@ -1,0 +1,40 @@
+In this section, we go over prequisites to use {\pubs}. None of those require any
+particularly intensive computation power, and they can be all installed on a 
+personal laptop.
+
+\subsection{Operating System And Software}
+As {\pubs} does not require a compilation, it is expected to work on any operating system (OS).
+That being said, some functionality of underlying {\python} does depend on the kernel. 
+The author has not tested on Windows family OS, and he highly doubt it would work on it. 
+There should be no problem on Unix and Linux family OS. 
+
+We use {\git} for a software repository and version control. As mentioned, {\pubs} use
+{\php}, {\psql}, and {\python}. A summary of minimaum version for these software is given
+below. These are oldest version that the author happened to find on his machines, so it
+is possible that things work on even older version of kernel/software. Please tell the 
+author or update the document if you find such case.
+
+\begin{itemize}
+\item Supported Operating Systems
+    \begin{itemize}
+    \item Mac OSX 10.5.8 (Darwin 9.8) or later with Xcode 3.1.4 or later
+    \item Linux 2.6.0 or later with \gpp 4.1 or later
+    \end{itemize}
+\item Version Control Tool
+    \begin{itemize}
+    \item {\git} $\ldots$ 1.7.1 or later
+    \end{itemize}
+\item Base Software Tools
+    \begin{itemize}
+    \item {\php} $\ldots$ v2.1 or later
+    \item {\psql}$\ldots$  v9.1 or later with {\ttfamily contrib} for {\hstore}
+    \item {\python} $\ldots$ v2.7 or later (but no later than 3.0)
+    \item {\psycopg} $\ldots$ v2.5 or later
+    \end{itemize}
+\end{itemize}
+Both recent OSX and Linux distributions have {\python} 2.7 and {\git}. So we skip
+those items. The next section discuss how to install some rather uncommon parts
+including {\psql}, {\hstore}, and {\psycopg}.
+
+Both {\psql} and {\python} has a very good documentation and FAQ resource on the web.
+You may find Ref.\cite{PythonDoc,PSQLDoc} useful.

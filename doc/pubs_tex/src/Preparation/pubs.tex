@@ -1,0 +1,70 @@
+
+{\pubs} is kept at a public github repository. One can access the respotiroy
+through a web browser as well
+\href{https://github.com/drinkingkazu/pubs}{\color{blue}\bf https://github.com/drinkingkazu/pubs}.
+In this section we cover how to obtain {\pubs} and configure to use the tools.
+We also cover how to clean up your local database server (as far as {\pubs} concerns).
+
+\subsection{Obtain And Configure {\pubs}}
+
+First of all, make a git account. Then let the author know about your account so he
+can add you as a collaborator, and you will have a write permission. This makes your
+life much easier.
+
+If you have a write permission, you can checkout as shown below:
+\begin{lstlisting}
+  > git clone git@github.com:drinkingkazu/pubs pubs
+  > cd pubs
+  > git checkout devel
+\end{lstlisting}
+If you have only a read permission, try the following instead:
+\begin{lstlisting}
+  > git clone https://github.com/drinkingkazu/pubs pubs
+  > cd pubs
+  > git checkout devel
+\end{lstlisting}
+Above operations are needed per making a clean checkout from git repository.
+You do not need to do them if you are to work on previously checked out repository.
+
+Now, per login, you have to source some configuration scripts as shown below.
+\begin{lstlisting}
+  > source config/setup.sh
+  > source config/personal_conf.sh
+\end{lstlisting}
+The second script should be really made per user (so you can make your own).
+This shell script sets some environment variables that are used to connect
+{\psql} server. Take a look at it. How each environment variable is used 
+should be trivial from their name. If you have a specific user name, password,
+server DNS, database name etc. configured differently than default, make
+your own configuration script!
+
+\subsection{Setting Up {\psql} Server For {\pubs}}
+The {\psql} server interaction model in {\pubs} is to use a pre-defined set of functions 
+to make data queries rather than allow users to come up with a random (and probably wild)
+bare query strings. These functions are defined in {\sql} scripts:
+\begin{itemize}
+  \item db\_scripts/master\_creation.sql
+  \item db\_scripts/procdb\_functions.sql
+\end{itemize}
+Uploading these functions to your server is a one-time operation, and you can do:
+\begin{lstlisting}
+  > psql -h localhost -d procdb -f db_scripts/master_creation.sql
+  > psql -h localhost -d procdb -f db_scripts/procdb_functions.sql
+  > psql -h localhost -d procdb -f db_scripts/initialize_procdb.sql
+\end{lstlisting}
+
+Now, someday you might be in a situation such that something went wrong on the server
+and you want to reset all. Well, it is a beauty of working on localhost of your machine:
+you can go wild and reset {\it everything}. Here's how you can do this:
+\begin{lstlisting}
+  > dropdb procdb
+  > createdb procdb
+  > psql -h localhost -d procdb -f db_scripts/master_creation.sql
+  > psql -h localhost -d procdb -f db_scripts/procdb_functions.sql
+  > psql -h localhost -d procdb -f db_scripts/initialize_procdb.sql
+\end{lstlisting}
+
+Try this solution if something weird happened to your {\procdb} database.
+But just remember one thing: this operation removes {\it everything} including 
+all project tables. Be responsible ;)
+
