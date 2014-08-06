@@ -50,6 +50,5 @@ k.define_project( ds_project( project = args.name,
                               email   = args.email,
                               run     = args.run,
                               subrun  = args.subrun,
-                              resource = resource,
                               enable  = True ) )
 
