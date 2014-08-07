@@ -31,6 +31,16 @@ Now, per login, you have to source some configuration scripts as shown below.
   > source config/setup.sh
   > source config/personal_conf.sh
 \end{lstlisting}
+The first script important shell environmnet variables to use {\pubs}. In 
+particular, after running the script, you should see a shell environment
+variable {\ttfamily \$PUB\_TOP\_DIR} is set:
+\begin{lstlisting}
+  > echo $PUB_TOP_DIR
+\end{lstlisting}
+which should be pointing at the top directory of {\pubs}. You can execute
+this script from anywhere (i.e. it does not need to be run from {\pubs} top
+directory and it will figure out the correct path).
+
 The second script should be really made per user (so you can make your own).
 This shell script sets some environment variables that are used to connect
 {\psql} server. Take a look at it. How each environment variable is used 
@@ -70,6 +80,7 @@ But just remember one thing: this operation removes {\it everything} including
 all project tables. Be responsible ;)
 
 \subsection{Running {\pubs}}
+\label{prep:pubs:daemon}
 Make sure you have read and followed Sec.\ref{prep:pubs:conf} and \ref{prep:pubs:sql}.
 Now you should be ready to execute a test script to see things are set up correctly.
 Try:

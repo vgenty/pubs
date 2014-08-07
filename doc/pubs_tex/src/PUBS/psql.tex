@@ -1,0 +1,204 @@
+
+Now that we spent many pages to discuss about the {\pubs} model, let's talk
+about something real and practical. This section presents a list of {\pubs} 
+functions implemented on the {\psql} server. About a half of them are for
+experts' use (in fact mostly for daemon and automated scripts since human
+hands are one of last things to be trusted), and the other half is for
+project scripts to use. 
+
+If you are a project code developper and do not find a function of your
+need, please contact the author and he will be more than happy to assist
+how the existing function may solve the problem or implement a brand
+new function to make your life easier.
+
+\subsection{Project Information/Status Query}
+These are functions that can be used by projects upon execution. That being
+said, however, it is {\bf \color{blue} strongly recommended to use {\python} 
+API within {\pubs} to execute these functions}. They should not be executed
+from {\psql} interpreter or directly executing from an SQL script. If the 
+list lacks any function needed for a project execution, please contact the 
+author with a request. Functions and corresponding {\python} API will be 
+provided.
+\begin{itemize}
+  \item {\bf DoesTableExist( name TEXT )}
+    \begin{itemize}
+      \item Checks if a table of the {\it name} exists or not in the database
+        by checking the administrative master table. The table name is required
+        to be in lowercase (there is no uppercase vs. lowercase in distinction
+        among {\psql} server objects).
+    \end{itemize}
+  \item {\bf DoesProjectExist( name TEXT )}
+    \begin{itemize}
+      \item Checks if a project with the {\it name} exists or not in the 
+        database. In addition to DoesTableExist(), this function checks
+        if a specified project exists or not.
+    \end{itemize}
+  \item {\bf GetRunTimeStamp( Run INT, SubRun INT )}
+    \begin{itemize}
+      \item A function to retrieve the run start and end time stamp.
+    \end{itemize}
+  \item {\bf ProjectResource( name TEXT )}
+    \begin{itemize}
+      \item Returns a project resource (information needed for an execution)
+        for a specified project name.
+    \end{itemize}
+  \item {\bf IncreaseProjSequence( name TEXT, run INT, subrun INT, nseq
+    SMALLINT, status SMALLINT) }
+    \begin{itemize}
+      \item Increase number of sequence count in the specified project table
+        for the specified run/sub-run number combination. Input status code 
+        is used for all newly created TaskIDs.
+    \end{itemize}
+  \item {\bf UpdateProjStatus( name TEXT, run INT, subrun INT, seq SMALLINT,
+    status SMALLINT, data TEXT)}
+    \begin{itemize}
+      \item Update the specified project's status for the specified TaskID. 
+        At the same time, a TaskID specific data can be also stored although
+        that is not necessary (by default the last argument is set to NULL).
+    \end{itemize}
+  \item {\bf GetProjectData( name TEXT, run INT, subrun INT, seq SMALLINT )}
+    \begin{itemize}
+      \item Retrieve project data for a specified TaskID. Only accessible to
+        The data from the latest version number to avoid a confusion (and
+        hence version number cannot be specified).
+    \end{itemize}
+  \item {\bf GetRuns( name TEXT, status SMALLINT) }
+    \begin{itemize}
+      \item Returns a table of TaskID (run, sub-run, seq., project-version) 
+        for which the specified project carries the specified status code.
+    \end{itemize}
+  \item {\bf GetRuns( TEXT[]::ARRAY, SMALLINT[]::ARRAY )}
+    \begin{itemize}
+      \item Similar to GetRuns and it returns a table of run/sub-run number 
+      combinations for which all specified projects in the first argument
+      carry specified status code in the second argument. This function
+      is useful to obtain a list of run/sub-run numbers across multiple
+      project tables for specific combination of status code. Because 
+      a sequence number is project dependent, it returns run/sub-run for
+      which all belonging sequence status uniquely matches with the specified
+      status code.
+    \end{itemize}
+
+\end{itemize}
+
+
+\subsection{Functions For Project Management}
+These are functions to be used by daemon process to maintaine/running the
+projects. In principle these should not be used by a project execution. 
+\begin{itemize}
+  \item {\bf RemoveProject( name TEXT )} 
+    \begin{itemize}
+      \item Properly remove a project: drop a project table and remove the
+        project information entry from the ProcessTable.
+    \end{itemize}
+  \item {\bf ListProject()}
+    \begin{itemize}
+      \item List all projects with the latest version number from ProcessTable.
+    \end{itemize}
+  \item {\bf ListEnabledProject()}
+    \begin{itemize}
+      \item List currently enabled project information with the latest version
+        number from the ProcessTable.
+    \end{itemize}
+  \item {\bf DefineProject( name TEXT, command TEXT, frequency INT, email TEXT,
+    start\_run INT, start\_subrun INT, resource HSTORE, enabled BOOLEAN )}
+    \begin{itemize}
+      \item A function to define a new project. It takes in project information
+        and registers into the ProcessTable. It also calls {\bf MakeProjTable}
+        function to create a project table.
+    \end{itemize}
+  \item {\bf MakeProjTable( name TEXT )}
+    \begin{itemize}
+      \item Function dedicated to create a project table. This function is
+        to be called by {\bf DefineProject} and not to be called by hand!
+    \end{itemize}
+  \item {\bf UpdateProjectConfig( name TEXT, command TEXT, frequency INT, email
+    TEXT, resource HSTORE, enabled BOOLEAN, version INT)}
+    \begin{itemize}
+      \item A function to alter and update project configuration. As seen in
+        the function arguments, start run/sub-run number cannot be altered by
+        design.
+    \end{itemize}
+  \item {\bf ProjectVersionUpdate( name TEXT, command TEXT, frequency INT,
+    email TEXT, run INT, subrun INT, resource HSTORE, enable BOOLEAN)}
+    \begin{itemize}
+      \item Increment the project version number and store new project
+        information. Unlike {\bf UpdateProjectConfig}, this function can
+        register any project information as there will be a distinct row
+        to be inserted in the ProcessTable.
+    \end{itemize}
+  \item {\bf GetVersionRunRange( name TEXT )}
+    \begin{itemize}
+      \item For a specified project name, returns multiple result sets each
+        representing a specific run number range with the corresponding
+        project version number.
+    \end{itemize}
+  \item {\bf InsertIntoProjTable( name TEXT, run INT, subrun INT )}
+    \begin{itemize}
+      \item Insert a new run/sub-run number entry into a project table with
+        the default status code of 1. The latest version number for the
+        subject run/sub-run is also taken from the ProcessTable.
+    \end{itemize}
+  \item {\bf OneProjectRunSynch()}
+    \begin{itemize}
+      \item Make sure one particular project table has run/sub-run 
+        numbers that currently appears in the MainRun table and above
+        the specified run/subrun numbers in the argument.
+    \end{itemize}
+  \item {\bf AllProjectRunSynch()}
+    \begin{itemize}
+      \item Make sure all project table has run/sub-run numbers that 
+        currently appears in the MainRun and above the specified start
+        run/sub-run numbers in the project information.
+    \end{itemize}
+  \item {\bf ProjectInfo(name TEXT, ver INT)}
+    \begin{itemize}
+      \item Returns project information for a specified version number.
+        By default the version number does not need to be specified.
+        If not given, it is set to the latest version number. This function
+        is used to run a project via daemon.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Admin Functions}
+Functions prepared for the top-level administrative purposes. These functions
+should be executed by database admins only.
+\begin{itemize}
+  \item {\bf RemoveProcessDB()}
+    \begin{itemize}
+      \item ``Properly'' remove {\it everything}. This function drops all
+        projects registered in ProcessTable using {\bf RemoveProject} 
+        function. Then it drops an empty ProcessTable.
+    \end{itemize}
+  \item {\bf CreateProcessTable()}
+    \begin{itemize}
+      \item A simple function to create the ProcessTable.
+    \end{itemize}
+  \item {\bf CreateTestRunTable()}
+    \begin{itemize}
+      \item A function to create ``fake'' MainRun table. This is for 
+        development work, and not for an official operation. In the official
+        production, MainRun table is slave-copied from the configuration
+        database automatically.
+    \end{itemize}
+  \item {\bf InsertIntoTestRunTable( Run INT, SubRun INT, TimeStart TIMESTAMP, TimeEnd TIMESTAMP )}
+    \begin{itemize}
+      \item A function to insert a new entry into the ``fake'' MainRun table.
+        This is not meant to be used for the offial production.
+    \end{itemize}
+  \item {\bf FillTestRunTable( NRuns INT, NSubRuns INT)}
+    \begin{itemize}
+      \item A function to fill the ``fake'' MainRun table with multiple entries
+        at once. It fills the table with NRuns, each with NSubRuns.
+    \end{itemize}
+  \item {\bf CheckDBIntegrity()}
+    \begin{itemize}
+      \item Returns a boolean after checking the process DB integrity. 
+        In particular it checks if ProcessTable exists or not, and then
+        checks if all projects registered in ProcessTable have own project
+        tables.
+    \end{itemize}
+\end{itemize}
+
+
+

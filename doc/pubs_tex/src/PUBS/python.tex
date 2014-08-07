@@ -1,0 +1,94 @@
+The ``software framework'' part of {\pubs}, which provides the code base 
+for application development, is really in {\python}. This section describes
+ {\python} tools in {\pubs} that can be used to develop a project execution 
+code and set up the data processing chain of multiple projects.
+
+There are three (somewhat) big {\python} modules in {\pubs}:
+\begin{itemize}
+  \item {\pubutil} $\ldots$ basic framework tools
+  \item {\pubdbi} $\ldots$ generic database interface based using {\psycopg}
+  \item {\dstream} $\ldots$ data processing framework toolkit
+\end{itemize}
+A project code developer interfaces with {\dstream} directly while that itself 
+depends on basic tools defined in {\pubutil} and {\pubdbi}. We go over each 
+of these in the following sections. 
+
+\subsection{{\pubutil}}
+This module introduce 3 objects: {\publogger}, {\pubsmtp}, and {\pubexception}.
+They are framework logging tool, email sender function via SMTP, and a base exception
+class definition. 
+
+\subsubsection{{\publogger} $\ldots$ Logging Module}
+This is the framework logger tool, and uses a popular {\python}'s logging module.
+{\publogger} is a factory class that can instansiate an individual logger instance
+with a specific message format and a choice of stream: either {\stdout}/{\stderr} or
+output file stream. 
+
+Each logger instance created by {\publogger} factory has a unique name, and 
+can be instantiated by a factory function call:
+\begin{lstlisting}
+  >>> pubs_logger.get_logger('my_logger')
+\end{lstlisting}
+for a logger named ``my\_logger''. {\publogger} keeps track of all created loggers 
+in its class variable {\ttfamily \_loggers}. When there is a request for a logger
+with the same name created in the past, it returns the same instance.
+\begin{lstlisting}
+  >>> from pub_util import pub_logger
+  >>> pub_logger.get_logger('a')
+  [ INFO    ] pub_logger (L: 81 ) >> {_add_logger} OPENED LOGGER a
+  <logging.Logger object at 0x10b903f90>
+  >>> pub_logger.get_logger('a')
+  <logging.Logger object at 0x10b903f90>
+  >>>
+\end{lstlisting}
+
+As you might expect in any similar tool, {\publogger} has several message levels:
+debug, info, warning, error, and critical. The default message level is set via
+shell environment variable {\ttfamily \$PUB\_LOGGER\_LEVEL}, which is automatically
+set in {\ttfamily setup.sh} configuration script. You may change the level if you
+wish. You do not have to change the configuration script, but instead just change
+the shell environment variable in any way you want (for instance by hand on your
+terminal instead of sourcing a script). The set shell environment value is parsed 
+in {\ttfamily pub\_util/pub\_env.py} script to an appropriate value. 
+Similarly, the stream destination (either {\stdout} or file stream) is
+set via shell environment variable {\ttfamily \$PUB\_LOGGER\_DRAIN}, again set
+automatically in {\ttfamily setup.sh}. In case the drain is chosen to be a text
+file stream, {\ttfamily \$PUB\_LOGGER\_FILE\_LOCATION} environment variable's value
+is used as the log file location.
+
+Each message level has a dedicated logger function call to parse an output message
+through your logger. Here is an example of formatted output :
+\begin{lstlisting}
+  >>> a.debug('This is debug')
+  [ DEBUG   ] <stdin> (L: 1  ) >> {<module>} This is debug
+  >>> a.info('This is info')
+  [ INFO    ] <stdin> (L: 1  ) >> {<module>} This is info
+  >>> a.warning('This is warning')
+  [ WARNING ] <stdin> (L: 1  ) >> {<module>} This is warning
+  >>> a.error('This is error')
+  [ ERROR   ] <stdin> (L: 1  ) >> {<module>} This is error
+  >>> a.critical('This is critical')
+  [ CRITICAL] <stdin> (L: 1  ) >> {<module>} This is critical
+\end{lstlisting}
+The logger specifies the message level, and prints out three more information in
+addition to the sent message by the caller. The first `$<$stdin$>$' tells where the
+message is sent from. `(L: 1  )' tells us which line in the caller's module code
+this function is called from. Then `\{$<$module$>$\}' tells us the name of the
+caller's module. In the above example, this is called from the main, and hence
+it is not really useful. However, these information help us to track down problems
+easily as you can identify where each function call is made. For instance, running
+{\ttfamily ds\_daemon.py} to test the installation (see Sec.\ref{prep:pubs:daemon}),
+you have probably seen this message:
+\begin{lstlisting}
+  [ DEBUG   ] ds_daemon (L: 128) >> {load_projects} Updating project dummy_daq ...
+\end{lstlisting}
+ This menas that a logger function ``debug'' was called by a function 
+{\ttfamily load\_projects} and the exact location is in line number 128 of the 
+module code {\ttfamily ds\_daemon.py}. 
+
+\subsubsection{{\pubsmtp} $\ldots$ Simple SMTP Protocole}
+
+
+\subsection{{\pubdbi}}
+
+\subsection{{\dstream}}
