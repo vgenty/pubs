@@ -13,7 +13,7 @@ A project code developer interfaces with {\dstream} directly while that itself
 depends on basic tools defined in {\pubutil} and {\pubdbi}. We go over each 
 of these in the following sections. 
 
-\subsection{{\pubutil}}
+\subsection{{\pubutil}: Basic Toolkit}
 This module introduce 3 objects: {\publogger}, {\pubsmtp}, and {\pubexception}.
 They are framework logging tool, email sender function via SMTP, and a base exception
 class definition. 
@@ -87,8 +87,37 @@ you have probably seen this message:
 module code {\ttfamily ds\_daemon.py}. 
 
 \subsubsection{{\pubsmtp} $\ldots$ Simple SMTP Protocole}
+{\pubsmtp} is a simple function that uses the Simple Mail Transfer Protocole to
+send an email message. One can specify the recipients, subject and text message
+to be sent. By default, the SMTP account, server address (and port), and password
+ are taken from, again, shell environment variables: {\ttfamily \$PUB\_SMTP\_ACCT}, 
+{\ttfamily \$PUB\_SMTP\_SRVR}, and {\ttfamily \$PUB\_SMTP\_PASS} respectively.
+These are currently set to an email account created for a common use. You may change
+this to your account if you wish, or we use an official account when in production.
 
+\subsubsection{{\pubexception} $\ldots$ Simple Exception}
+This is an exception class that inherits from the base {\python} {\ttfamily Exception}.
+It is nothing special but takes an error message in the constructor argument.
+Only purpose is to have a common exception within {\pubs} so that we can catch {\pubs}
+specific exception.
 
-\subsection{{\pubdbi}}
+\subsection{{\pubdbi}: Generic DB Interface}
+{\pubdbi} module defines client tools used to interface with {\psql} database server.
+In particular it contains following classes
+\begin{itemize}
+  \item {\pubdbconn} $\ldots$ for connecting database server
+  \item {\pubdbdata} $\ldots$ class that encapsulates connection information 
+  \item {\pubdbexception} $\ldots$ exception dedicated for {\pubdbi} module
+  \item {\pubdbreader} $\dots$ ``read-only'' database query API instantiated by {\pubdbconn}
+  \item {\pubdbwriter} $\dots$ ``read/write'' database query API instantiated by {\pubdbconn}
+\end{itemize}
+Note that a project code developer should use a wrapper API that is under {\dstream}.
+This section covers base components that are usually hidden in behind.
+OK let's go through them. Hope I can contribute to your good sleep.
 
-\subsection{{\dstream}}
+\subsubsection{{\pubdbconn} database connection factory}
+This is a factory class that connects to the database using {\psycopg} and generate
+a connection cursor ({\ttfamily psycopg2.cursor}) for {\pubdbreader} and {\pubdbwriter}
+APIs.
+
+\subsection{{\dstream}: Data Processing Framework}
