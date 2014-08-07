@@ -20,6 +20,7 @@ class pubdb_conn_info(object):
 
     @classmethod
     def writer_info(cls):
+        print pubdb_env.kWRITER_PASS
         return cls(pubdb_env.kWRITER_HOST,
                    pubdb_env.kWRITER_DB,
                    pubdb_env.kWRITER_USER,

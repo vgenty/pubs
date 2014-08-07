@@ -19,7 +19,7 @@ myparser.add_argument('--command',dest='cmd',action='store',
                       help='command to be executed')
 
 myparser.add_argument('--period',dest='period',action='store',
-                      default='',type=int,
+                      default=0,type=int,
                       help='duration between executions in second')
 
 myparser.add_argument('--contact',dest='email',action='store',
