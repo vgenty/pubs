@@ -2,7 +2,7 @@ from pub_util import pub_logger
 from pub_dbi  import pubdb_conn_info
 from dstream  import ds_project
 from dstream.ds_api import ds_master
-import os,sys,__main__
+import os,sys
 
 logger = pub_logger.get_logger('add_projects')
 # DB interface for altering ProcessTable
@@ -229,7 +229,7 @@ def register(projects):
 if __name__ == '__main__':
 
     if len(sys.argv)<2:
-        print 'Usage:',__main__,'$CONFIG_FILE'
+        print 'Usage:',sys.argv[0],'$CONFIG_FILE'
         sys.exit(1)
 
     c = open(sys.argv[1],'r').read()
