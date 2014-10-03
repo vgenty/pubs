@@ -270,7 +270,7 @@ class ds_reader(pubdb_reader):
                                            email    = x[5],
                                            enable   = x[6], 
                                            resource = resource ) )
-            print "/d/d G'aaaahhh! enable is " + str(x[6])
+
         return info_array
 
     ## Fetch DAQ run start/end time stamp
