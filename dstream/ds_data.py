@@ -24,6 +24,7 @@ class ds_status(object):
                   subrun  = -1,
                   seq     = -1,
                   status  = -1,
+                  enable  = True,
                   data    = ''):
         try:
             self._project = str(project)
@@ -31,6 +32,7 @@ class ds_status(object):
             self._subrun  = int(subrun)
             self._seq     = int(seq)
             self._status  = int(status)
+            self._enable  = int(enable)
             self._data    = str(data)
         except ValueError:
             name   = '%s' % inspect.stack()[1][3]
@@ -98,6 +100,8 @@ class ds_project(object):
             msg += 'SubRun  : %d => %d\n' % (self._subrun, info._subrun)
         if not self._email   == info._email:
             msg += 'Email   : %s => %s\n' % (self._email,info._email)
+        if not self._email   == info._email:
+            msg += 'Enabled : %s => %s\n' % (self._enable,info._enable)
 
         for x in self._resource.keys():
             if not x in info._resource.keys():
@@ -117,6 +121,7 @@ class ds_project(object):
         msg += 'Run     : %d\n' % self._run
         msg += 'SubRun  : %d\n' % self._subrun
         msg += 'Email   : %s\n' % self._email
+        msg += 'Enabled : %s\n' % self._enable
         msg += 'Resource list below...\n'
         for x in self._resource.keys():
             msg += "%s => %s\n" % (x,self._resource[x])

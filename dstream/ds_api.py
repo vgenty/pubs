@@ -237,6 +237,42 @@ class ds_reader(pubdb_reader):
                                            enable   = True ) )
         return info_array
 
+    ## Fetch a list of all projects for execution. Return is an array of ds_project.
+    def list_all_projects(self):
+
+        query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Enabled,Resource'
+        query += ' FROM ListProject()'
+
+        self.execute(query)
+        
+        info_array = []
+
+        if not self.nrows() or self.nrows() <= 0: return info_array
+
+        for x in self:
+
+            resource = {}
+
+            # handle resource string conversion into a map
+            if x[7]:
+
+                for y in x[7].split(','):
+
+                    tmp = y.split("=>")
+
+                    exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+
+            info_array.append( ds_project( project  = x[0],
+                                           command  = x[1],
+                                           period   = int(x[2]),
+                                           run      = int(x[3]),
+                                           subrun   = int(x[4]),
+                                           email    = x[5],
+                                           enable   = x[6], 
+                                           resource = resource ) )
+            print "/d/d G'aaaahhh! enable is " + str(x[6])
+        return info_array
+
     ## Fetch DAQ run start/end time stamp
     def run_timestamp(self,run,subrun):
 
