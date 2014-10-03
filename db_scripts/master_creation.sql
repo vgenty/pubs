@@ -424,7 +424,7 @@ project_ver INT;
 query       TEXT;
 myBool      BOOLEAN;
 BEGIN
-  
+
   -- Make sure project exists in ProcessTable
   SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO myBool;
   IF myBool IS NULL THEN
@@ -702,7 +702,8 @@ CREATE OR REPLACE FUNCTION ProjectInfo( project_name TEXT,
 					 	      	StartSubRun INT,
 					   	      	Email TEXT, 
 					   	      	Resource HSTORE,
-					   	      	ProjectVer SMALLINT) AS $$
+					   	      	ProjectVer SMALLINT,
+							Enabled BOOLEAN) AS $$
 DECLARE
 is_there BOOLEAN;
 BEGIN
@@ -718,7 +719,8 @@ BEGIN
   END IF;
 
   RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.StartRun, 
-  	       	      A.StartSubRun, A.Email, A.Resource, A.ProjectVer 
+  	       	      A.StartSubRun, A.Email, A.Resource, A.ProjectVer,
+		      A.Enabled
 		      FROM ProcessTable AS A 
 		      WHERE A.Project = project_name AND A.ProjectVer = project_ver;
 END;

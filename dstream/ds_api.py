@@ -168,7 +168,7 @@ class ds_reader(pubdb_reader):
         if not self.project_exist(project):
             self._logger.error('Project %s does not exist!' % project)
 
-        query = 'SELECT Command, Frequency, StartRun, StartSubRun, Email, Resource, ProjectVer'
+        query = 'SELECT Command, Frequency, StartRun, StartSubRun, Email, Resource, ProjectVer, Enabled'
 
         if field_name:
             
@@ -200,7 +200,8 @@ class ds_reader(pubdb_reader):
                           subrun   = x[3],
                           email    = x[4],
                           resource = resource,
-                          ver      = x[6])
+                          ver      = x[6],
+                          enable   = x[7])
         
     ## Fetch a list of enabled projects for execution. Return is an array of ds_project.
     def list_projects(self):
@@ -461,8 +462,8 @@ class ds_master(pubdb_writer,ds_reader):
             
             if not self._ask_binary(): return False;
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\');'
-        query = query % ( info._project, info._command, info._period, info._email )
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\',\'\',%s);'
+        query = query % ( info._project, info._command, info._period, info._email,str(info._enable).upper() )
 
         return self.commit(query)
 
