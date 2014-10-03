@@ -26,7 +26,7 @@ myparser.add_argument('--contact',dest='email',action='store',
                       help='contact email address')
 
 myparser.add_argument('--enable',dest='enable',action='store',
-                      default=True,type=bool,
+                      default='DEFAULT',type=str,
                       help='enable this project')
 
 args = myparser.parse_args()
@@ -36,7 +36,6 @@ logger = pub_logger.get_logger('define_project')
 # DB interface for altering ProcessTable
 k=ds_master(pubdb_conn_info.writer_info(), logger)
             
-
 # Connect to DB
 k.connect()
 
@@ -55,7 +54,12 @@ if args.period:
 if args.email:
     orig_info._email = args.email
 
-orig_info._enable = args.enable
+if not args.enable == 'DEFAULT':
+    if not args.enable in ['True','False','0','1']:
+        logger.error("--enable argument must be 'True' or 'False' (you provided: '%s')" % args.enable)
+        sys.exit(1)
+    else:
+        exec("orig_info._enable = bool(%s)" % args.enable)
 
 # Define a project
 k.update_project( orig_info )
