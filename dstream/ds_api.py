@@ -16,6 +16,7 @@ from pub_dbi      import pubdb_reader, pubdb_writer
 # dstream import
 from ds_data      import ds_status, ds_project
 from ds_exception import DSException
+from datetime     import datetime
 
 ## @class ds_reader 
 # @brief Most basic read-only API for dstream database
@@ -598,13 +599,13 @@ class death_star(ds_master):
     def insert_into_death_star(self,run,subrun,ts_start,ts_end):
 
         try:
-            time.strptime(str(ts_start),"%Y-%m-%d %H:%M:%S")
-            time.strptime(str(ts_end),"%Y-%m-%d %H:%M:%S")
+            datetime.strptime(str(ts_start),"%Y-%m-%d %H:%M:%S")
+            datetime.strptime(str(ts_end),"%Y-%m-%d %H:%M:%S")
         except ValueError:
             self.error('TimeStamp not in the right format! (must be %Y-%m-%d %H:%M:%S)')
             return False
 
-        query = 'SELECT InsertIntoTestRunTable(%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP'
+        query = 'SELECT InsertIntoTestRunTable(%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)'
         
         query = query % (run,subrun,str(ts_start),str(ts_end))
 
