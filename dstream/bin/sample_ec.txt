@@ -1,0 +1,38 @@
+
+#
+# Comment
+#
+
+PROJECT_BEGIN
+NAME     mv_assembler_daq_files
+COMMAND  python dstream/mv_assembler_daq_files.py
+CONTACT  echurch@fnal.gov
+PERIOD   30
+RUN      1
+SUBRUN   1
+ENABLE   True
+RESOURCE NRUNS => 2
+RESOURCE INDIR => /data/echurch/test_dir
+RESOURCE OUTDIR => /data/echurch/out_dir
+RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_assembler.bin
+RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
+PROJECT_END
+
+PROJECT_BEGIN
+NAME     get_assembler_metadata
+COMMAND  python dstream/get_assembler_metadata.py
+CONTACT  echurch@fnal.gov
+PERIOD   30
+RUN      1
+SUBRUN   1
+ENABLE   True
+RESOURCE SOURCE_PROJECT => mv_assembler_daq_files
+RESOURCE NRUNS => 10
+RESOURCE INDIR => /data/echurch/out_dir
+RESOURCE OUTDIR => /data/echurch/out_dir
+RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.bin
+RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.json
+PROJECT_END
+
+
+

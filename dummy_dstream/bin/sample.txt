@@ -6,7 +6,7 @@
 PROJECT_BEGIN
 NAME     dummy_daq
 COMMAND  python dummy_dstream/dummy_daq.py
-CONTACT  kazuhiro@nevis.columbia.edu
+CONTACT  echurch@fnal.gov
 PERIOD   120
 RUN      1
 SUBRUN   1
@@ -19,7 +19,7 @@ PROJECT_END
 PROJECT_BEGIN
 NAME     dummy_nubin_xfer
 COMMAND  python dummy_dstream/dummy_nubin_xfer.py
-CONTACT  kazuhiro@nevis.columbia.edu
+CONTACT  echurch@fnal.gov
 PERIOD   30
 RUN      1
 SUBRUN   1
