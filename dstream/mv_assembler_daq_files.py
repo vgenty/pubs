@@ -47,6 +47,7 @@ class mv_assembler_daq_files(ds_project_base):
             self._nruns = int(resource['NRUNS'])
             self._out_dir = '%s' % (resource['OUTDIR'])
             self._in_dir = '%s' % (resource['INDIR'])
+            self._infile_format = resource['INFILE_FORMAT']
             self._outfile_format = resource['OUTFILE_FORMAT']
 
         ctr = self._nruns
@@ -62,8 +63,9 @@ class mv_assembler_daq_files(ds_project_base):
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-#            os.symlink(glob.glob(self._in_dir+'/annex-29Apr2014-INT-trig-'+str(run)+'-'+str(subrun)+'*')[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
-            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
+            os.symlink(glob.glob(self._in_dir+'/annex-29Apr2014-INT-trig-'+str(run)+'-'+str(subrun)+'*')[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
+# In the end, use the line below rather than the one above.
+#            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
 
 
             # Pretend I'm doing something

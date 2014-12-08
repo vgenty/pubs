@@ -4,7 +4,7 @@
 #  @author kazuhiro
 
 # python include
-import time, os, shutil
+import time, os, shutil, sys, gc
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -12,8 +12,8 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from ROOT import *
-import time
-import json
+import time, json
+
 
 ## @class dummy_nubin_xfer
 #  @brief A dummy nu bin file xfer project
@@ -39,6 +39,12 @@ class get_assembler_metadata(ds_project_base):
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
+        self._jrun = 0
+        self._jsubrun = 0
+        self._jstime = 0
+        self._jsnsec = 0
+        self._jetime = 0
+        self._jensec = 0
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -46,9 +52,9 @@ class get_assembler_metadata(ds_project_base):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-        self._out_dir = '%s/%s' % (os.environ['PUB_TOP_DIR'],resource['OUTDIR'])
+        self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
-        self._in_dir = '%s/%s' % (os.environ['PUB_TOP_DIR'],resource['INDIR'])
+        self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['SOURCE_PROJECT']
 
@@ -64,13 +70,15 @@ class get_assembler_metadata(ds_project_base):
         if self._nruns is None:
             self.get_resource()
 
+        self.info('Here, self._nruns=%d ... ' % (self._nruns))
+
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project,self._parent_project],
                                       [1,0]):
 
             # Counter decreases by 1
-            ctr -=1
+            ctr -= 1
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
@@ -82,23 +90,51 @@ class get_assembler_metadata(ds_project_base):
             # Check input file exists. Otherwise report error
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+
+# Any effort to read a 2nd file brings a system error, even with all garbage collecting below. So run this with only NRUNS=1
+# Further, any effort -- sometimes -- to construct a second Integral object and/or run integrate() a 2nd time does the same. So, note
+# we get start and end time from the last event.
+
             if os.path.isfile(in_file):
+                self.info('Found %s' % (in_file))
 #                shutil.copyfile(in_file,out_file)
-                d = DaqFile(in_file)
-                i = Integral()
-                i.integrate(d.GetEventObj(1))
-                r = i.m_run
-                s = i.m_subrun
-                t = time.ctime(i.m_time_of_first_event.GetSec())
-#                t0 = time.ctime(i0.m_time_of_cur_event.GetSec())
 
-                jsonData={'filename': in_file, 'run': r, 'subrun': s, 'time': t}
-                print jsonData
+                try:
+                    d = DaqFile(in_file)
+                    e = d.GetEventObj(d.NumEvents()-1) 
+                    integ = Integral()
+                    integ.integrate(d.GetEventObj(d.NumEvents()-1))
+                    self._jrun = integ.m_run
+                    self._jsubrun = integ.m_subrun
+                    self._jetime = time.ctime(integ.m_time_of_cur_event)
+                    self._jensec = time.ctime(integ.m_time_of_cur_event.GetNanoSec())
+#                    del integ
+#                    gc.collect()
+#                    e2 = d.GetEventObj(0)
+#                    integ = Integral()
+#                    integ.integrate(d.GetEventObj(0))
+                    self._jstime = time.ctime(integ.m_time_of_first_event)
+                    self._jsnsec = time.ctime(integ.m_time_of_first_event.GetNanoSec())
 
-                with open(out_file, 'w') as ofile:
-                    json.dump(jsonData, ofile, sort_keys = True, indent = 4,
-                              ensure_ascii=False)
-                status = 2
+#                    del e2
+                    del integ, e, d
+                    gc.collect()
+
+                except:
+                    print "Unexpected error:", sys.exc_info()[0]
+                    # print "Give some null properties to this meta data"
+                    print "Give this file a status 100"
+                    status = 100
+                    
+
+                jsonData={'filename': in_file, 'run': self._jrun, 'subrun': self._jsubrun, 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'fileFormat': 'BinaryAssembler', 'group': 'uboone'}
+#                print jsonData
+
+                if not status==100:
+                    with open(out_file, 'w') as ofile:
+                        json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
+                        status = 2
+
             else:
                 status = 100
 
@@ -147,7 +183,7 @@ class get_assembler_metadata(ds_project_base):
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
             if os.path.isfile(out_file):
-                os.system('rm %s' % in_file)
+#                os.system('rm %s' % in_file)
                 status = 0
             else:
                 status = 100
@@ -217,9 +253,7 @@ class get_assembler_metadata(ds_project_base):
 
 # A unit test section
 if __name__ == '__main__':
-
     gSystem.Load("libudata_types.so")
-
     test_obj = get_assembler_metadata()
 
     test_obj.process_newruns()
