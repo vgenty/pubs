@@ -4,15 +4,14 @@
 #  @author kazuhiro
 
 # python include
-import time, os, shutil, sys, gc
+import time, os, shutil, sys
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ROOT import *
-import time, json
+import samweb_cli
 
 
 ## @class dummy_nubin_xfer
@@ -21,17 +20,17 @@ import time, json
 #  This project opens daq bin files mv'd by mv_assembler_daq_files project, opens it and extracts some metadata,\n
 #  stuffs this into and writes out a json file.
 #  Next process registers the file with samweb *.ubdaq and mv's it to a dropbox directory for SAM to whisk it away...
-class get_assembler_metadata(ds_project_base):
+class reg_assembler_files_with_sam(ds_project_base):
 
 
     # Define project name as class attribute
-    _project = 'get_assembler_metadata'
+    _project = 'reg_assembler_files_with_sam'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
         # Call base class ctor
-        super(get_assembler_metadata,self).__init__()
+        super(reg_assembler_files_with_sam,self).__init__()
 
         self._nruns = None
         self._out_dir = ''
@@ -39,12 +38,6 @@ class get_assembler_metadata(ds_project_base):
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
-        self._jrun = 0
-        self._jsubrun = 0
-        self._jstime = 0
-        self._jsnsec = 0
-        self._jetime = 0
-        self._jensec = 0
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -89,37 +82,20 @@ class get_assembler_metadata(ds_project_base):
             
             # Check input file exists. Otherwise report error
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
-
-# Any effort to read a 2nd file brings a system error, even with all garbage collecting below. So run this with only NRUNS=1
-# Further, any effort -- sometimes -- to construct a second Integral object and/or run integrate() a 2nd time does the same. So, note
-# we get start and end time from the last event.
+            json_file = in_file.replace("ubdaq","json")
+            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun)) # out_dir is the dropbox.
 
             if os.path.isfile(in_file):
                 self.info('Found %s' % (in_file))
-#                shutil.copyfile(in_file,out_file)
 
                 try:
-                    d = DaqFile(in_file)
-                    e = d.GetEventObj(d.NumEvents()-1) 
-                    integ = Integral()
-                    integ.integrate(d.GetEventObj(d.NumEvents()-1))
-                    self._jrun = integ.m_run
-                    self._jsubrun = integ.m_subrun
-                    self._jetime = time.ctime(integ.m_time_of_cur_event)
-                    self._jensec = time.ctime(integ.m_time_of_cur_event.GetNanoSec())
-#                    del integ
-#                    gc.collect()
-#                    e2 = d.GetEventObj(0)
-#                    integ = Integral()
-#                    integ.integrate(d.GetEventObj(0))
-                    self._jstime = time.ctime(integ.m_time_of_first_event)
-                    self._jsnsec = time.ctime(integ.m_time_of_first_event.GetNanoSec())
-
-#                    del e2
-                    del integ, e, d
-                    gc.collect()
-
+                    shutil.copyfile(in_file,out_file)
+                    # native SAM python call, instead of a system call
+                    samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                    # get certs?
+                    # metadata already validated in get_assembler_metadata_file.py
+                    # uncomment below when we have legit metadata to declare 
+                    # samweb.declareFile(json_file)
                 except:
                     print "Unexpected error:", sys.exc_info()[0]
                     # print "Give some null properties to this meta data"
@@ -127,14 +103,6 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
 
-                jsonData={'file_name': in_file, 'file_date': str(self._jetime), 'file_size': 0, 'run': self._jrun, 'subrun': self._jsubrun, 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'fileFormat': 'BinaryAssembler', 'group': 'uboone'}
-#                print jsonData
-
-                if not status==100:
-                    with open(out_file, 'w') as ofile:
-                        json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-#                        samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registerd
-                        status = 2
 
 
             else:
@@ -256,7 +224,7 @@ class get_assembler_metadata(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
     gSystem.Load("libudata_types.so")
-    test_obj = get_assembler_metadata()
+    test_obj = reg_assembler_files_with_sam()
 
     test_obj.process_newruns()
 

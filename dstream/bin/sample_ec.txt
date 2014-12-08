@@ -34,5 +34,21 @@ RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
 RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.json
 PROJECT_END
 
+PROJECT_BEGIN
+NAME     reg_assembler_files_with_sam
+COMMAND  python dstream/reg_assembler_files_with_sam.py
+CONTACT  echurch@fnal.gov
+PERIOD   30
+RUN      1
+SUBRUN   1
+ENABLE   True
+RESOURCE SOURCE_PROJECT => get_assembler_metadata
+RESOURCE NRUNS => 3
+RESOURCE INDIR => /data/echurch/out_dir
+RESOURCE OUTDIR => /data/echurch/out_dir/sam # /uboone/data/uboonepro/raw/assembler, eventually
+RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
+RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
+PROJECT_END
+
 
 
