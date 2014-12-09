@@ -13,6 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from ROOT import *
 import time, json
+import samweb_cli
 
 
 ## @class dummy_nubin_xfer
@@ -126,14 +127,15 @@ class get_assembler_metadata(ds_project_base):
                     print "Give this file a status 100"
                     status = 100
                     
-
-                jsonData={'file_name': in_file, 'file_date': str(self._jetime), 'file_size': 0, 'run': self._jrun, 'subrun': self._jsubrun, 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'fileFormat': 'BinaryAssembler', 'group': 'uboone'}
+                fsize = os.path.getsize(in_file)
+                jsonData={'file_name': in_file, 'file_type"': 'importedDetector', 'fileFormat': 'raw', 'file_size': fsize,  "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone'} } }
 #                print jsonData
 
                 if not status==100:
                     with open(out_file, 'w') as ofile:
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-#                        samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registerd
+                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
+#                        samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registered
                         status = 2
 
 
