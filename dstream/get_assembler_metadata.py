@@ -13,7 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from ROOT import *
 import time, json
-import samweb_cli
+#import samweb_cli
 
 
 ## @class dummy_nubin_xfer
@@ -92,33 +92,36 @@ class get_assembler_metadata(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-# Any effort to read a 2nd file brings a system error, even with all garbage collecting below. So run this with only NRUNS=1
-# Further, any effort -- sometimes -- to construct a second Integral object and/or run integrate() a 2nd time does the same. So, note
-# we get start and end time from the last event.
+# Any effort to read a 2nd evt brings a system error, without all garbage collecting below and re-instantiating DaqFile(). 
+# Further, any effort -- sometimes -- to construct a second Integral object and/or run integrate() a 2nd time does the same. 
 
+#
+# Looks fine now, but if there are new troubles: run this project with NRUNS=1
+#
             if os.path.isfile(in_file):
                 self.info('Found %s' % (in_file))
 #                shutil.copyfile(in_file,out_file)
 
                 try:
                     d = DaqFile(in_file)
-                    e = d.GetEventObj(d.NumEvents()-1) 
+#                    e = d.GetEventObj(d.NumEvents()-1) 
                     integ = Integral()
                     integ.integrate(d.GetEventObj(d.NumEvents()-1))
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
                     self._jetime = time.ctime(integ.m_time_of_cur_event)
                     self._jensec = time.ctime(integ.m_time_of_cur_event.GetNanoSec())
-#                    del integ
-#                    gc.collect()
+                    del integ, d
+                    gc.collect()
+                    d = DaqFile(in_file)
 #                    e2 = d.GetEventObj(0)
-#                    integ = Integral()
-#                    integ.integrate(d.GetEventObj(0))
+                    integ = Integral()
+                    integ.integrate(d.GetEventObj(0))
                     self._jstime = time.ctime(integ.m_time_of_first_event)
                     self._jsnsec = time.ctime(integ.m_time_of_first_event.GetNanoSec())
 
 #                    del e2
-                    del integ, e, d
+                    del integ, d
                     gc.collect()
 
                 except:
@@ -128,13 +131,13 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': in_file, 'file_type"': 'importedDetector', 'fileFormat': 'raw', 'file_size': fsize,  "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone'} } }
+                jsonData={'file_name': in_file, 'file_type': 'importedDetector', 'fileFormat': 'raw', 'file_size': fsize,  "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone'} } }
 #                print jsonData
 
                 if not status==100:
                     with open(out_file, 'w') as ofile:
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
+#                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
 #                        samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registered
                         status = 2
 
