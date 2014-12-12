@@ -13,7 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from ROOT import *
 import time, json
-#import samweb_cli
+import samweb_cli
 
 
 ## @class dummy_nubin_xfer
@@ -103,25 +103,33 @@ class get_assembler_metadata(ds_project_base):
 #                shutil.copyfile(in_file,out_file)
 
                 try:
+
                     d = DaqFile(in_file)
-#                    e = d.GetEventObj(d.NumEvents()-1) 
+                    e = d.GetEventObj(d.NumEvents()-1) 
                     integ = Integral()
+                    print "Load last event in file."
                     integ.integrate(d.GetEventObj(d.NumEvents()-1))
+                    print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
                     self._jetime = time.ctime(integ.m_time_of_cur_event)
                     self._jensec = time.ctime(integ.m_time_of_cur_event.GetNanoSec())
-                    del integ, d
+                    del integ
+                    del e
+                    del d
                     gc.collect()
                     d = DaqFile(in_file)
-#                    e2 = d.GetEventObj(0)
+                    e2 = d.GetEventObj(0)
                     integ = Integral()
+                    print "Load first event in file."
                     integ.integrate(d.GetEventObj(0))
+                    print "Loaded"
                     self._jstime = time.ctime(integ.m_time_of_first_event)
                     self._jsnsec = time.ctime(integ.m_time_of_first_event.GetNanoSec())
 
-#                    del e2
-                    del integ, d
+                    del integ
+                    del e2
+                    del d
                     gc.collect()
 
                 except:
@@ -137,9 +145,14 @@ class get_assembler_metadata(ds_project_base):
                 if not status==100:
                     with open(out_file, 'w') as ofile:
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-#                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
-#                        samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registered
-                        status = 2
+                        try:
+                            samweb = samweb_cli.SAMWebClient(experiment="uboone")
+#                            samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registered
+                            status = 2
+                        except:
+                            print "Problem with samweb metadata: ", jsonData
+                            print sys.exc_info()[0]
+                            status=100
 
 
             else:

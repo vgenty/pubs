@@ -30,3 +30,4 @@ export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
 
 export PUB_PSQL_READER_USER=postgres
 export PUB_PSQL_WRITER_USER=postgres
+setup sam_web_client

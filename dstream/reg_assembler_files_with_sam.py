@@ -95,9 +95,9 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # get certs?
                     # metadata already validated in get_assembler_metadata_file.py
                     # uncomment below when we have legit metadata to declare 
-                    # samweb.declareFile(json_file)
+                    samweb.declareFile(json_file)
                 except:
-                    print "Unexpected error:", sys.exc_info()[0]
+                    print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
                     # print "Give some null properties to this meta data"
                     print "Give this file a status 100"
                     status = 100
