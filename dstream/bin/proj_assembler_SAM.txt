@@ -22,12 +22,12 @@ PROJECT_BEGIN
 NAME     get_assembler_metadata
 COMMAND  python dstream/get_assembler_metadata.py
 CONTACT  echurch@fnal.gov
-PERIOD   30
+PERIOD   10
 RUN      1
 SUBRUN   1
 ENABLE   True
 RESOURCE SOURCE_PROJECT => mv_assembler_daq_files
-RESOURCE NRUNS => 3
+RESOURCE NRUNS => 1
 RESOURCE INDIR => /data/echurch/out_dir
 RESOURCE OUTDIR => /data/echurch/out_dir
 RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
@@ -45,7 +45,7 @@ ENABLE   True
 RESOURCE SOURCE_PROJECT => get_assembler_metadata
 RESOURCE NRUNS => 3
 RESOURCE INDIR => /data/echurch/out_dir
-RESOURCE OUTDIR => /data/echurch/out_dir/sam # /uboone/data/uboonepro/raw/assembler, eventually
+RESOURCE OUTDIR => /data/echurch/out_dir/sam # /pnfs/uboone/data/uboonepro/raw/assembler, eventually
 RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
 RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_RAW_near1.ubdaq
 PROJECT_END

@@ -4,7 +4,7 @@
 #  @author kazuhiro
 
 # python include
-import time, os, shutil, sys
+import time, os, shutil, sys, subprocess
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -84,6 +84,14 @@ class reg_assembler_files_with_sam(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             json_file = in_file.replace("ubdaq","json")
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun)) # out_dir is the dropbox.
+            defname = 'AssemblerRawBinary'
+            dim = 'file_type %s' % 'data'
+            dim = dim + ' and data_tier %s' % 'raw'
+#            dim = dim + ' and ub_project.name %s' % project.name
+#            dim = dim + ' and ub_project.stage %s' % stage.name
+            dim = dim + ' and ub_project.version %s' % 'uboonedaq v6_00_01'  # generalize
+            dim = dim + ' and availability: anylocation'
+
 
             if os.path.isfile(in_file):
                 self.info('Found %s' % (in_file))
@@ -92,10 +100,13 @@ class reg_assembler_files_with_sam(ds_project_base):
                     shutil.copyfile(in_file,out_file)
                     # native SAM python call, instead of a system call
                     samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                    # get certs?
+                    # make sure you've done get-cert
                     # metadata already validated in get_assembler_metadata_file.py
                     # uncomment below when we have legit metadata to declare 
-                    samweb.declareFile(json_file)
+#                    samweb.declareFile(md=json_file)
+#                    samweb.createDefinition(defname=defname, dims=dim)
+                    subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
+                    status = 2
                 except:
                     print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
                     # print "Give some null properties to this meta data"
@@ -223,7 +234,7 @@ class reg_assembler_files_with_sam(ds_project_base):
 
 # A unit test section
 if __name__ == '__main__':
-    gSystem.Load("libudata_types.so")
+
     test_obj = reg_assembler_files_with_sam()
 
     test_obj.process_newruns()

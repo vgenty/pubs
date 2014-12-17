@@ -113,7 +113,7 @@ class get_assembler_metadata(ds_project_base):
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
                     self._jetime = time.ctime(integ.m_time_of_cur_event)
-                    self._jensec = time.ctime(integ.m_time_of_cur_event.GetNanoSec())
+                    self._jensec = integ.m_time_of_cur_event.GetNanoSec()
                     del integ
                     del e
                     del d
@@ -125,7 +125,7 @@ class get_assembler_metadata(ds_project_base):
                     integ.integrate(d.GetEventObj(0))
                     print "Loaded"
                     self._jstime = time.ctime(integ.m_time_of_first_event)
-                    self._jsnsec = time.ctime(integ.m_time_of_first_event.GetNanoSec())
+                    self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
 
                     del integ
                     del e2
@@ -139,7 +139,7 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': in_file, 'file_type': 'importedDetector', 'fileFormat': 'raw', 'file_size': fsize,  "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone'} } }
+                jsonData={'file_name': in_file, 'file_type': "data", 'file_size': fsize, 'fileFormat': "binaryraw-compressed", 'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone', "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } } }
 #                print jsonData
 
                 if not status==100:
@@ -147,7 +147,7 @@ class get_assembler_metadata(ds_project_base):
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
                         try:
                             samweb = samweb_cli.SAMWebClient(experiment="uboone")
-#                            samweb.validateFileMetadata(json_file)  # uncomment when metadata is properly vetted and itself registered
+#                            samweb.validateFileMetadata(json_file) # this throws/raises exception
                             status = 2
                         except:
                             print "Problem with samweb metadata: ", jsonData
