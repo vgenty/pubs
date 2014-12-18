@@ -30,5 +30,7 @@ export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
 
 export PUB_PSQL_READER_USER=postgres
 export PUB_PSQL_WRITER_USER=postgres
+source /home/echurch/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 setup sam_web_client
 setup ifdhc
+setup ubutil v01_08_01 -qe6:prof
