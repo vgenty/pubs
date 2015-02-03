@@ -5,7 +5,10 @@
 
 # python include
 import time, os, shutil, sys, subprocess, string
-# below requires setting up ubutil
+# below requires setting up ubutil. This is non-trivial in that it requires setting up a modern-era art, which
+# in turn wants modern root, gccxml, cppunit, clhep, something called tbb, .... This is available, or soon will be,
+# on the ubdaq-prod- machines, but is not yet available on uboonedaq-evb. Note that I can import project_utilities
+# just fine on uboonegpvm01, for instance.
 import project_utilities, root_metadata
 
 # pub_dbi package include

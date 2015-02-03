@@ -653,6 +653,11 @@ DROP FUNCTION IF EXISTS OneProjectRunSynch( project      TEXT,
 					    start_run    INT,
 					    start_subrun INT );
 
+--
+-- This function will get a new argument and codechanges such that MainRun -> OnlineDAQdb.MainRun below, and then
+-- we will get our mainruns from the table the DAQ is actually filling from assemblerApp and sebApp.
+--
+
 CREATE OR REPLACE FUNCTION OneProjectRunSynch( project      TEXT,
 					       project_ver  SMALLINT,
 					       start_run    INT,
