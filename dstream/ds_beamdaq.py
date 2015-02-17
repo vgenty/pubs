@@ -17,6 +17,8 @@ from dstream import ds_status
 #  @brief Script that fetches beam data
 #  @details
 #  Scripts gets the beam date between tbegin and tend for each (run, subrun)
+#  We also create a second json file here which is identical to the original one
+#  from which we get the mentioned-tbegin and tend, but fills out the beam data.
 
 class ds_beamdaq(ds_project_base):
 
@@ -34,6 +36,7 @@ class ds_beamdaq(ds_project_base):
         self._infofile = ''
         self._jsondir  = ''
         self._jsonfile = ''
+        self._jsonfile_out = ''
 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -53,6 +56,7 @@ class ds_beamdaq(ds_project_base):
             self._infofile = resource['INFOFILE']
             self._jsondir  = resource['JSONDIR']
             self._jsonfile = resource['JSONFILE']
+            self._jsonfile_out = resource['JSONFILEOUT']
 
         ctr = self._nruns
         for x in self.get_runs(self._project,1):
@@ -64,14 +68,26 @@ class ds_beamdaq(ds_project_base):
             subrun = int(x[1])
 
             jsonfname='%s/%s'%(self._jsondir,self._jsonfile%(run,subrun))
+            jsonfname_out='%s/%s'%(self._jsondir,self._jsonfile_out%(run,subrun))
             if (not os.path.isfile(jsonfname)):
                 self.info('Waiting for json file %s'%jsonfname)
                 continue
             json_file=open(jsonfname)
             json_data=json.load(json_file)
 
+            # For now, let's over-ride the begin, end times, cuz those we're getting
+            # from the DAQ test subruns may be garbage or have no corresponding beamdata.
+            # EC, 13-Feb-2015.
             tbegin=datetime.datetime.strptime(json_data["stime"], "%a %b %d %H:%M:%S %Z %Y")
             tend=datetime.datetime.strptime(json_data["etime"], "%a %b %d %H:%M:%S %Z %Y")
+            json_file.close()
+
+            json_file=open(jsonfname_out)
+            json_data=json.load(json_file)
+            # Fill in what had formerly been placeholders with known beam data.
+#            json_data["params"]: { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward" } }
+            json_data.dump()
+            json.dump(json_data, json_file, sort_keys = True, indent = 4, ensure_ascii=False)
             json_file.close()
 
             # Report starting
@@ -122,8 +138,15 @@ class ds_beamdaq(ds_project_base):
             status = 0
             
             fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
-            
+            jsonfname_out='%s/%s'%(self._jsondir,self._jsonfile_out%(run,subrun)) 
             self.info('Parse info file %s and check created files'%fname)
+            self.info('Parse json_out file %s'%jsonfname_out)
+
+            if os.path.isfile('%s/%s' % (self._jsondir, self._jsonfile_out % (run,subrun))):
+                self.info('beam json file created: run=%d, subrun=%d ...' % (run,subrun))
+            else:
+                self.error('error with json output file on run: run=%d, subrun=%d ...' % (run,subrun))
+                status = 1
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,

@@ -15,6 +15,7 @@ from ROOT import *
 import time, json
 import samweb_cli
 
+gSystem.Load("libudata_types.so")
 
 ## @class dummy_nubin_xfer
 #  @brief A dummy nu bin file xfer project
