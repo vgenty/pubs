@@ -67,7 +67,7 @@ class ds_transfer(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs([self._project,'dummy_daq'],
+        for x in self.get_xtable_runs([self._project,'mainrun'],
                                       [1,0]):
 #        for x in self.get_runs(self._project,1):
 
