@@ -15,6 +15,8 @@ export PUB_SMTP_ACCT=drinkingkazu.pubs@gmail.com
 export PUB_SMTP_SRVR=smtp.gmail.com:587
 export PUB_SMTP_PASS=pubs.drinkingkazu
 
+export PUB_INDIR="/Users/yuntse/Data/uboone/pubs/test_in"
+export PUB_OUTDIR="/Users/yuntse/Data/uboone/pubs/test_out"
 #export PUB_SMTP_ACCT=drinkingkazu.pubs@aho.com
 #export PUB_SMTP_SRVR=smtp.gmail.com:tako
 #export PUB_SMTP_PASS=pubs.drinkingkazuak
