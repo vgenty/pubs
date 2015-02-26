@@ -9,7 +9,7 @@
 # 3: job submitted
 
 # python include
-import time,os
+import time,os,sys
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -52,7 +52,7 @@ class dummy_prod(ds_project_base):
         # Main command
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
-        self.info( cmd )
+        self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
         print "submit cmd: %s" % cmd
         # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
         jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
@@ -230,7 +230,7 @@ class dummy_prod(ds_project_base):
             raise
         arg = arg%10
         if not arg in self.__class__.PROD_STATUS:
-            print "HEY this is not a valid status code!:",arg
+            self.error( 'HEY this is not a valid status code!: %d' % arg )
         return arg
     # def __decode_status__()
 
@@ -238,7 +238,13 @@ class dummy_prod(ds_project_base):
     _project = 'dummy_prod'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self):
+    def __init__( self, arg = '' ):
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         # Call base class ctor
         super(dummy_prod,self).__init__()
@@ -325,7 +331,6 @@ class dummy_prod(ds_project_base):
 
                     # Counter decreases by 1
                     ctr -=1
-                    print "Counter: %d" % ctr
                     # Break from loop if counter became 0
                     if ctr < 0: return
         return
@@ -334,7 +339,9 @@ class dummy_prod(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = dummy_prod()
+    proj_name = sys.argv[1]
+
+    test_obj = dummy_prod(proj_name)
 
     test_obj.process()
 
