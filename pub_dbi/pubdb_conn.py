@@ -45,10 +45,11 @@ class pubdb_conn(object):
         cls._check_logger()
         conn_index = cls._check_conn_info_exist(conn_info)
         if conn_index < 0:
-            cls._logger.critical('Never existed connection: (%s,%s,%s,%s)' % (conn_info._host,
-                                                                              conn_info._db,
-                                                                              conn_info._user,
-                                                                              conn_info._passwd))
+            cls._logger.critical('Never existed connection: (%s,%s,%s,%s,%s)' % (conn_info._host,
+                                                                                 conn_info._port,
+                                                                                 conn_info._db,
+                                                                                 conn_info._user,
+                                                                                 conn_info._passwd))
             raise DBException()
         else:
             return cls._conn_v[conn_index].closed()
@@ -62,20 +63,35 @@ class pubdb_conn(object):
 
             try:
                 conn = psycopg2.connect(host=conn_info._host,
+                                        port=conn_info._port,
                                         database=conn_info._db,
                                         user=conn_info._user,
                                         password=conn_info._passwd)
                 cls._conn_v.append(conn)
                 cls._conn_info_v.append(copy.copy(conn_info))
-                cls._logger.info('Connected to DB: (%s,%s,%s,%s)' % (conn_info._host,
-                                                                     conn_info._db,
-                                                                     conn_info._user,
-                                                                     conn_info._passwd))
+                cls._logger.info('Connected to DB: (%s,%s,%s,%s,%s)' % (conn_info._host,
+                                                                        conn_info._port,
+                                                                        conn_info._db,
+                                                                        conn_info._user,
+                                                                        conn_info._passwd))
+                if conn_info._role:
+                    cursor = cls.cursor(conn_info)
+                    try:
+                        cursor.execute('SET ROLE %s;' % conn_info._role)
+                        cursor.close()
+                        del cursor
+                    except psycopg2.ProgrammingError as e:
+                        cls._logger.error(e.pgerror)
+                        cursor.close()
+                        del cursor
+                        raise DBException()
+
             except psycopg2.OperationalError as e:
-                cls._logger.critical('Connection failed (%s,%s,%s,%s)' % (conn_info._host,
-                                                                          conn_info._db,
-                                                                          conn_info._user,
-                                                                          conn_info._passwd))
+                cls._logger.critical('Connection failed (%s,%s,%s,%s,%s)' % (conn_info._host,
+                                                                             conn_info._port,
+                                                                             conn_info._db,
+                                                                             conn_info._user,
+                                                                             conn_info._passwd))
                 
                 raise DBException()
             
@@ -86,10 +102,11 @@ class pubdb_conn(object):
         cls._check_logger()
         conn_index = cls._check_conn_info_exist(conn_info)
         if conn_index < 0:
-            cls._logger.critical('Never existed connection: (%s,%s,%s,%s)' % (conn_info._host,
-                                                                              conn_info._db,
-                                                                              conn_info._user,
-                                                                              conn_info._passwd))
+            cls._logger.critical('Never existed connection: (%s,%s,%s,%s,%s)' % (conn_info._host,
+                                                                                 conn_info._port,
+                                                                                 conn_info._db,
+                                                                                 conn_info._user,
+                                                                                 conn_info._passwd))
             raise DBException()
 
         cls._conn_v[x].close()
@@ -103,10 +120,11 @@ class pubdb_conn(object):
 
         conn_index = cls._check_conn_info_exist(conn_info)
         if conn_index < 0:
-            cls._logger.critical('Never existed connection: (%s,%s,%s,%s)' % (conn_info._host,
-                                                                              conn_info._db,
-                                                                              conn_info._user,
-                                                                              conn_info._passwd))
+            cls._logger.critical('Never existed connection: (%s,%s,%s,%s,%s)' % (conn_info._host,
+                                                                                 conn_info._port,
+                                                                                 conn_info._db,
+                                                                                 conn_info._user,
+                                                                                 conn_info._passwd))
             raise DBException()
         cls._conn_v[conn_index].commit()
         return True
