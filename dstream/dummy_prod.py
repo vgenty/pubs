@@ -7,6 +7,8 @@
 import time,os,sys
 # pub_dbi package include
 from pub_dbi import DBException
+# pub_util package include
+from pub_util import pub_smtp
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
@@ -204,6 +206,17 @@ class dummy_prod(ds_project_base):
         elif nSubmit > self._nresubmission:
            # If the sample has been submitted more than a certain number
            # of times, email the expert, and move on to the next stage
+           subject = "MCC jobs fails after %d resubmissions" % nSubmit 
+           text = """
+Sample     : %s
+Stage      : %s
+Events     : %d
+Good events: %d
+Job IDs    : %s
+           """ % ( self._project, self._digit_to_name[istage], nEvents, nGoodEvents, self._data.split(':')[2:] )
+
+           pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+
            statusCode = self.kDONE
            istage += 10
            self._data = "numevents:%d" % nGoodEvents
@@ -315,6 +328,7 @@ class dummy_prod(ds_project_base):
         self._nruns = int(resource['NRUNS'])
         self._xml_file = resource['XMLFILE']
         self._nresubmission = int(resource['NRESUBMISSION'])
+        self._experts = resource['EXPERTS']
 
         try:
             self._stage_names  = resource['STAGE_NAME'].split(':')
