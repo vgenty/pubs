@@ -31,7 +31,9 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
     msg=MIMEMultipart('alternative')
     msg['Subject']=subject
 #    msg['From']=sender
-    msg['To']=", ".join(receiver)
+    recipients = receiver.strip().split(',')
+    msg['To']=", ".join( recipients )
+
     if text.find('<html>')>=0:
         msg.attach(MIMEText(text,'html'))
     else:
@@ -43,11 +45,11 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
     try:
         server.ehlo()
         server.starttls()
-        server.login('drinkingkazu.pubs',"pubs.drinkingkazu")
+        server.login( sender, passwd )
     except Exception as e:
         raise BaseException("SMTP login failure (check login info)! Email cannot be sent...")
     try:
-        server.sendmail(sender,receiver,msg.as_string())
+        server.sendmail(sender, recipients, msg.as_string())
         server.quit()
     except smtplib.SMTPRecipientsRefused as e:
         msg=''
