@@ -74,7 +74,7 @@ class ds_reader(pubdb_reader):
             self._logger.error('ds_status::is_valid() returned False!')
             raise DSException()
 
-        query = 'SELECT Status, Data FROM GetProjectData(\'%s\',%d,%d,%d::SMALLINT);'
+        query = 'SELECT Status, ProjectData FROM GetProjectData(\'%s\',%d,%d,%d::SMALLINT);'
 
         query = query % (info._project, info._run, info._subrun, info._seq)
 
