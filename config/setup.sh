@@ -33,5 +33,5 @@ export PUB_PSQL_WRITER_USER=postgres
 source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 setup sam_web_client
 setup ifdhc
-setup ubutil v01_08_01 -qe6:prof
-setup postgres_client v9_1_7_p2_6
+# setup ubutil v01_08_01 -qe6:prof
+
