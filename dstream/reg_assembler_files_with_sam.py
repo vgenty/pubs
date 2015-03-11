@@ -36,6 +36,7 @@ class reg_assembler_files_with_sam(ds_project_base):
         self._out_dir = ''
         self._outfile_format = ''
         self._in_dir = ''
+        self._meta_dir = ''
         self._infile_format = ''
         self._parent_project = ''
 
@@ -48,8 +49,9 @@ class reg_assembler_files_with_sam(ds_project_base):
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
+        self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
-        self._parent_project = resource['SOURCE_PROJECT']
+        self._parent_project = resource['PARENT_PROJECT']
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -81,9 +83,11 @@ class reg_assembler_files_with_sam(ds_project_base):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            json_file = in_file.replace("ubdaq","json")
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun)) # out_dir is the dropbox.
+            in_file_tmp = self._infile_format % (run,subrun)
+            in_file = '%s/%s' % ( self._in_dir, in_file_tmp )
+            json_file = '%s/%s' %( self._meta_dir, in_file_tmp.replace("ubdaq", "json") )
+            
+            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun)) # out_dir is the dropbox.
             defname = 'AssemblerRawBinary'
             dim = 'file_type %s' % 'data'
             dim = dim + ' and data_tier %s' % 'raw'
@@ -103,8 +107,8 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # make sure you've done get-cert
                     # metadata already validated in get_assembler_metadata_file.py
                     # uncomment below when we have legit metadata to declare 
-#                    samweb.declareFile(md=json_file)
-#                    samweb.createDefinition(defname=defname, dims=dim)
+                    samweb.declareFile(md=json_file)
+                    samweb.createDefinition(defname=defname, dims=dim)
                     subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
                     status = 2
                 except:
