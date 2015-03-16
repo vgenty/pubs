@@ -143,7 +143,7 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event', self._jsevt, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'last_event', self._jeevt, 'etime': str(self._jetime), 'ensec': str(self._jensec), 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
+                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'last_event': self._jeevt, 'etime': str(self._jetime), 'ensec': str(self._jensec), 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
 
