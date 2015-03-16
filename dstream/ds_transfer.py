@@ -52,6 +52,7 @@ class ds_transfer(ds_project_base):
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._name_pattern = resource['NAME_PATTERN']
         self._bwlimit = int(resource['BANDWIDTH_LIMIT'])
+        self._parent_project = resource['PARENT_PROJECT']
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -67,7 +68,7 @@ class ds_transfer(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs([self._project,'dummy_daq'],
+        for x in self.get_xtable_runs([self._project, self._parent_project],
                                       [1,0]):
 #        for x in self.get_runs(self._project,1):
 

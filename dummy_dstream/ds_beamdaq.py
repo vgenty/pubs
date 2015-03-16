@@ -1,10 +1,11 @@
-## @namespace dummy_dstream.dummy_daq
+## @namespace dummy_dstream.ds_beamdaq
 #  @ingroup dummy_dstream
-#  @brief Defines a project dummy_daq
-#  @author kazuhiro
+#  @brief Defines a project ds_beamdaq
+#  @author zarko
 
 # python include
-import time,os,glob
+import time,os,datetime
+import json
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -12,24 +13,27 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 
-## @class dummy_daq
-#  @brief A fake DAQ process that makes a fake nu bin file.
+## @class ds_beamdaq
+#  @brief Script that fetches beam data
 #  @details
-#  This assembler_daq project grabs nu bin data file under $PUB_TOP_DIR/data directory
-class mv_assembler_daq_files(ds_project_base):
+#  Scripts gets the beam date between tbegin and tend for each (run, subrun)
+
+class ds_beamdaq(ds_project_base):
 
     # Define project name as class attribute
-    _project = 'mv_assembler_daq_files'
+    _project = 'ds_beamdaq'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
         # Call base class ctor
-        super(mv_assembler_daq_files,self).__init__()
+        super(ds_beamdaq,self).__init__()
 
-        self._out_file_format = ''
-        self._out_dir = ''
-        self._nruns   = None
+        self._nruns    = None
+        self._infodir  = ''
+        self._infofile = ''
+        self._jsondir  = ''
+        self._jsonfile = ''
 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -44,11 +48,11 @@ class mv_assembler_daq_files(ds_project_base):
 
             resource = self._api.get_resource(self._project)
 
-            self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s' % (resource['OUTDIR'])
-            self._in_dir = '%s' % (resource['INDIR'])
-            self._infile_format = resource['INFILE_FORMAT']
-            self._outfile_format = resource['OUTFILE_FORMAT']
+            self._nruns    = int(resource['NRUNS'])
+            self._infodir  = resource['INFODIR']
+            self._infofile = resource['INFOFILE']
+            self._jsondir  = resource['JSONDIR']
+            self._jsonfile = resource['JSONFILE']
 
         ctr = self._nruns
         for x in self.get_runs(self._project,1):
@@ -59,18 +63,23 @@ class mv_assembler_daq_files(ds_project_base):
             run    = int(x[0])
             subrun = int(x[1])
 
+            jsonfname='%s/%s'%(self._jsondir,self._jsonfile%(run,subrun))
+            if (not os.path.isfile(jsonfname)):
+                self.info('Waiting for json file %s'%jsonfname)
+                continue
+            json_file=open(jsonfname)
+            json_data=json.load(json_file)
+
+            tbegin=datetime.datetime.strptime(json_data["stime"], "%a %b %d %H:%M:%S %Z %Y")
+            tend=datetime.datetime.strptime(json_data["etime"], "%a %b %d %H:%M:%S %Z %Y")
+            json_file.close()
+
             # Report starting
-            self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
+            self.info('Getting beam data: run=%d, subrun=%d' % (run,subrun))
+            self.info('  t0=%s, t1=%s' % (tbegin,tend))
 
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            os.symlink(in_file, ('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
-# In the end, use the line below rather than the one above.
-#            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
-
-
-            # Pretend I'm doing something
-            time.sleep(1)
-
+            cmd='bdaq_get --run-number %i --subrun-number --%i --begin-time %i %i --end-time %i %i'%(run,subrun,int(tbegin.strftime("%s")),0,int(tend.strftime("%s"))+1,0)
+            self.info('Run cmd: %s'%cmd)
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
@@ -99,12 +108,11 @@ class mv_assembler_daq_files(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s/%s' % (os.environ['PUB_TOP_DIR'],resource['OUTDIR'])
-            self._outfile_format = resource['OUTFILE_FORMAT']
+            self._infodir  = resource['INFODIR']
+            self._infofile = resource['INFOFILE']
 
         ctr = self._nruns
-# see if the status=2 files we've processed are indeed where they should be.
-        for x in self.get_runs(self._project,2): 
+        for x in self.get_runs(self._project,2):
 
             # Counter decreases by 1
             ctr -=1
@@ -112,19 +120,10 @@ class mv_assembler_daq_files(ds_project_base):
             run    = int(x[0])
             subrun = int(x[1])
             status = 0
-            if os.path.isfile('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
-# AND os.path.islink('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
-
-                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                
-            else:
-
-                self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-
-                status = 1
-
-            # Pretend I'm doing something
-            time.sleep(1)
+            
+            fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
+            
+            self.info('Parse info file %s and check created files'%fname)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -142,7 +141,7 @@ class mv_assembler_daq_files(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = mv_assembler_daq_files()
+    test_obj = ds_beamdaq()
 
     test_obj.process_newruns()
 

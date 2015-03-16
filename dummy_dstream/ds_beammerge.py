@@ -1,10 +1,11 @@
-## @namespace dummy_dstream.dummy_daq
+## @namespace dummy_dstream.ds_beammerge
 #  @ingroup dummy_dstream
-#  @brief Defines a project dummy_daq
-#  @author kazuhiro
+#  @brief Defines a project ds_beammerge
+#  @author zarko
 
 # python include
-import time,os,glob
+import time,os,datetime
+import json
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -12,24 +13,32 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 
-## @class dummy_daq
-#  @brief A fake DAQ process that makes a fake nu bin file.
+## @class ds_beammerge
+#  @brief Merge beam and detector data
 #  @details
-#  This assembler_daq project grabs nu bin data file under $PUB_TOP_DIR/data directory
-class mv_assembler_daq_files(ds_project_base):
+#  Script merges beam and det binary files
+
+class ds_beammerge(ds_project_base):
 
     # Define project name as class attribute
-    _project = 'mv_assembler_daq_files'
+    _project = 'ds_beammerge'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
         # Call base class ctor
-        super(mv_assembler_daq_files,self).__init__()
+        super(ds_beammerge,self).__init__()
 
-        self._out_file_format = ''
-        self._out_dir = ''
-        self._nruns   = None
+        self._nruns    = None
+        self._infodir  = ''
+        self._infofile = ''
+        self._outdir  = ''
+        self._outfile = ''
+        self._beamdir  = ''
+        self._beamfile = ''
+        self._detdir  = ''
+        self._detfile = ''
+        self._parent_project = ''
 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -44,15 +53,21 @@ class mv_assembler_daq_files(ds_project_base):
 
             resource = self._api.get_resource(self._project)
 
-            self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s' % (resource['OUTDIR'])
-            self._in_dir = '%s' % (resource['INDIR'])
-            self._infile_format = resource['INFILE_FORMAT']
-            self._outfile_format = resource['OUTFILE_FORMAT']
+            self._nruns    = int(resource['NRUNS'])
+            self._infodir  = resource['INFODIR']
+            self._infofile = resource['INFOFILE']
+            self._beamdir  = resource['BEAMDIR']
+            self._beamfile = resource['BEAMFILE']
+            self._detdir  = resource['DETDIR']
+            self._detfile = resource['DETFILE']
+            self._outdir  = resource['OUTDIR']
+            self._outfile = resource['OUTFILE']
+            self._parent_project = resource['PARENT_PROJECT']
 
         ctr = self._nruns
-        for x in self.get_runs(self._project,1):
 
+        for x in self.get_xtable_runs([self._project, self._parent_project], 
+                                      [            1,                    0]):
             # Counter decreases by 1
             ctr -=1
 
@@ -60,17 +75,29 @@ class mv_assembler_daq_files(ds_project_base):
             subrun = int(x[1])
 
             # Report starting
-            self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
+            self.info('Getting info beam data: run=%d, subrun=%d' % (run,subrun))
+            
+            info_file=open('%s/%s'%(self._infodir,self._infofile%(run,subrun)))
+            nfiles=0
+            cmd=''
+            for line in info_file:
+                if "events" in line:
+                    wds=line.split()
+                    if (int(wds[2])>0):
+                        self.info('Merging %i %s events'%(int(wds[2]),wds[0]))
+                        cmd+=' -b %s/%s'%(self._beamdir,self._beamfile%(wds[0],run,subrun))
+                        nfiles+=1
 
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            os.symlink(in_file, ('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
-# In the end, use the line below rather than the one above.
-#            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
+            if (nfiles==0):
+                self.info('No beam events to merge!')
+                return
 
+            cmd+=' -d %s/%s'%(self._detdir,self._detfile%(run,subrun))
+            cmd+=' -o %s/%s'%(self._outdir,self._outfile%(run,subrun))
 
-            # Pretend I'm doing something
-            time.sleep(1)
+            cmd='bdaq_merge '+cmd
 
+            self.info('Run cmd: %s'%cmd)
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
@@ -99,12 +126,11 @@ class mv_assembler_daq_files(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s/%s' % (os.environ['PUB_TOP_DIR'],resource['OUTDIR'])
-            self._outfile_format = resource['OUTFILE_FORMAT']
+            self._infodir  = resource['INFODIR']
+            self._infofile = resource['INFOFILE']
 
         ctr = self._nruns
-# see if the status=2 files we've processed are indeed where they should be.
-        for x in self.get_runs(self._project,2): 
+        for x in self.get_runs(self._project,2):
 
             # Counter decreases by 1
             ctr -=1
@@ -112,19 +138,10 @@ class mv_assembler_daq_files(ds_project_base):
             run    = int(x[0])
             subrun = int(x[1])
             status = 0
-            if os.path.isfile('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
-# AND os.path.islink('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
-
-                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                
-            else:
-
-                self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-
-                status = 1
-
-            # Pretend I'm doing something
-            time.sleep(1)
+            
+            fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
+            
+            self.info('Parse info file %s and check created files'%fname)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -142,7 +159,7 @@ class mv_assembler_daq_files(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = mv_assembler_daq_files()
+    test_obj = ds_beammerge()
 
     test_obj.process_newruns()
 

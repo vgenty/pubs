@@ -60,7 +60,7 @@ class get_assembler_metadata(ds_project_base):
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
-        self._parent_project = resource['SOURCE_PROJECT']
+        self._parent_project = resource['PARENT_PROJECT']
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
