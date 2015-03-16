@@ -17,7 +17,7 @@ import samweb_cli
 
 gSystem.Load("libudata_types.so")
 
-## @class dummy_nubin_xfer
+## @Class dummy_nubin_xfer
 #  @brief A dummy nu bin file xfer project
 #  @details
 #  This project opens daq bin files mv'd by mv_assembler_daq_files project, opens it and extracts some metadata,\n
@@ -47,6 +47,8 @@ class get_assembler_metadata(ds_project_base):
         self._jsnsec = 0
         self._jetime = 0
         self._jensec = 0
+        self._jeevt = -12
+        self._jsevt = -12
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -107,27 +109,28 @@ class get_assembler_metadata(ds_project_base):
 
                     d = DaqFile(in_file)
                     e = d.GetEventObj(d.NumEvents()-1) 
-                    integ = Integral()
+                    integ = Integral(e)
                     print "Load last event in file."
-                    integ.integrate(d.GetEventObj(d.NumEvents()-1))
+                    integ.integrate()
                     print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
                     self._jetime = time.ctime(integ.m_time_of_cur_event)
                     self._jensec = integ.m_time_of_cur_event.GetNanoSec()
+                    self._jeevt = integ.m_event
                     del integ
                     del e
                     del d
                     gc.collect()
                     d = DaqFile(in_file)
                     e2 = d.GetEventObj(0)
-                    integ = Integral()
+                    integ = Integral(e2)
                     print "Load first event in file."
-                    integ.integrate(d.GetEventObj(0))
+                    integ.integrate()
                     print "Loaded"
                     self._jstime = time.ctime(integ.m_time_of_first_event)
                     self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
-
+                    self._jsevt = integ.m_event
                     del integ
                     del e2
                     del d
@@ -140,7 +143,8 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': in_file, 'file_type': "data", 'file_size': fsize, 'fileFormat': "binaryraw-compressed", 'run': self._jrun, 'subrun': self._jsubrun, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'etime': str(self._jetime), 'ensec': str(self._jensec), 'runType': 'data', 'group': 'uboone', "crc": [  "116146095L",   "adler 32 crc type" ], 'data_tier ':'raw', "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } } }
+                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event', self._jsevt, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'last_event', self._jeevt, 'etime': str(self._jetime), 'ensec': str(self._jensec), 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
+#, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
 
                 if not status==100:
@@ -148,13 +152,13 @@ class get_assembler_metadata(ds_project_base):
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
                         try:
                             samweb = samweb_cli.SAMWebClient(experiment="uboone")
-#                            samweb.validateFileMetadata(json_file) # this throws/raises exception
+                            samweb.validateFileMetadata(json_file) # this throws/raises exception
                             status = 2
                         except:
                             print "Problem with samweb metadata: ", jsonData
                             print sys.exc_info()[0]
-                            status=100
-
+                            "                            status=100
+ 
 
             else:
                 status = 100
