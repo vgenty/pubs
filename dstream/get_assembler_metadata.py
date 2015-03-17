@@ -12,7 +12,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from ROOT import *
-import time, json
+import datetime, json
 import samweb_cli
 
 gSystem.Load("libudata_types.so")
@@ -115,7 +115,7 @@ class get_assembler_metadata(ds_project_base):
                     print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
-                    self._jetime = time.ctime(integ.m_time_of_cur_event)
+                    self._jetime = datetime.datetime.fromtimestamp(integ.m_time_of_cur_event).isoformat()
                     self._jensec = integ.m_time_of_cur_event.GetNanoSec()
                     self._jeevt = integ.m_event
                     del integ
@@ -128,7 +128,7 @@ class get_assembler_metadata(ds_project_base):
                     print "Load first event in file."
                     integ.integrate(e2)
                     print "Loaded"
-                    self._jstime = time.ctime(integ.m_time_of_first_event)
+                    self._jstime = datetime.datetime.fromtimestamp(integ.m_time_of_first_event).isoformat()
                     self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
                     self._jsevt = integ.m_event
                     del integ
@@ -143,7 +143,7 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'file_date': str(self._jetime), 'stime': str(self._jstime), 'snsec': str(self._jsnsec), 'last_event': self._jeevt, 'etime': str(self._jetime), 'ensec': str(self._jensec), 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
+                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
 
