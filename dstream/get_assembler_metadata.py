@@ -109,9 +109,9 @@ class get_assembler_metadata(ds_project_base):
 
                     d = DaqFile(in_file)
                     e = d.GetEventObj(d.NumEvents()-1) 
-                    integ = Integral(e)
+                    integ = Integral()
                     print "Load last event in file."
-                    integ.integrate()
+                    integ.integrate(e)
                     print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
@@ -124,9 +124,9 @@ class get_assembler_metadata(ds_project_base):
                     gc.collect()
                     d = DaqFile(in_file)
                     e2 = d.GetEventObj(0)
-                    integ = Integral(e2)
+                    integ = Integral()
                     print "Load first event in file."
-                    integ.integrate()
+                    integ.integrate(e2)
                     print "Loaded"
                     self._jstime = time.ctime(integ.m_time_of_first_event)
                     self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
