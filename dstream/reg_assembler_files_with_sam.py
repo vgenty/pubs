@@ -12,6 +12,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
+import json
 
 
 ## @class dummy_nubin_xfer
@@ -97,8 +98,10 @@ class reg_assembler_files_with_sam(ds_project_base):
             dim = dim + ' and availability: anylocation'
 
 
-            if os.path.isfile(in_file):
+            if os.path.isfile(in_file) and os.path.isfile(json_file):
                 self.info('Found %s' % (in_file))
+                self.info('Found %s' % (json_file))
+                json_dict = json.load( open( json_file ) )
 
                 try:
                     shutil.copyfile(in_file,out_file)
@@ -107,7 +110,7 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # make sure you've done get-cert
                     # metadata already validated in get_assembler_metadata_file.py
                     # uncomment below when we have legit metadata to declare 
-                    samweb.declareFile(md=json_file)
+                    samweb.declareFile(md=json_dict)
                     samweb.createDefinition(defname=defname, dims=dim)
                     subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
                     status = 2

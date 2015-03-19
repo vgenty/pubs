@@ -152,12 +152,12 @@ class get_assembler_metadata(ds_project_base):
                         json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
                         try:
                             samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                            samweb.validateFileMetadata(json_file) # this throws/raises exception
+                            # samweb.validateFileMetadata(json_file) # this throws/raises exception
                             status = 2
                         except:
                             print "Problem with samweb metadata: ", jsonData
                             print sys.exc_info()[0]
-                            "                            status=100
+                            status=100
  
 
             else:
