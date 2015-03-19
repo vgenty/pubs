@@ -115,7 +115,7 @@ class get_assembler_metadata(ds_project_base):
                     print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
-                    self._jetime = datetime.datetime.fromtimestamp(int(integ.m_time_of_cur_event)).isoformat()
+                    self._jetime = datetime.datetime.fromtimestamp(integ.m_time_of_cur_event).replace(microsecond=0).isoformat()
                     self._jensec = integ.m_time_of_cur_event.GetNanoSec()
                     self._jeevt = integ.m_event
                     del integ
@@ -128,7 +128,7 @@ class get_assembler_metadata(ds_project_base):
                     print "Load first event in file."
                     integ.integrate(e2)
                     print "Loaded"
-                    self._jstime = datetime.datetime.fromtimestamp(int(integ.m_time_of_first_event)).isoformat()
+                    self._jstime = datetime.datetime.fromtimestamp(integ.m_time_of_first_event).replace(microsecond=0).isoformat()
                     self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
                     self._jsevt = integ.m_event
                     del integ
