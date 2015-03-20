@@ -91,7 +91,8 @@ class reg_assembler_files_with_sam(ds_project_base):
             
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun)) # out_dir is the dropbox.
             defname = 'AssemblerRawBinary'
-            dim = 'file_type %s' % 'data'
+            dim = '(defname: %s) and more rando text that SAM arbitraily seems to insist upon but how would you know?' % defname
+            dim = dim + 'file_type %s' % 'data'
             dim = dim + ' and data_tier %s' % 'raw'
 #            dim = dim + ' and ub_project.name %s' % project.name
 #            dim = dim + ' and ub_project.stage %s' % stage.name
@@ -105,7 +106,6 @@ class reg_assembler_files_with_sam(ds_project_base):
                 json_dict = json.load( open( json_file ) )
 
                 try:
-                    # shutil.copyfile(in_file,out_file)
                     # native SAM python call, instead of a system call
                     samweb = samweb_cli.SAMWebClient(experiment="uboone")
                     # make sure you've done get-cert
