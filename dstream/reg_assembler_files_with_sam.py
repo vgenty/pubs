@@ -13,6 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
 import json
+import traceback
 
 
 ## @class dummy_nubin_xfer
@@ -94,8 +95,8 @@ class reg_assembler_files_with_sam(ds_project_base):
             dim = dim + ' and data_tier %s' % 'raw'
 #            dim = dim + ' and ub_project.name %s' % project.name
 #            dim = dim + ' and ub_project.stage %s' % stage.name
-            dim = dim + ' and ub_project.version %s' % 'uboonedaq v6_00_01'  # generalize
-            dim = dim + ' and availability: anylocation'
+            dim = dim + ' and ub_project.version %s' % 'v6_00_01'  # generalize
+            # dim = dim + ' and availability: anylocation'
 
 
             if os.path.isfile(in_file) and os.path.isfile(json_file):
@@ -104,7 +105,7 @@ class reg_assembler_files_with_sam(ds_project_base):
                 json_dict = json.load( open( json_file ) )
 
                 try:
-                    shutil.copyfile(in_file,out_file)
+                    # shutil.copyfile(in_file,out_file)
                     # native SAM python call, instead of a system call
                     samweb = samweb_cli.SAMWebClient(experiment="uboone")
                     # make sure you've done get-cert
@@ -112,10 +113,12 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # uncomment below when we have legit metadata to declare 
                     samweb.declareFile(md=json_dict)
                     samweb.createDefinition(defname=defname, dims=dim)
-                    subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
+                    # subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
                     status = 2
                 except:
-                    print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
+                    # print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
+                    print "Error: "
+                    print traceback.print_exc()
                     # print "Give some null properties to this meta data"
                     print "Give this file a status 100"
                     status = 100
@@ -248,5 +251,5 @@ if __name__ == '__main__':
 
     test_obj.error_handle()
 
-    test_obj.validate()
+    # test_obj.validate()
 
