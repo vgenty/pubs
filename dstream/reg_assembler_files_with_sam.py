@@ -91,8 +91,8 @@ class reg_assembler_files_with_sam(ds_project_base):
             
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun)) # out_dir is the dropbox.
             defname = 'AssemblerRawBinary'
-            dim = '(defname: %s) and more rando text that SAM arbitraily seems to insist upon but how would you know?' % defname
-            dim = dim + 'file_type %s' % 'data'
+            # dim = '(defname %s)' % defname
+            dim = 'file_type %s' % 'data'
             dim = dim + ' and data_tier %s' % 'raw'
 #            dim = dim + ' and ub_project.name %s' % project.name
 #            dim = dim + ' and ub_project.stage %s' % stage.name
@@ -113,7 +113,7 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # uncomment below when we have legit metadata to declare 
                     samweb.declareFile(md=json_dict)
                     samweb.createDefinition(defname=defname, dims=dim)
-                    # subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
+                    subprocess.call(['rsync', '-e', 'ssh', in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
                     status = 2
                 except:
                     # print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
@@ -173,11 +173,12 @@ class reg_assembler_files_with_sam(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-            if os.path.isfile(out_file):
-#                os.system('rm %s' % in_file)
-                status = 0
-            else:
+            res = subprocess.call(['ssh', 'uboonegpvm06', '-x', 'ls', out_file])
+            if res:
+                # didn't find the file
                 status = 100
+            else:
+                status = 0
 
             # Pretend I'm doing something
             time.sleep(1)
@@ -223,7 +224,9 @@ class reg_assembler_files_with_sam(ds_project_base):
 
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-            if os.path.isfile(out_file):
+            res = subprocess.call(['ssh', 'uboonegpvm06', '-x', 'ls', out_file])
+
+            if not res:
                 os.system('rm %s' % out_file)
 
             # Pretend I'm doing something
@@ -251,5 +254,5 @@ if __name__ == '__main__':
 
     test_obj.error_handle()
 
-    # test_obj.validate()
+    test_obj.validate()
 

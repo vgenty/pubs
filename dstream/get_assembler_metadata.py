@@ -74,7 +74,7 @@ class get_assembler_metadata(ds_project_base):
         if self._nruns is None:
             self.get_resource()
 
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        # self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -110,9 +110,9 @@ class get_assembler_metadata(ds_project_base):
                     d = DaqFile(in_file)
                     e = d.GetEventObj(d.NumEvents()-1) 
                     integ = Integral()
-                    print "Load last event in file."
+                    # print "Load last event in file."
                     integ.integrate(e)
-                    print "Loaded."
+                    # print "Loaded."
                     self._jrun = integ.m_run
                     self._jsubrun = integ.m_subrun
                     self._jetime = datetime.datetime.fromtimestamp(integ.m_time_of_cur_event).replace(microsecond=0).isoformat()
@@ -125,9 +125,9 @@ class get_assembler_metadata(ds_project_base):
                     d = DaqFile(in_file)
                     e2 = d.GetEventObj(0)
                     integ = Integral()
-                    print "Load first event in file."
+                    # print "Load first event in file."
                     integ.integrate(e2)
-                    print "Loaded"
+                    # print "Loaded"
                     self._jstime = datetime.datetime.fromtimestamp(integ.m_time_of_first_event).replace(microsecond=0).isoformat()
                     self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
                     self._jsevt = integ.m_event

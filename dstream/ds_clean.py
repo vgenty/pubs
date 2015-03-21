@@ -30,7 +30,7 @@ class ds_clean(ds_project_base):
         # Call base class ctor
         super(ds_clean,self).__init__()
 
-        self.info('Running cleaning project %s'%self._project)
+        # self.info('Running cleaning project %s'%self._project)
         if (self._project==''):
             self.error('Missing project name argument')
             return
@@ -72,7 +72,7 @@ class ds_clean(ds_project_base):
         self.info("%i%% of disk used. Removing files to get down to %i%%."%(disk_frac_used, self._disk_frac_limit))
         if (disk_frac_used < self._disk_frac_limit):
             self.info('Only %i%% of disk space used (%s), skip cleaning until %i%% is reached.'%(disk_frac_used, self._in_dir, self._disk_frac_limit))
-            return
+            # return
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
