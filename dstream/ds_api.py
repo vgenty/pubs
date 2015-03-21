@@ -281,7 +281,7 @@ class ds_reader(pubdb_reader):
         try:
             run    = int(run)
             subrun = int(subrun)
-            if run<= 0 or subrun <= 0:
+            if run< 0 or subrun < 0:
                 raise ValueError
         except ValueError:
             self._logger.error('Run/SubRun must be positive integers!')
@@ -556,7 +556,7 @@ class death_star(ds_master):
         try:
             run=int(run)
             subrun=int(subrun)
-            if run <= 0 or subrun <= 0:
+            if run < 0 or subrun < 0:
                 raise ValueError
         except ValueError:
             self._logger.error('Provided (run,subrun) in an wrong type!' % (str(run),str(subrun)))

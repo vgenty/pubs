@@ -136,7 +136,7 @@ DECLARE
   presence BOOLEAN;
 BEGIN
 
-  IF Run <= 0 OR SubRun <= 0 THEN
+  IF Run < 0 OR SubRun < 0 THEN
     RAISE EXCEPTION 'Run/SubRun must be a positive integer!';
   END IF;
 
@@ -183,8 +183,8 @@ BEGIN
 
   run_start := '2015-01-01 00:00:00'::TIMESTAMP;
 
-  FOR run IN 1..NumRuns LOOP
-    FOR subrun IN 1..NumSubRuns LOOP
+  FOR run IN 0..NumRuns LOOP
+    FOR subrun IN 0..NumSubRuns LOOP
       run_start := run_start + INTERVAL '20 minutes';
       run_end   := run_start + INTERVAL '10 minutes';
       EXECUTE InsertIntoTestRunTable(run,subrun,run_start,run_end);

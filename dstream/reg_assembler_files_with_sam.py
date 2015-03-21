@@ -87,9 +87,10 @@ class reg_assembler_files_with_sam(ds_project_base):
             # Check input file exists. Otherwise report error
             in_file_tmp = self._infile_format % (run,subrun)
             in_file = '%s/%s' % ( self._in_dir, in_file_tmp )
-            json_file = '%s/%s' %( self._meta_dir, in_file_tmp.replace("ubdaq", "json") )
+            in_json = '%s/%s.json' %( self._meta_dir, in_file_tmp )
             
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun)) # out_dir is the dropbox.
+            out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
             defname = 'AssemblerRawBinary'
             # dim = '(defname %s)' % defname
             dim = 'file_type %s' % 'data'
@@ -100,10 +101,10 @@ class reg_assembler_files_with_sam(ds_project_base):
             # dim = dim + ' and availability: anylocation'
 
 
-            if os.path.isfile(in_file) and os.path.isfile(json_file):
+            if os.path.isfile(in_file) and os.path.isfile(in_json):
                 self.info('Found %s' % (in_file))
-                self.info('Found %s' % (json_file))
-                json_dict = json.load( open( json_file ) )
+                self.info('Found %s' % (in_json))
+                json_dict = json.load( open( in_json ) )
 
                 try:
                     # native SAM python call, instead of a system call
@@ -114,6 +115,7 @@ class reg_assembler_files_with_sam(ds_project_base):
                     samweb.declareFile(md=json_dict)
                     samweb.createDefinition(defname=defname, dims=dim)
                     subprocess.call(['rsync', '-e', 'ssh', in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
+                    subprocess.call(['rsync', '-e', 'ssh', in_json, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_json ])
                     status = 2
                 except:
                     # print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]

@@ -342,7 +342,7 @@ BEGIN
     dummy := format('SELECT COUNT(Run) FROM %s',dummyTableName);
     EXECUTE dummy INTO myInt;
     IF myInt IS NULL OR myInt = 0 THEN
-      FOR index IN 1..loopCounter LOOP
+      FOR index IN 0..loopCounter LOOP
         dummyTableName := 'temp'||index;
         dummy := format('DROP TABLE IF EXISTS %s',dummyTableName);
         EXECUTE dummy;
