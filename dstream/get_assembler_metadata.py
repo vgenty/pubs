@@ -143,7 +143,11 @@ class get_assembler_metadata(ds_project_base):
                     status = 100
                     
                 fsize = os.path.getsize(in_file)
-                jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
+                # run number and subrun number in the metadata seem to be funny,
+                # and currently we are using the values in the file name.
+                # Also add ub_project.name/stage/version, and data_tier by hand
+                jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": "v6_00_00" }
+                # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":"116146095L",  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
 
