@@ -112,7 +112,10 @@ class reg_assembler_files_with_sam(ds_project_base):
                     # make sure you've done get-cert
                     # metadata already validated in get_assembler_metadata_file.py
                     # uncomment below when we have legit metadata to declare 
-                    samweb.declareFile(md=json_dict)
+                    try:
+                        samweb.getMetadata(filenameorid=in_file_tmp)
+                    except samweb_cli.exceptions.FileNotFound:
+                        samweb.declareFile(md=json_dict)
                     samweb.createDefinition(defname=defname, dims=dim)
                     subprocess.call(['rsync', '-e', 'ssh', in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
                     subprocess.call(['rsync', '-e', 'ssh', in_json, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_json ])
