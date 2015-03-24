@@ -5,7 +5,7 @@
 #  Includes class ds_action (a unit process executor) and ds_daemon (a process manager)
 
 # Python include
-import time, copy
+import time, copy, os
 from subprocess   import Popen, PIPE
 # dstream include
 from ds_exception import DSException
@@ -65,6 +65,7 @@ class ds_action(object):
     def execute(self):
         try:
             self._proc = Popen(self._info._command.split(None),
+                               shell=True,                
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:

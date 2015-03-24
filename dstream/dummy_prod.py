@@ -60,8 +60,8 @@ class dummy_prod(ds_project_base):
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
         print "submit cmd: %s" % cmd
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
 
         jobid = ''
         # Grab the JobID
@@ -96,8 +96,8 @@ class dummy_prod(ds_project_base):
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
         print "isSubmitted cmd: %s" % cmd
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
 
         for line in jobinfo:
             if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
@@ -120,8 +120,8 @@ class dummy_prod(ds_project_base):
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
         print "isRunning cmd: %s" % cmd
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
 
         for line in jobinfo:
             if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
@@ -145,8 +145,8 @@ class dummy_prod(ds_project_base):
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
         print "isFinished cmd: %s" % cmd
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
 
         for line in jobinfo:
             if not ( ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ) ):
@@ -188,8 +188,8 @@ class dummy_prod(ds_project_base):
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--check' ]
         self.info( cmd )
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/check.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/check.txt", 'r' ) # Here is temporary, for test
 
         # Grab the good jobs and bad jobs
         for line in jobinfo:
@@ -244,8 +244,8 @@ Job IDs    : %s
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--makeup' ]
         self.info( cmd )
-        # jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-        jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
+        jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+        # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
 
         # Grab the JobID
         for line in jobinfo:
@@ -324,7 +324,7 @@ Job IDs    : %s
 	    return
 
         resource = self._api.get_resource(self._project)
-        
+
         self._nruns = int(resource['NRUNS'])
         self._xml_file = resource['XMLFILE']
         self._nresubmission = int(resource['NRESUBMISSION'])
@@ -351,17 +351,20 @@ Job IDs    : %s
 
         self.loadProjectParams()
 
+        return
         ctr = self._nruns
-        
+        #return
         # Kazu's version of submit jobs
         for istage in self._stage_digits:
+            self.warning('Inspecting stage %s' % istage)
             for istatus in self.PROD_STATUS:
                 fstatus = istage + istatus
-
+                self.warning('Inspecting status %s' % istatus)
                 for x in self.get_runs( self._project, fstatus ):
+                    self.warning('Inspecting run/subrun: %s/%s' % (x[0],x[1]))
                     run    = int(x[0])
                     subrun = int(x[1])
-
+                    continue
                     statusCode = self.__decode_status__( fstatus )
                     action = self.PROD_ACTION[statusCode]
 

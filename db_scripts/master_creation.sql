@@ -1,5 +1,5 @@
-
-CREATE EXTENSION HSTORE;
+SET ROLE uboone_admin;
+--CREATE EXTENSION HSTORE;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
@@ -29,7 +29,7 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 
 --Check if a table already exists. Used by many other functions here.
-DROP FUNCTION IF EXISTS DoesProcessExist(TEXT);
+DROP FUNCTION IF EXISTS DoesProjectExist(TEXT);
 CREATE OR REPLACE FUNCTION DoesProjectExist(tname TEXT) RETURNS BOOLEAN AS $$
 DECLARE
 doesExist BOOLEAN;
@@ -37,9 +37,11 @@ rec  RECORD;
 BEGIN
 	
   IF NOT DoesTableExist('processtable') THEN
+    --RAISE EXCEPTION 'Process Table not found!!!!';
     RETURN FALSE;
   END IF;
-
+  --RAISE WARNING 'Process Table found...';  
+  --RAISE EXCEPTION 'SELECT TRUE FROM ProcessTable WHERE Project = % LIMIT 1 INTO doesExist;', tname;
   SELECT TRUE FROM ProcessTable WHERE Project = tname LIMIT 1 INTO doesExist;
   IF doesExist IS NULL THEN
     RETURN FALSE;

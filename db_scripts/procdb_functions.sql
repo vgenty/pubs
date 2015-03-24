@@ -1,3 +1,4 @@
+SET ROLE uboone_admin;
 --Overwrite functions if they already exist
 
 ---------------------------------------------------------------------
