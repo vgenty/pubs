@@ -454,17 +454,25 @@ class ds_master(pubdb_writer,ds_reader):
         info._subrun = orig_info._subrun
         info._ver    = orig_info._ver
 
+        resource = ''
+        for x in info._resource.keys():
+
+            resource += '%s=>%s,' % (x, info._resource[x])
+
+        resource = resource.rstrip(',')
+
         if check:
             self._logger.warning('Attempting to alter project configuration...')
             self._logger.info('Command : %s => %s' % (orig_info._command, info._command))
             self._logger.info('Period  : %d => %d' % (orig_info._period,  info._period ))
             self._logger.info('Email   : %s => %s' % (orig_info._email,   info._email  ))
             self._logger.info('Enabled : %s => %s' % (orig_info._enable,  info._enable))
+            self._logger.info('New Resource: %s' % resource )
             
             if not self._ask_binary(): return False;
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\',\'\',%s);'
-        query = query % ( info._project, info._command, info._period, info._email,str(info._enable).upper() )
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\',\'%s\',%s);'
+        query = query % ( info._project, info._command, info._period, info._email, resource, str(info._enable).upper() )
 
         return self.commit(query)
 
