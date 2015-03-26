@@ -31,7 +31,7 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
     msg=MIMEMultipart('alternative')
     msg['Subject']=subject
 #    msg['From']=sender
-    recipients = receiver.strip().split(',')
+    recipients = receiver.strip().split(':')
     msg['To']=", ".join( recipients )
 
     if text.find('<html>')>=0:

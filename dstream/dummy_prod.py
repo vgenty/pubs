@@ -347,6 +347,7 @@ Job IDs    : %s
         self._xml_file = resource['XMLFILE']
         self._nresubmission = int(resource['NRESUBMISSION'])
         self._experts = resource['EXPERTS']
+        print "Experts: %s" % self._experts
 
         try:
             self._stage_names  = resource['STAGE_NAME'].split(':')
