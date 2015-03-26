@@ -5,6 +5,7 @@
 
 # python include
 import time,os,sys
+import subprocess
 # pub_dbi package include
 from pub_dbi import DBException
 # pub_util package include
@@ -32,10 +33,11 @@ class dummy_prod(ds_project_base):
                     kTOBERECOVERED ) = xrange(7)
 
     def checkNext( self, statusCode, istage ):
+        nEvents = None
 
         if istage in self._stage_digits:
             statusCode = istage + self.kINITIATED
-            print "Next stage, statusCode: %d" % statusCode
+            self.info( "Next stage, statusCode: %d" % statusCode )
 
         return statusCode
 
@@ -59,7 +61,7 @@ class dummy_prod(ds_project_base):
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
-        print "submit cmd: %s" % cmd
+        # print "submit cmd: %s" % cmd
         jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
         # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
 
@@ -79,7 +81,7 @@ class dummy_prod(ds_project_base):
         self._data += ":%s" % jobid.split('.')[0]
 
         statusCode = istage + self.kTOBEVALIDATED
-        print "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode )
+        self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
         time.sleep(1)
@@ -95,7 +97,7 @@ class dummy_prod(ds_project_base):
 
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        print "isSubmitted cmd: %s" % cmd
+        # print "isSubmitted cmd: %s" % cmd
         jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
         # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
 
@@ -119,7 +121,7 @@ class dummy_prod(ds_project_base):
 
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        print "isRunning cmd: %s" % cmd
+        # print "isRunning cmd: %s" % cmd
         jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
         # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
 
@@ -144,13 +146,17 @@ class dummy_prod(ds_project_base):
 
         # Main command
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        print "isFinished cmd: %s" % cmd
+        # print "isFinished cmd: %s" % cmd
         jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
         # jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
 
+        nRunning = 0
         for line in jobinfo:
-            if not ( ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ) ):
-                statusCode = self.kFINISHED
+            if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
+                nRunning += 1
+
+        if ( nRunning == 0 ):
+            statusCode = self.kFINISHED
 
         statusCode += istage
         print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
@@ -203,6 +209,18 @@ class dummy_prod(ds_project_base):
            statusCode = self.kDONE
            istage += 10
            self._data = "numevents:%d" % nEvents
+
+           # If all the stages complete, send an email to experts
+           if not istage in self._stage_digits:
+               subject = "Completed: MCC sample %s" % self._project
+               text = """
+Sample     : %s
+Stage      : %s
+Good events: %d
+               """ % ( self._project, self._digit_to_name[istage-10], nGoodEvents )
+
+               pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+
         elif nSubmit > self._nresubmission:
            # If the sample has been submitted more than a certain number
            # of times, email the expert, and move on to the next stage
@@ -263,7 +281,7 @@ Job IDs    : %s
         self._data += ":%s" % jobid.split('.')[0]
 
         statusCode = istage + self.kTOBEVALIDATED
-        print "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode )
+        self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
         time.sleep(1)
@@ -351,20 +369,19 @@ Job IDs    : %s
 
         self.loadProjectParams()
 
-        return
         ctr = self._nruns
         #return
         # Kazu's version of submit jobs
         for istage in self._stage_digits:
-            self.warning('Inspecting stage %s' % istage)
+            # self.warning('Inspecting stage %s' % istage)
             for istatus in self.PROD_STATUS:
                 fstatus = istage + istatus
-                self.warning('Inspecting status %s' % istatus)
+                # self.warning('Inspecting status %s' % istatus)
                 for x in self.get_runs( self._project, fstatus ):
-                    self.warning('Inspecting run/subrun: %s/%s' % (x[0],x[1]))
+                    # self.warning('Inspecting run/subrun: %s/%s' % (x[0],x[1]))
                     run    = int(x[0])
                     subrun = int(x[1])
-                    continue
+
                     statusCode = self.__decode_status__( fstatus )
                     action = self.PROD_ACTION[statusCode]
 
