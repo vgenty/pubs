@@ -65,7 +65,7 @@ class ds_action(object):
     def execute(self):
         try:
             self._proc = Popen(self._info._command.split(None),
-                               shell=True,                
+                               #shell=True,
                                stdout = PIPE,
                                stderr = PIPE)
         except OSError as e:
@@ -193,6 +193,9 @@ class ds_daemon(ds_base):
 
                         except DSException as e:
                             self.critical('Call expert and review project %s' % x)
+
+                time.sleep(30)
+
 
 if __name__ == '__main__':
     k=ds_daemon()

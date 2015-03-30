@@ -62,6 +62,9 @@ class dummy_prod(ds_project_base):
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
         # print "submit cmd: %s" % cmd
+        logname = self._xml_file.replace('.xml', '_sub.log')
+        logfile = open( logname, 'w' )
+
         try:
             jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
             # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
@@ -71,14 +74,19 @@ class dummy_prod(ds_project_base):
         jobid = ''
         # Grab the JobID
         for line in jobinfo:
+            print >>logfile, line
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
                     AtSign = jobid.index('@')
                 except ValueError:
                     self.error('Failed to extract the @ index!')
-                    return False
+                    return ( statusCode + istage )
                 jobid = jobid[:AtSign]
+
+        # Tentatively do so; need to change!!!
+        if not jobid:
+            return 100
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
@@ -87,7 +95,7 @@ class dummy_prod(ds_project_base):
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         # Here we may need some checks
         return statusCode
@@ -96,6 +104,7 @@ class dummy_prod(ds_project_base):
 
     def isSubmitted( self, statusCode, istage ):
 
+        self._data = str( self._data )
         jobid = self._data.strip().split(':')[-1]
 
         # Main command
@@ -108,14 +117,15 @@ class dummy_prod(ds_project_base):
             return ( statusCode + istage )
 
         for line in jobinfo:
-            if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
-                statusCode = self.kSUBMITTED
+            if ( jobid in line ):
+                if ( line.split()[1] == os.environ['USER'] ):
+                    statusCode = self.kSUBMITTED
 
         statusCode += istage
         print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
 
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         return statusCode
     # def isSubmitted()
@@ -123,6 +133,7 @@ class dummy_prod(ds_project_base):
 
     def isRunning( self, statusCode, istage ):
 
+        self._data = str( self._data )
         jobid = self._data.strip().split(':')[-1]
 
         # Main command
@@ -135,15 +146,15 @@ class dummy_prod(ds_project_base):
             return ( statusCode + istage )
 
         for line in jobinfo:
-            if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
-                if ( line.split()[5] == "R" ):
+            if ( jobid in line ):
+                if ( line.split()[1] == os.environ['USER'] ) and ( line.split()[5] == "R" ):
                     statusCode = self.kRUNNING
                     break
 
         statusCode += istage
         print "Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode )
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         return statusCode
 
@@ -151,6 +162,7 @@ class dummy_prod(ds_project_base):
 
     def isFinished( self, statusCode, istage ):
 
+        self._data = str( self._data )
         jobid = self._data.strip().split(':')[-1]
 
         # Main command
@@ -164,8 +176,9 @@ class dummy_prod(ds_project_base):
 
         nRunning = 0
         for line in jobinfo:
-            if ( jobid in line ) and ( line.split()[1] == os.environ['USER'] ):
-                nRunning += 1
+            if ( jobid in line ):
+                if ( line.split()[1] == os.environ['USER'] ):
+                    nRunning += 1
 
         if ( nRunning == 0 ):
             statusCode = self.kFINISHED
@@ -173,13 +186,14 @@ class dummy_prod(ds_project_base):
         statusCode += istage
         print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         return statusCode
 
     # def isFinished()
 
     def check( self, statusCode, istage ):
+        self._data = str( self._data )
         nEvents     = None
         nGoodEvents = None
         nSubmit     = None
@@ -260,7 +274,7 @@ Job IDs    : %s
         print "Checked job, status: %d" % statusCode
 
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         # Here we may need some checks
 
@@ -272,11 +286,16 @@ Job IDs    : %s
 
         # Report starting
         # self.info()
+        self._data = str( self._data )
 
         # Main command
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--makeup' ]
         self.info( cmd )
+
+        logname = self._xml_file.replace('.xml', '_resub.log')
+        logfile = open( logname, 'w' )
+
         try:
             jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
             # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
@@ -284,16 +303,22 @@ Job IDs    : %s
             return ( statusCode + istage )
 
         # Grab the JobID
+        jobid = ''
         for line in jobinfo:
+            print >>logfile, line
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
                     AtSign = jobid.index('@')
                 except ValueError:
                     self.error('Failed to extract the @ index!')
-                    return False
+                    return ( statusCode + istage )
 
                 jobid = jobid[:AtSign]
+
+        # Tentatively do so; need to change!!!
+        if not jobid:
+            return 100
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
@@ -302,7 +327,7 @@ Job IDs    : %s
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
-        time.sleep(1)
+        time.sleep(60)
 
         # Here we may need some checks
         return statusCode
@@ -365,6 +390,9 @@ Job IDs    : %s
         self._xml_file = resource['XMLFILE']
         self._nresubmission = int(resource['NRESUBMISSION'])
         self._experts = resource['EXPERTS']
+
+        if self._nruns > 3:
+            self._nruns = 3
 
         try:
             self._stage_names  = resource['STAGE_NAME'].split(':')
