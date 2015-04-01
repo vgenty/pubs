@@ -1,7 +1,7 @@
 ## @namespace dummy_dstream.dummy_daq
 #  @ingroup dummy_dstream
 #  @brief Defines a project dummy_daq
-#  @author kazuhiro
+#  @author echurch
 
 # python include
 import time,os,glob

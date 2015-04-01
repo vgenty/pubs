@@ -1,16 +1,16 @@
 # SQL reader account config
-export PUB_PSQL_READER_HOST=localhost
+export PUB_PSQL_READER_HOST=192.168.144.189
 #export PUB_PSQL_READER_USER=$USER
-export PUB_PSQL_READER_USER=postgres
+export PUB_PSQL_READER_USER=echurch
 export PUB_PSQL_READER_DB=procdb
-export PUB_PSQL_READER_PASS=""
+export PUB_PSQL_READER_PASS="echurchargon!"
 
 # SQL writer account config
-export PUB_PSQL_WRITER_HOST=localhost
+export PUB_PSQL_WRITER_HOST=192.168.144.189
 #export PUB_PSQL_WRITER_USER=$USER
-export PUB_PSQL_WRITER_USER=postgres
+export PUB_PSQL_WRITER_USER=echurch
 export PUB_PSQL_WRITER_DB=procdb
-export PUB_PSQL_WRITER_PASS=""
+export PUB_PSQL_WRITER_PASS="echurchargon!"
 
 # SMTP account for sending an email report
 export PUB_SMTP_ACCT=drinkingkazu.pubs@gmail.com

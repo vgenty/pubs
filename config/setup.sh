@@ -28,8 +28,8 @@ export PUB_LOGGER_DRAIN=kLOGGER_COUT
 #export PUB_LOGGER_DRAIN=kLOGGER_FILE
 export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
 
-export PUB_PSQL_READER_USER=postgres
-export PUB_PSQL_WRITER_USER=postgres
+export PUB_PSQL_READER_USER=echurch
+export PUB_PSQL_WRITER_USER=echurch
 source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 setup sam_web_client
 setup ifdhc

@@ -1,7 +1,7 @@
 ## @namespace dummy_dstream.dummy_nubin_xfer
 #  @ingroup dummy_dstream
 #  @brief Defines a project dummy_nubin_xfer
-#  @author kazuhiro
+#  @author echurch,yuntse
 
 # python include
 import time, os, shutil, sys, subprocess
@@ -62,7 +62,7 @@ class reg_assembler_files_with_sam(ds_project_base):
         self._parent_project = resource['PARENT_PROJECT']
 
     ## @brief declare a file to SAM
-    def decalre_to_sam(self):
+    def declare_to_sam(self):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     test_obj = reg_assembler_files_with_sam()
 
-    test_obj.decalre_to_sam()
+    test_obj.declare_to_sam()
 
     test_obj.validate_sam()
 
