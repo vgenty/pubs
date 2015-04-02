@@ -1,6 +1,5 @@
-SET ROLE uboone_admin;
 SELECT RemoveProcessDB();
-SELECT CreateTestRunTable();
+SELECT CreateTestRunTable('TestRun');
 SELECT CreateProcessTable();
 
 

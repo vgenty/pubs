@@ -31,7 +31,7 @@ myparser.add_argument('--enable',dest='enable',action='store',
 
 args = myparser.parse_args()
 
-logger = pub_logger.get_logger('define_project')
+logger = pub_logger.get_logger('update_project')
 
 # DB interface for altering ProcessTable
 k=ds_master(pubdb_conn_info.writer_info(), logger)

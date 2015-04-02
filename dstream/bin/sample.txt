@@ -45,6 +45,8 @@ NAME     kazu
 COMMAND  echo hello world
 CONTACT  kazuhiro@nevis.columbia.edu
 PERIOD   10
+SERVER   
+RUNTABLE MainRun
 RUN      1
 SUBRUN   1
 ENABLE   True
@@ -57,6 +59,8 @@ NAME     kazu2
 COMMAND  echo hello world
 CONTACT  kazuhiro@nevis.columbia.edu
 PERIOD   6
+SERVER   
+RUNTABLE MainRun
 RUN      1
 SUBRUN   1
 ENABLE   False

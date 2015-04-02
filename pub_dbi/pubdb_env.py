@@ -4,7 +4,7 @@ import os
 # Reader default configuration
 #
 kREADER_HOST = 'localhost'
-kREADER_PORT = ''
+kREADER_PORT = None
 kREADER_DB   = 'procdb'
 kREADER_USER = os.environ['USER']
 kREADER_ROLE = ''

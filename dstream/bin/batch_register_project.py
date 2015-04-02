@@ -11,8 +11,6 @@ conn=ds_master(pubdb_conn_info.writer_info(),logger)
 # Connect to DB
 conn.connect()
 
-
-
 def parse(contents):
     new_contents=[]
     project_v=[]
@@ -38,8 +36,8 @@ def parse(contents):
         new_contents.append(tmpline)
 
     in_block = False
-    valid_keywords=('NAME','COMMAND','CONTACT','PERIOD',
-                    'RUN','SUBRUN','ENABLE','RESOURCE')
+    valid_keywords=('NAME','COMMAND','CONTACT','PERIOD','SERVER',
+                    'RUNTABLE','RUN','SUBRUN','ENABLE','RESOURCE')
     for line in new_contents:
 
         if line=='PROJECT_BEGIN':
@@ -62,7 +60,7 @@ def parse(contents):
 
         keyword = line.split(None)[0]
         value   = line.replace(keyword,'').strip(' ')
-        if not keyword in valid_keywords or len(line.split(None)) < 2:
+        if not keyword in valid_keywords or (keyword not in ['SERVER','RUNTABLE'] and len(line.split(None)) < 2):
             logger.error('Invalid syntax found in the following line!')
             logger.error(line)
             logger.critical('Aborting...')
@@ -109,6 +107,20 @@ def parse(contents):
                 logger.critical('Aborting...')
                 sys.exit(1)
 
+        elif keyword == 'SERVER':
+            if project_v[-1]._server:
+                logger.error('SERVER tag appeared twice...')
+                logger.critical('Aborting...')
+                sys.exit(1)
+            project_v[-1]._server = str(value)
+
+        elif keyword == 'RUNTABLE':
+            if project_v[-1]._runtable:
+                logger.error('RUNTABLE tag appeared twice...')
+                logger.critical('Aborting...')
+                sys.exit(1)
+            project_v[-1]._runtable = str(value)
+
         elif keyword == 'RUN':
             if project_v[-1]._run:
                 logger.error('RUN tag appeared twice...')
@@ -123,7 +135,7 @@ def parse(contents):
                 logger.error('Your provided: \"%s\"' % value)
                 logger.critical('Aborting...')
                 sys.exit(1)
-
+            
         elif keyword == 'SUBRUN':
             if project_v[-1]._subrun:
                 logger.error('SUBRUN tag appeared twice...')
@@ -167,7 +179,7 @@ def parse(contents):
             key_and_value[1] = key_and_value[1].strip(' ')
             key_and_value[1] = key_and_value[1].rstrip(' ')
             project_v[-1]._resource[key_and_value[0]] = key_and_value[1]
-            
+
     if in_block:
         logger.error('Last block did not have PROJECT_END!')
         logger.critical('Aborting...')
@@ -220,6 +232,7 @@ def register(projects):
         if conn.project_exist(p._project):
             
             status = status and conn.update_project(p,False)
+
         else:
 
             status = status and conn.define_project(p)

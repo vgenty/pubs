@@ -8,7 +8,10 @@ class pubdb_conn_info(object):
     def __init__ (self,host,port,db,user,passwd,role=''):
         try:
             self._host   = str( host   )
-            self._port   = int( port   )
+            if port:
+                self._port = int( port   )
+            else:
+                self._port = None
             self._db     = str( db     )
             self._user   = str( user   )
             self._role   = str( role   )

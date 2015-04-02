@@ -388,7 +388,7 @@ class ds_master(pubdb_writer,ds_reader):
             self._logger.error('Provided project info contains invalid values!')
             return False
         
-        query = 'SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\',%d,%d,\'%s\');'
+        query = 'SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\',\'%s\',\'%s\',%d,%d,\'%s\');'
         
         resource = ''
         for x in project_info._resource.keys():
@@ -401,6 +401,8 @@ class ds_master(pubdb_writer,ds_reader):
                           project_info._command,
                           project_info._period,
                           project_info._email,
+                          project_info._server,
+                          project_info._runtable,
                           project_info._run,
                           project_info._subrun,
                           resource )
@@ -463,6 +465,7 @@ class ds_master(pubdb_writer,ds_reader):
 
         if check:
             self._logger.warning('Attempting to alter project configuration...')
+            self._logger.info('Server  : %s => %s' % (orig_info._server,  info._server))
             self._logger.info('Command : %s => %s' % (orig_info._command, info._command))
             self._logger.info('Period  : %d => %d' % (orig_info._period,  info._period ))
             self._logger.info('Email   : %s => %s' % (orig_info._email,   info._email  ))
@@ -472,7 +475,13 @@ class ds_master(pubdb_writer,ds_reader):
             if not self._ask_binary(): return False;
         
         query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\',\'%s\',%s);'
-        query = query % ( info._project, info._command, info._period, info._email, resource, str(info._enable).upper() )
+        query = query % ( info._project,
+                          info._command,
+                          info._period,
+                          info._email,
+                          info._server,
+                          resource,
+                          str(info._enable).upper() )
 
         return self.commit(query)
 
@@ -559,7 +568,7 @@ class death_star(ds_master):
     #  @details
     #  Recreate MainRun table. This requires to drop all projects first.\n
     #  Outcome is a newly filled MainRun table with an empty ProcessTable
-    def refill_death_star(self,run,subrun):
+    def refill_death_star(self,name,run,subrun):
 
         try:
             run=int(run)
@@ -574,33 +583,42 @@ class death_star(ds_master):
         self._logger.warning('Requires to drop all projects as well.')
         self._logger.warning('Will be filled with %d runs (%d sub-runs each).' % (run,subrun))
 
-        if not self._ask_binary(): return False
+        if not self._ask_binary():
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
 
         query = 'SELECT RemoveProcessDB();'
 
-        result = self.commit(query)
-
-        if result:
-
-            query = 'SELECT FillTestRunTable(%d,%d);' % (run,subrun)
-
-            result = self.commit(query)
-
-        if result:
-
-            query = 'SELECT CreateProcessTable();'
-
-            result = self.commit(query)
-
-        if result:
-
-            self._logger.warning('Death Star is re-built and complete.')
-
-        else:
-
+        if not self.commit(query):
             self._logger.warning('Death Star re-built failed. My god.')
+            return False
+
+        query = 'DROP TABLE IF EXISTS %s;' % name
+
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
+
+        query = 'SELECT CreateTestRunTable(\'%s\')' % name
+
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
+
+        query = 'SELECT FillTestRunTable(%s,%d,%d);' % (name,run,subrun)
+
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
+
+        query = 'SELECT CreateProcessTable();'
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
+
+        self._logger.warning('Death Star is re-built and complete.')
         
-        return result
+        return True
 
     ## @brief Contribute to a dark-side run-by-run.
     #  @details Fill the MainRun table with a specified run/sub-run number

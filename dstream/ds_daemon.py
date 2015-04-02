@@ -5,7 +5,7 @@
 #  Includes class ds_action (a unit process executor) and ds_daemon (a process manager)
 
 # Python include
-import time, copy, os
+import time, copy, os, socket
 from subprocess   import Popen, PIPE
 # dstream include
 from ds_exception import DSException
@@ -111,6 +111,9 @@ class ds_daemon(ds_base):
         ## Constant time period [s] to between a function call to synchronize project tables with MainRun table
         self._runsynch_period = int(300)
 
+        ## Network node name
+        self._hostname = socket.gethostname()
+
     ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
@@ -124,6 +127,10 @@ class ds_daemon(ds_base):
 
             if x._project in self._project_v.keys():
                 self.debug('Skipping update on project %s (still active)',x._project)
+                continue
+
+            if x._server and not x._server in self._hostname:
+                self.debug('Skipping a project on irrelevant server: %s',x._project)
                 continue
 
             self.debug('Updating project %s information' % x._project)
@@ -194,7 +201,7 @@ class ds_daemon(ds_base):
                         except DSException as e:
                             self.critical('Call expert and review project %s' % x)
 
-                time.sleep(30)
+                #time.sleep(30)
 
 
 if __name__ == '__main__':

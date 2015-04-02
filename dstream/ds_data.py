@@ -63,7 +63,8 @@ class ds_project(object):
 
     ## @brief default ctor to specify all data members
     def __init__ (self, project, command='', run=0, subrun=0,
-                  email='', period=0, enable=True, resource={}, ver=-1):
+                  email='', server='', runtable='',
+                  period=0, enable=True, resource={}, ver=-1):
         if not resource: resource = {}
         try:
             if not type(resource) == type(dict()):
@@ -73,6 +74,8 @@ class ds_project(object):
             self._run      = int(run)
             self._subrun   = int(subrun)
             self._email    = str(email)
+            self._server   = str(server)
+            self._runtable = str(runtable)
             self._period   = int(period)
             self._enable   = bool(enable)
             self._resource = copy.copy(resource)
@@ -89,17 +92,21 @@ class ds_project(object):
             
         msg = ''
         if not self._project == info._project:
-            msg += 'Name    : %s => %s\n' % (self._project, info._project)
+            msg += 'Name     : %s => %s\n' % (self._project, info._project)
         if not self._command == info._command:
-            msg += 'Command : %s => %s\n' % (self._command, info._command)
+            msg += 'Command  : %s => %s\n' % (self._command, info._command)
         if not self._period  == info._period:
-            msg += 'Period  : %d => %d\n' % (self._period, info._period)
+            msg += 'Period   : %d => %d\n' % (self._period, info._period)
         if not self._run     == info._run:
-            msg += 'Run     : %d => %d\n' % (self._run, info._run)
+            msg += 'Run      : %d => %d\n' % (self._run, info._run)
         if not self._subrun  == info._subrun:
-            msg += 'SubRun  : %d => %d\n' % (self._subrun, info._subrun)
+            msg += 'SubRun   : %d => %d\n' % (self._subrun, info._subrun)
         if not self._email   == info._email:
-            msg += 'Email   : %s => %s\n' % (self._email,info._email)
+            msg += 'Email    : %s => %s\n' % (self._email,info._email)
+        if not self._server  == info._server:
+            msg += 'Server   : %s => %s\n' % (self._server,info._server)
+        if not self._runtable == info._runtable:
+            msg += 'RunTable : %s => %s\n' % (self._runtable,info._runtable)
         if not self._email   == info._email:
             msg += 'Enabled : %s => %s\n' % (self._enable,info._enable)
 
@@ -115,13 +122,15 @@ class ds_project(object):
 
     def __str__(self):
         msg = ''
-        msg += 'Project : %s\n' % self._project
-        msg += 'Command : %s\n' % self._command
-        msg += 'Period  : %d\n' % self._period
-        msg += 'Run     : %d\n' % self._run
-        msg += 'SubRun  : %d\n' % self._subrun
-        msg += 'Email   : %s\n' % self._email
-        msg += 'Enabled : %s\n' % self._enable
+        msg += 'Project  : %s\n' % self._project
+        msg += 'Command  : %s\n' % self._command
+        msg += 'Period   : %d\n' % self._period
+        msg += 'RunTable : %s\n' % self._runtable
+        msg += 'Run      : %d\n' % self._run
+        msg += 'SubRun   : %d\n' % self._subrun
+        msg += 'Server   : %s\n' % self._server
+        msg += 'Email    : %s\n' % self._email
+        msg += 'Enabled  : %s\n' % self._enable
         msg += 'Resource list below...\n'
         for x in self._resource.keys():
             msg += "%s => %s\n" % (x,self._resource[x])
