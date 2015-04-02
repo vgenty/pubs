@@ -31,7 +31,10 @@ export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
 export PUB_PSQL_READER_USER=echurch
 export PUB_PSQL_WRITER_USER=echurch
 source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
+echo "Now we setup larsoft. This takes 15 seconds, or so ...."
+source /home/echurch/setuplar.sh
 setup sam_web_client
 setup ifdhc
+
 # setup ubutil v01_08_01 -qe6:prof
 
