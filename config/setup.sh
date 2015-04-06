@@ -18,8 +18,12 @@ case `uname -n` in
 	echo Setting up for ubdaq-prod machines...
 	source /uboone/larsoft/setup
 	setup git
+        setup sam_web_client
+        setup ifdhc
 	setup psycopg2 v2_5_4
-	setup postgres v9_2_4
+	setup postgres v9_2_4 -f slf6.x86_64.prof
+        setup uboonecode v03_04_00 -q e6:prof
+        source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	;;
     (*)
 	echo No special setup done for the server `uname -n`
@@ -55,16 +59,6 @@ export PUB_LOGGER_LEVEL=kLOGGER_DEBUG
 export PUB_LOGGER_DRAIN=kLOGGER_COUT
 #export PUB_LOGGER_DRAIN=kLOGGER_FILE
 export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
-
-export PUB_PSQL_READER_USER=echurch
-export PUB_PSQL_WRITER_USER=echurch
-export PUB_PSQL_READER_PASS="echurchargon!"
-export PUB_PSQL_WRITER_PASS="echurchargon!"
-source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
-echo "Now we setup larsoft. This takes 15 seconds, or so ...."
-#source /home/echurch/setuplar.sh
-setup sam_web_client
-setup ifdhc
 
 # setup ubutil v01_08_01 -qe6:prof
 
