@@ -1,7 +1,28 @@
+#!/usr/bin/env bash
 #
 # PSQL configuration
 #
 export PGOPTIONS="-c client_min_messages=WARNING";
+
+#
+# Server-specific configuration
+#
+case `uname -n` in
+    (*uboonegpvm*)
+	echo Setting up for uboonegpvm...
+	source /grid/fermiapp/products/uboone/setup_uboone.sh
+	setup psycopg2 v2_5_4
+	setup uboonecode v04_03_01 -q e7:prof
+	;;
+    (*ubdaq-prod*)
+	echo Setting up for ubdaq-prod machines...
+	source /uboone/larsoft/setup
+	setup psycopg2 v2_5_4
+	;;
+    (*)
+	echo No special setup done for the server `uname -n`
+	;;
+esac
 
 #
 # Python configuration
