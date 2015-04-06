@@ -9,6 +9,7 @@ if [[ -z $PUB_TOP_DIR ]]; then
     # Find the directory one above.
     export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
 fi
+PUB_TOP_DIR="$HOME/pubs"
 # Set PYTHONPATH
 export PYTHONPATH=$PUB_TOP_DIR:$PYTHONPATH
 # BIN executable directory
