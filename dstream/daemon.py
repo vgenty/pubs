@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ## @namespace dstream.ds_daemon
 #  @ingroup dstream
 #  @brief Introduce simple daemon toolkit for executing projects

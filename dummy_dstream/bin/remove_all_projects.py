@@ -1,1 +1,0 @@
-../../dstream/bin/remove_all_projects.py

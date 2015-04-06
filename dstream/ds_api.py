@@ -214,7 +214,7 @@ class ds_reader(pubdb_reader):
         if not self.project_exist(project):
             self._logger.error('Project %s does not exist!' % project)
 
-        query = 'SELECT Command, Frequency, StartRun, StartSubRun, Email, Resource, ProjectVer, Enabled'
+        query = 'SELECT Command, Frequency, Server, SleepAfter, RunTable, StartRun, StartSubRun, Email, Resource, ProjectVer, Enabled'
 
         if field_name:
             
@@ -231,9 +231,9 @@ class ds_reader(pubdb_reader):
         resource = {}
         
         # handle resource string conversion into a map
-        if x[5]:
+        if x[8]:
         
-            for y in x[5].split(','):
+            for y in x[8].split(','):
         
                 tmp = y.split("=>")
                 
@@ -242,17 +242,20 @@ class ds_reader(pubdb_reader):
         return ds_project(project  = project,
                           command  = x[0],
                           period   = x[1],
-                          run      = x[2],
-                          subrun   = x[3],
-                          email    = x[4],
+                          server   = x[2],
+                          sleep    = x[3],
+                          runtable = x[4],
+                          run      = x[5],
+                          subrun   = x[6],
+                          email    = x[7],
                           resource = resource,
-                          ver      = x[6],
-                          enable   = x[7])
+                          ver      = x[9],
+                          enable   = x[10])
 
     ## Fetch a list of enabled projects for execution. Return is an array of ds_project.
     def list_projects(self):
 
-        query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Resource'
+        query  = ' SELECT Project,Command,Frequency,Server,SleepAfter,RunTable,StartRun,StartSubRun,Email,Resource'
         query += ' FROM ListEnabledProject()'
 
         self.execute(query)
@@ -266,9 +269,9 @@ class ds_reader(pubdb_reader):
             resource = {}
 
             # handle resource string conversion into a map
-            if x[6]:
+            if x[9]:
 
-                for y in x[6].split(','):
+                for y in x[9].split(','):
 
                     tmp = y.split("=>")
 
@@ -277,9 +280,12 @@ class ds_reader(pubdb_reader):
             info_array.append( ds_project( project  = x[0],
                                            command  = x[1],
                                            period   = int(x[2]),
-                                           run      = int(x[3]),
-                                           subrun   = int(x[4]),
-                                           email    = x[5],
+                                           server   = x[3],
+                                           sleep    = x[4],
+                                           runtable = x[5],
+                                           run      = int(x[6]),
+                                           subrun   = int(x[7]),
+                                           email    = x[8],
                                            resource = resource,
                                            enable   = True ) )
         return info_array
@@ -579,7 +585,7 @@ class ds_master(ds_writer,ds_reader):
             
             if not self._ask_binary(): return False;
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,%d,\'%s\',\'%s\',%s);'
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,%d,\'%s\',\'%s\',\'%s\',%s);'
         query = query % ( info._project,
                           info._command,
                           info._period,

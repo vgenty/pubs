@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 from dstream.ds_api import death_star
 from pub_dbi        import pubdb_conn_info

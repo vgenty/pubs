@@ -1,3 +1,4 @@
+#/usr/bin/env python
 # python import
 import sys
 # dstream import
@@ -27,7 +28,7 @@ for x in projects:
 
     print
     print x
-    
+
 print
 sys.exit(0)
 

@@ -316,7 +316,7 @@ class ds_project(object):
             msg += 'Server   : %s => %s\n' % (self._server,info._server)
         if not self._runtable == info._runtable:
             msg += 'RunTable : %s => %s\n' % (self._runtable,info._runtable)
-        if not self._enabled == info._enabled:
+        if not self._enable == info._enable:
             msg += 'Enabled : %s => %s\n' % (self._enable,info._enable)
 
         for x in self._resource.keys():
