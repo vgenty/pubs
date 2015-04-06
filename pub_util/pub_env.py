@@ -1,4 +1,8 @@
-import os,sys
+import os,sys,socket
+#
+# Server name
+#
+kSERVER_NAME=socket.gethostname()
 
 #
 # Logger message level definition & default
@@ -12,7 +16,6 @@ import os,sys
 kLOGGER_LEVEL = kLOGGER_INFO
 if 'PUB_LOGGER_LEVEL' in os.environ.keys():
     exec('kLOGGER_LEVEL=int(%s)' % os.environ['PUB_LOGGER_LEVEL'])
-
 #
 # Logger drain definition & default
 #

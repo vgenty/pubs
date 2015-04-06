@@ -25,6 +25,8 @@ class pubdb_reader(object):
     def connect(self):
         if self._cursor: return True
         self._cursor = pubdb_conn.cursor(self._conn_info)
+        if self._conn_info._role:
+            self._cursor.execute('SET ROLE %s;' % self._conn_info._role)
         return bool(self._cursor)
             
     def _raise_cursor_exception(self):

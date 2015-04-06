@@ -1,8 +1,9 @@
-
 SELECT RemoveProcessDB();
-SELECT CreateTestRunTable();
+DROP TABLE IF EXISTS TestRun;
+SELECT CreateTestRunTable('TestRun');
 SELECT CreateProcessTable();
-
+SELECT CreateDaemonTable();
+SELECT CreateDaemonLogTable();
 
 
 

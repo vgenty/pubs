@@ -1,1 +1,0 @@
-../../dstream/bin/batch_register_project.py
