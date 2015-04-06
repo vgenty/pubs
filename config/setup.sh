@@ -1,7 +1,11 @@
 #
+# PSQL configuration
+#
+export PGOPTIONS="-c client_min_messages=WARNING";
+
+#
 # Python configuration
 #
-
 # If PUB_TOP_DIR not set, try to guess
 if [[ -z $PUB_TOP_DIR ]]; then
     # Find the location of this script:
@@ -24,7 +28,6 @@ export PATH=$PUB_BIN_DIR:$PATH
 
 # Default logger level
 export PUB_LOGGER_LEVEL=kLOGGER_DEBUG
-
 # Default message drain
 export PUB_LOGGER_DRAIN=kLOGGER_COUT
 #export PUB_LOGGER_DRAIN=kLOGGER_FILE

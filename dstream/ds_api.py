@@ -14,7 +14,7 @@ from pub_util     import pub_logger
 # pub_dbi package import
 from pub_dbi      import pubdb_reader, pubdb_writer
 # dstream import
-from ds_data      import ds_status, ds_project
+from ds_data      import ds_status, ds_project, ds_daemon, ds_daemon_log
 from ds_exception import DSException
 from datetime     import datetime
 
@@ -162,6 +162,51 @@ class ds_reader(pubdb_reader):
                 runs.append(x)
         return runs
 
+    ## Fetch a daemon configuration for the specified server. Returns ds_daemon if found. Else None.
+    def daemon_info(self,server):
+
+        server = str(server)
+
+        query  = ' SELECT MaxProjCtr, LifeTime, LogRange, EMail, Enabled'
+        query += ' FROM DaemonTable'
+        query += ' WHERE Server=\'%s\'; ' % server
+
+        self.execute(query)
+
+        if self.nrows() < 1:
+            return None
+
+        x = self.fetchone()
+
+        return ds_daemon(server, x[0], x[1], x[2], x[3], x[4], x[5])
+
+    ## Fetch a daemon log for the specified server. Returns a tuple of ds_daemon_log if found. Else None.
+    def daemon_log(self,server):
+
+        server = str(server)
+
+        query  = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime'
+        query += ' FROM DaemonLogTable'
+        query += ' WHERE Server=\'%s\';' % server
+
+        self.execute(query)
+
+        if self.nrows() < 1:
+            self._logger.info('No daemon log found for a server \'%s\'' % server)
+            return None
+
+        log_array=[]
+        for x in self:
+            log_array.append( ds_daemon_log(server, x[0], x[1], x[2], x[3], x[5]) )
+            if x[6]:
+                for y in x[6].split(','):
+        
+                    tmp = y.split("=>")
+
+                    log_array[-1].add_log(tmp[0],tmp[1])
+
+        return tuple(log_array)
+    
     ## Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
         
@@ -203,7 +248,7 @@ class ds_reader(pubdb_reader):
                           resource = resource,
                           ver      = x[6],
                           enable   = x[7])
-        
+
     ## Fetch a list of enabled projects for execution. Return is an array of ds_project.
     def list_projects(self):
 
@@ -350,12 +395,43 @@ class ds_writer(pubdb_writer,ds_reader):
 
         return self.commit(query)
 
+    ## @brief Log daemon status into DaemonLogTable. Input is ds_daemon_log object.
+    def log_daemon(self,daemon_log):
+
+        if not isinstance(daemon_log,ds_daemon_log):
+
+            self._logger.error('Invalid arg type: you must provide ds_daemon_log object!')
+            return False
+
+        elif not daemon_log.is_valid():
+
+            self._logger.error('Provided daemon log contains invalid values!')
+            return False
+
+        query = 'SELECT UpdateDaemonLog(\'%s\',%d,%d,%d,%d,\'%s\');'
+
+        log_item = ''
+        for x in daemon_log._log.keys():
+            
+            log_item += '%s=>%s,' % (x, daemon_log._log[x])
+            
+        log_item = log_item.rstrip(',')
+        
+        query = query % (daemon_log._server,
+                         daemon_log._max_proj_ctr,
+                         daemon_log._lifetime,
+                         daemon_log._proj_ctr,
+                         daemon_log._uptime,
+                         log_item)
+
+        return self.commit(query)
+
 ## @class ds_master
 # @brief Database API specialized for master scheduler, not for projects
 # @details
 # ds_writer implements read/write functions needed for ds_daemon class specifically.\n
 # This should not be used by project class instances.
-class ds_master(pubdb_writer,ds_reader):
+class ds_master(ds_writer,ds_reader):
 
     ## @brief internal method to ask a binary question to a user
     def _ask_binary(self):
@@ -375,6 +451,33 @@ class ds_master(pubdb_writer,ds_reader):
                 continue
         return True
 
+    ## @brief Define a daemon. Input is ds_daemon object.
+    def define_daemon(self,daemon_info):
+
+        if not isinstance(daemon_info,ds_daemon):
+
+            self._logger.error('Invalid arg type: you must provide ds_daemon object!')
+            return False
+
+        elif not daemon_info.is_valid():
+
+            self._logger.error('Provided daemon info contains invalid values!')
+            return False
+
+        query = 'SELECT UpdateDaemonTable(\'%s\',%d,%d,%d,%d,%d,%d,\'%s\',%s);'
+
+        query = query % (daemon_info._server,
+                         daemon_info._max_proj_ctr,
+                         daemon_info._lifetime,
+                         daemon_info._log_lifetime,
+                         daemon_info._runsync_time,
+                         daemon_info._update_time,
+                         daemon_info._cleanup_time,
+                         daemon_info._email,
+                         str(daemon_info._enable).upper() )
+
+        return self.commit(query)
+
     ## @brief Define a new project. Input is ds_project object.
     def define_project(self,project_info):
 
@@ -388,7 +491,7 @@ class ds_master(pubdb_writer,ds_reader):
             self._logger.error('Provided project info contains invalid values!')
             return False
         
-        query = 'SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\',\'%s\',\'%s\',%d,%d,\'%s\');'
+        query = 'SELECT DefineProject(\'%s\',\'%s\',%d,\'%s\',%d,\'%s\',\'%s\',%d,%d,\'%s\');'
         
         resource = ''
         for x in project_info._resource.keys():
@@ -401,6 +504,7 @@ class ds_master(pubdb_writer,ds_reader):
                           project_info._command,
                           project_info._period,
                           project_info._email,
+                          project_info._sleep,
                           project_info._server,
                           project_info._runtable,
                           project_info._run,
@@ -465,19 +569,21 @@ class ds_master(pubdb_writer,ds_reader):
 
         if check:
             self._logger.warning('Attempting to alter project configuration...')
-            self._logger.info('Server  : %s => %s' % (orig_info._server,  info._server))
+            self._logger.info('Server  : %s => %s' % (orig_info._server,  info._server ))
             self._logger.info('Command : %s => %s' % (orig_info._command, info._command))
             self._logger.info('Period  : %d => %d' % (orig_info._period,  info._period ))
+            self._logger.info('Sleep   : %d => %d' % (orig_info._sleep,   info._sleep  ))
             self._logger.info('Email   : %s => %s' % (orig_info._email,   info._email  ))
-            self._logger.info('Enabled : %s => %s' % (orig_info._enable,  info._enable))
+            self._logger.info('Enabled : %s => %s' % (orig_info._enable,  info._enable ))
             self._logger.info('New Resource: %s' % resource )
             
             if not self._ask_binary(): return False;
         
-        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,\'%s\',\'%s\',%s);'
+        query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,%d,\'%s\',\'%s\',%s);'
         query = query % ( info._project,
                           info._command,
                           info._period,
+                          info._sleep,
                           info._email,
                           info._server,
                           resource,

@@ -8,9 +8,7 @@
 DROP FUNCTION IF EXISTS DoesTableExist(TEXT);
 CREATE OR REPLACE FUNCTION DoesTableExist(tname TEXT) RETURNS BOOLEAN AS $$
 DECLARE
-
 doesExist BOOLEAN;
-
 BEGIN
 
   SELECT TRUE FROM INFORMATION_SCHEMA.columns WHERE table_name = lower(tname) LIMIT 1 INTO doesExist;
@@ -27,8 +25,133 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION CreateDaemonTable() RETURNS VOID AS $$
+CREATE TABLE IF NOT EXISTS DaemonTable ( Server        TEXT      NOT NULL,
+					 MaxProjCtr    INT       NOT NULL,
+ 					 LifeTime      INT       NOT NULL,
+					 LogRange      INT       NOT NULL,
+					 RunSyncPeriod INT       NOT NULL,
+					 UpdatePeriod  INT       NOT NULL,
+					 CleanUpPeriod INT       NOT NULL,
+					 EMail         TEXT      NOT NULL,
+					 Enabled       BOOLEAN   NOT NULL,
+					 LogTime       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					 PRIMARY KEY (Server) );
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION UpdateDaemonTable( nodename       TEXT,
+       	  	  	   		      max_proj_ctr   INT,
+					      max_uptime     INT,
+					      log_duration   INT,
+					      sync_period    INT,
+					      update_period  INT,
+					      cleanup_period INT,
+					      mail_address   TEXT,
+					      enable         BOOLEAN ) RETURNS VOID AS $$
+DECLARE
+  does_exist BOOLEAN;
+BEGIN
+  IF NOT DoesTableExist('DaemonTable') THEN
+    RAISE EXCEPTION 'DaemonTable does not exist!';
+  END IF;
+
+  SELECT TRUE FROM DaemonTable WHERE Server = nodename INTO does_exist;
+
+  IF does_exist IS NULL THEN
+    INSERT INTO DaemonTable
+  	   	(Server, MaxProjCtr, LifeTime, LogRange, RunSyncPeriod, UpdatePeriod, CleanUpPeriod, EMail, Enabled)
+	   VALUES
+		(nodename,max_proj_ctr,max_uptime,log_duration,sync_period,update_period,cleanup_period,mail_address,enable);
+  ELSE
+    UPDATE DaemonTable SET
+    	   MaxProjCtr    = max_proj_ctr,
+	   LifeTime      = max_uptime,
+	   LogRange      = log_duration,
+	   RunSyncPeriod = sync_period,
+	   UpdatePeriod  = update_period,
+	   CleanUpPeriod = cleanup_period,
+	   EMail         = mail_address,
+	   Enabled       = enable
+           WHERE Server  = nodename;
+  END IF;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION CreateDaemonLogTable() RETURNS VOID AS $$
+CREATE TABLE IF NOT EXISTS DaemonLogTable( ID         BIGSERIAL,
+				      	   Server     TEXT NOT NULL,
+       	     	    	   	      	   MaxProjCtr INT  NOT NULL,
+				      	   LifeTime   INT  NOT NULL,
+       	     	    	   	      	   ProjCtr    INT  NOT NULL,
+				      	   UpTime     INT  NOT NULL,
+		    		      	   LogItem    HSTORE  NOT NULL,
+				      	   LogTime    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				      	   PRIMARY KEY (ID,SERVER) );
+				      
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS UpdateDaemonLog( TEXT,
+     	      	 			 INT, INT, INT, INT,
+					 HSTORE );
+CREATE OR REPLACE FUNCTION UpdateDaemonLog( nodename     TEXT,
+       	  	  	   		    max_proj_ctr INT,
+					    max_uptime   INT,
+					    proj_ctr     INT,
+					    uptime       INT,
+					    log_item     HSTORE) RETURNS VOID AS $$
+DECLARE
+  range INT;
+  query TEXT;
+BEGIN
+
+  IF NOT DoesTableExist('DaemonLogTable') THEN
+    RAISE EXCEPTION 'DaemonLogTable does not exist!';
+  END IF;
+
+  INSERT INTO DaemonLogTable (Server, MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem)
+  VALUES (nodename, max_proj_ctr, max_uptime, proj_ctr, uptime, log_item);
+  
+  query := format(' INSERT INTO DaemonLogTable (Server, MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem)
+   	   	    VALUES 
+		    (''%s'',%s,%s,%s,%s,''%s''',nodename,max_proj_ctr,max_uptime,proj_ctr,uptime,log_item);
+
+  RAISE WARNING '%', query;
+
+  SELECT LogRange::TEXT FROM DaemonTable WHERE Server = nodename INTO range;
+
+  IF range IS NULL THEN
+    range := 3600;
+  END IF;
+
+--  range := format('%s seconds',range);
+
+  query := format(' DELETE FROM DaemonLogTable
+  	   	    WHERE Server = ''%s'' 
+		    	  AND 
+			  LogTime < ( CURRENT_TIMESTAMP - INTERVAL ''%s seconds'')', nodename,range);
+  EXECUTE query;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 --Check if a table already exists. Used by many other functions here.
-DROP FUNCTION IF EXISTS DoesProjectExist(TEXT);
 CREATE OR REPLACE FUNCTION DoesProjectExist(tname TEXT) RETURNS BOOLEAN AS $$
 DECLARE
 doesExist BOOLEAN;
@@ -98,6 +221,8 @@ BEGIN
     EXECUTE RemoveProject(myRec.Project);
   END LOOP;
   DROP TABLE ProcessTable;
+  DROP TABLE DaemonTable;
+  DROP TABLE DaemonLogTable;
   RETURN;
 END;
 $$ LANGUAGE PLPGSQL;
@@ -329,14 +454,13 @@ $$ LANGUAGE PLPGSQL;
 -- (Re-)create ProcessTable
 
 DROP FUNCTION IF EXISTS CreateProcessTable();
-
 CREATE OR REPLACE FUNCTION CreateProcessTable() RETURNS VOID AS $$
-
 CREATE TABLE IF NOT EXISTS ProcessTable ( ID          SERIAL,
        	     		    		  Project     TEXT      NOT NULL,
 			    		  ProjectVer  SMALLINT  NOT NULL,
 			    		  Command     TEXT      NOT NULL,
        	     		    		  Frequency   INT       NOT NULL,
+					  SleepAfter  INT       NOT NULL,
 			    		  EMail       TEXT      NOT NULL,
 					  Server      TEXT      NOT NULL,
 			    		  Resource    HSTORE    NOT NULL,
@@ -408,6 +532,7 @@ CREATE OR REPLACE FUNCTION DefineProject( project_name TEXT,
      	      	 		       	  command      TEXT,
 				       	  frequency    INT,
 				       	  email        TEXT,
+					  sleepAfter   INT DEFAULT 5,
 					  nodename     TEXT DEFAULT '',
 					  runtable     TEXT DEFAULT 'MainRun',
 				       	  start_run    INT DEFAULT 0,
@@ -452,8 +577,10 @@ BEGIN
   END IF;
 
   -- Insert into ProcessTable
-  INSERT INTO ProcessTable (Project,Command,ProjectVer,Frequency,RefName,StartRun,StartSubRun,Email,Server,Resource,Enabled,Running)
-  	      VALUES (project_name, command, myVersion, frequency, runtable, start_run, start_subrun, email, nodename, resource, enabled, FALSE);
+  INSERT INTO ProcessTable ( Project,  Command, ProjectVer, Frequency, SleepAfter, RefName,
+  	      		     StartRun, StartSubRun, Email, Server, Resource, Enabled, Running)
+  	      VALUES ( project_name, command, myVersion, frequency, sleepAfter, runtable,
+	      	       start_run, start_subrun, email, nodename, resource, enabled, FALSE);
   SELECT ID FROM ProcessTable WHERE Project = project_name INTO myInt;
   IF myInt IS NULL THEN
     --SELECT DropStatusTable(project_name);
@@ -504,6 +631,7 @@ DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
 DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
      	      	 		       	     command      TEXT,
 				       	     frequency    INT,
+					     sleepAfter   INT,
 				       	     email        TEXT,
 					     nodename     TEXT,
 				       	     resource     HSTORE,
@@ -512,6 +640,7 @@ DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
 CREATE OR REPLACE FUNCTION UpdateProjectConfig( project_name TEXT,
      	      	 		       	     	command      TEXT DEFAULT NULL,
 				       	     	frequency    INT  DEFAULT NULL,
+						sleepAfter   INT  DEFAULT NULL,
 				       	     	email        TEXT DEFAULT NULL,
 						nodename     TEXT DEFAULT NULL,
 				       	     	resource     HSTORE  DEFAULT NULL,
@@ -544,6 +673,10 @@ BEGIN
 
   IF NOT frequency IS NULL THEN
     query := format('%s Frequency=%s,',query,frequency);
+  END IF;
+
+  IF NOT sleepAfter IS NULL THEN
+    query := format('%s SleepAfter=%s,',query,sleepAfter);
   END IF;
 
   IF NOT email IS NULL THEN
@@ -593,6 +726,7 @@ DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
 DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
      	      	 		       	      new_cmd      TEXT,
 				       	      new_freq     INT,
+      					      new_sleepAfter INT,
 				       	      new_email    TEXT,
 					      nodename     TEXT,
 					      new_run      INT,
@@ -603,6 +737,7 @@ DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
 CREATE OR REPLACE FUNCTION ProjectVersionUpdate( project_name TEXT,
      	      	 		       	      	 new_cmd      TEXT DEFAULT NULL,
 				       	      	 new_freq     INT  DEFAULT NULL,
+					      	 new_sleepAfter INT DEFAULT NULL,
 				       	      	 new_email    TEXT DEFAULT NULL,
 						 new_nodename TEXT DEFAULT NULL,
 						 new_run      INT  DEFAULT NULL,
@@ -635,6 +770,10 @@ BEGIN
     SELECT Frequency FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_freq;
   END IF;
 
+  IF new_sleepAfter IS NULL THEN
+    SELECT SleepAfter FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_sleepAfter;
+  END IF;
+
   IF new_email IS NULL THEN
     SELECT Email FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_email;
   END IF;
@@ -665,6 +804,7 @@ BEGIN
   	   		       		      Command,
 					      ProjectVer,
 					      Frequency,
+					      SleepAfter,
 					      StartRun,
 					      StartSubRun,
 					      Email,
@@ -672,12 +812,13 @@ BEGIN
 					      Resource,
 					      Enabled,
 					      Running) 
-			       VALUES ( ''%s'', ''%s'', %s, %s, 
+			       VALUES ( ''%s'', ''%s'', %s, %s, %s,
 			       	      	%s, %s, ''%s'', ''%s''::HSTORE, %s, FALSE)',
 			       project_name,
 			       new_cmd,
 			       current_ver,
 			       new_freq,
+			       new_sleepAfter,
 			       new_run,
 			       new_subrun,
 			       new_email,
@@ -703,6 +844,7 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
        	  	  	   RETURNS TABLE ( Project TEXT, 
 			   	   	   Command TEXT, 
 					   Frequency INT,
+					   SleepAfter INT,
 					   RunTable TEXT,
 					   StartRun INT,
 					   StartSubRun INT,
@@ -712,7 +854,7 @@ CREATE OR REPLACE FUNCTION ListEnabledProject()
 					   ProjectVer SMALLINT) AS $$
 DECLARE
 BEGIN
-  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.RefName, A.StartRun, A.StartSubRun,
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.SleepAfter, A.RefName, A.StartRun, A.StartSubRun,
   	       	      A.Email, A.Server, A.Resource, A.ProjectVer 
   		      FROM ProcessTable AS A JOIN 
   		      ( SELECT B.Project AS Project, MAX(B.ProjectVer) AS ProjectVer 
@@ -728,6 +870,7 @@ CREATE OR REPLACE FUNCTION ListProject()
        	  	  RETURNS TABLE ( Project TEXT, 
 		   	   	  Command TEXT, 
 				  Frequency INT,
+				  SleepAfter INT,
 				  RunTable TEXT,
 				  StartRun INT,
 				  StartSubRun INT,
@@ -738,7 +881,7 @@ CREATE OR REPLACE FUNCTION ListProject()
 				  ProjectVer SMALLINT) AS $$
 DECLARE
 BEGIN
-  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.RefName, A.StartRun, A.StartSubRun,
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.SleepAfter, A.RefName, A.StartRun, A.StartSubRun,
   	       	      A.Email, A.Server, A.Resource, A.Enabled, A.ProjectVer 
   		      FROM ProcessTable AS A JOIN 
   		      ( SELECT B.Project AS Project, MAX(B.ProjectVer) AS ProjectVer 
@@ -821,6 +964,7 @@ CREATE OR REPLACE FUNCTION ProjectInfo( project_name TEXT,
        	  	  	   		RETURNS TABLE ( Project TEXT, 
 			      	     	   	        Command TEXT, 
 					   	      	Frequency INT,
+							SleepAfter INT,
 							RunTable TEXT,							
 					   	      	StartRun INT,
 					 	      	StartSubRun INT,
@@ -843,7 +987,7 @@ BEGIN
 	   INTO project_ver;
   END IF;
 
-  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.RefName,
+  RETURN QUERY SELECT A.Project, A.Command, A.Frequency, A.SleepAfter, A.RefName,
   	       	      A.StartRun, A.StartSubRun, A.Email, A.Server,
 		      A.Resource, A.ProjectVer, A.Enabled
 		      FROM ProcessTable AS A 

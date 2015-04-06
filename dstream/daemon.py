@@ -1,0 +1,327 @@
+## @namespace dstream.ds_daemon
+#  @ingroup dstream
+#  @brief Introduce simple daemon toolkit for executing projects
+#  @details
+#  Includes class proc_action (a unit process executor) and proc_daemon (a process manager)
+
+# Python include
+import time, copy, os, signal
+from subprocess   import Popen, PIPE
+# dstream include
+from pub_util     import pub_env
+from ds_exception import DSException
+from ds_proc_base import ds_base
+from ds_api       import ds_master
+from ds_data      import ds_project, ds_daemon, ds_daemon_log
+# pub_dbi package include
+from pub_dbi      import pubdb_conn_info, DBException
+# pub_util package include
+from pub_util     import pub_logger, pub_smtp, BaseException
+# dstream module include
+
+## @class proc_action
+#  @brief A single process executor for a project
+#  @details
+#  Instantiated with project information, proc_action executes a project.\n
+#  Currently executed process's stdout and stderr are simply handled via pipe.\n
+#  One may improve this simple design to manage memory/cpu/wall-time of the process.\n
+class proc_action(object):
+
+    ## default ctor accepting ds_project instance
+    def __init__(self, project_info,logger=None):
+
+        if not isinstance(project_info,ds_project):
+            raise ValueError
+
+        self._logger = logger
+        if not self._logger:
+            self._logger = pub_logger.get_logger(self.__class__.__name__)
+
+        ## Project information
+        self._info = copy.copy(project_info)
+
+        ## Process handle
+        self._proc = None
+
+    ## Simple method to access name of a project
+    def name(self): return self._info._project
+
+    ## Boolean function to check if the project's execution process is alive or not
+    def active(self):
+        if self._proc is None: return False
+        else: return (self._proc.poll() is None)
+
+    ## @brief Clears a project process, if exists, and returns (stdout,stderr). 
+    #  @details If process is active, it waits to finish. Use active() function\n
+    #  before calling this to avoid waiting time.
+    def clear(self):
+        if self._proc is None: return (None,None,None)
+        (out,err) = self._proc.communicate()
+        code = self._proc.poll()
+        del self._proc
+        self._proc = None
+        return (code,out,err)
+
+    ## Opens a sub-process to execute a project
+    def execute(self):
+        try:
+            self._proc = Popen(self._info._command.split(None),
+                               #shell=True,
+                               stdout = PIPE,
+                               stderr = PIPE)
+        except OSError as e:
+
+            self._logger.error(e.strerror)
+            self._logger.error('Error executing %s! Sending e-mail report...' % self._info._project)
+            try:
+                pub_smtp(receiver = self._info._email.split(None),
+                         subject  = 'Failed execution of project %s' % self.name(),
+                         text     = e.strerror)
+            except BaseException as be:
+                self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
+                for line in be.v.split('\n'):
+                    self._logger.error(line)
+            raise DSException(e.strerror)
+
+## @class proc_daemon
+#  @brief Simple daemon tool to run registered projects
+#  @details
+#  Contains one function to continue an indefinite loop of loading project information\n
+#  and execution at requested time. Loading of a project from DB is done in the other\n
+#  function.
+class proc_daemon(ds_base):
+
+    ## default ctor does not require any input
+    def __init__(self):
+
+        super(proc_daemon,self).__init__()
+
+        ## Constructor time
+        self._creation_ts = time.time()
+
+        ## API for proc_daemon is ds_master to interact with ProcessTable
+        self._api = ds_master(pubdb_conn_info.writer_info(),logger=self._logger)
+
+        ## Array of proc_action instance (one per project)
+        self._project_v  = {}
+
+        ## Array of execution timestamp (one per project)
+        self._exe_time_v = {}
+
+        ## Array of execution counter (one per project)
+        self._exe_ctr_v = {}
+
+        ## Network node name
+        self._server = pub_env.kSERVER_NAME
+
+        ## Server configuration ... instantiated within load_daemon
+        self._config = None
+
+        ## Log ... instantiated within load_daemon
+        self._log = None
+
+        ## Next execution timestamp ... for processing
+        self._next_exec_time = time.time()
+
+        ## SIGINT marker
+        self._exit_routine = False
+
+    ## Access DB and load daemon info for execution
+    def load_daemon(self):
+        self._config = self._api.daemon_info(self._server)
+        if not self._config:
+            self.warning('Daemon configuration not found for server %s' % self._server)
+            self._config = ds_daemon( server = self._server )
+
+        if not self._log:
+            self._log = ds_daemon_log(self._config._server,
+                                      self._config._max_proj_ctr,
+                                      self._config._lifetime)
+
+    ## Log daemon status
+    def log_daemon(self):
+        uptime   = int(time.time() - self._creation_ts)
+        proj_ctr = 0
+        for x in self._project_v.values():
+            if x.active(): project_ctr += 1
+
+        self._log.log( proj_ctr = proj_ctr,
+                       uptime   = uptime,
+                       log      = self._log._log,
+                       max_proj_ctr = self._config._max_proj_ctr,
+                       lifetime = self._config._lifetime )
+
+        self._api.log_daemon(self._log)
+        
+        
+    ## Access DB and load projects for execution + update pre-loaded project information
+    def load_projects(self):
+
+        # Load new/updated projects
+        for x in self._api.list_projects():
+
+            if x._server and not x._server in self._server:
+                self.debug('Skipping a project on irrelevant server: %s',x._project)
+                continue
+            
+            if x._project in self._project_v and self._project_v[x._project].active():
+                self.info('Skipping update on project %s (still active)',x._project)
+                continue
+
+            self.info('Updating project %s information' % x._project)
+            self._project_v[x._project] = proc_action(x,self._logger)
+            if not x._project in self._exe_time_v:
+                self._exe_time_v[x._project] = None
+                self._exe_ctr_v[x._project]  = 0
+
+    ## List projects in the priority order to be executed
+    def ordered_projects(self):
+        # Prioritize execution by counter
+        ctr_priority = {}
+        for x in self._exe_ctr_v:
+            ctr = self._exe_ctr_v[x]
+            if not ctr in ctr_priority:
+                ctr_priority[ctr]=[]
+                ctr_priority[ctr].append(x)
+        ctrs = ctr_priority.keys()
+        ctrs.sort()
+        projects = []
+        for ctr in ctr_priority:
+            for p in ctr_priority[ctr]:
+                projects.append(p)
+        return projects
+        
+    ## Access DB and bring all (enabled) project tables up-to-date with MainRun table
+    def runsync_projects(self):
+        self._api.runsynch()
+
+    ## Clean up @ end
+    def finish(self):
+        self.info('Program exit: waiting %d [sec] for all projects to end...' % self._config._cleanup_time)
+        ctr=self._config._cleanup_time
+        ready = False
+        while not ready and ctr:
+            ready = True
+            for p in self._project_v.values():
+                if p.active():
+                    ready = False
+                    break
+            time.sleep(1)
+            ctr -= 1
+
+        if ctr:
+            self.info('All programs finished gracefully.')
+        else:
+            self.warning('There are still un-finished projects... killing them now.')
+            for x in self._project_v:
+                self.warning('killing %s' % x)
+                self._project_v[x].kill()
+
+    ## Initiate an indefinite loop of projects' info-loading & execution 
+    def routine(self):
+
+        routine_ctr=0
+        routine_sleep=0
+        while routine_ctr >= 0 and not self._exit_routine:
+
+            routine_ctr+=1
+            time.sleep(1)
+            now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
+            now_ts   = time.time()
+            self.debug(now_str)
+
+            # If sleep is set, do nothing and continue
+            if routine_sleep: 
+                routine_sleep -=1
+                continue
+
+            try:
+                self._api.connect()
+                if not self._config:
+                    self.load_daemon()
+            except DBException as e:
+                self.error('Failed connection to DB @ %s ... Retry in 1 minute' % now_str)
+                routine_sleep = 60
+                continue
+            
+            # Exit if time exceeds the daemon lifetime
+            if self._config and (now_ts - self._creation_ts) > self._config._lifetime:
+                self.warning('Exceeded pre-defined lifetime. Exiting...')
+                return True
+
+            if (routine_ctr-1) % self._config._update_time == 0:
+                
+                self.info('Routine project update @ %s ' % now_str)
+                self.load_daemon()
+                self.load_projects()
+                self.log_daemon()
+
+            if not self._config._enable:
+                continue
+
+            if (routine_ctr-1) % self._config._runsync_time == 0:
+
+                self.info('Routine RunSync Start @ %s' % now_str)
+                self.runsync_projects()
+                self.info('Routine RunSync Done  @ %s' % now_str)
+                
+            for proj in self.ordered_projects():
+
+                if self._exit_routine: break
+                
+                proj_ptr = self._project_v[proj]
+                if not proj_ptr._info._enable: continue
+                
+                active_ctr = 0
+                for x in self._project_v:
+                    if self._project_v[x].active(): active_ctr += 1
+
+                if active_ctr >= self._config._max_proj_ctr:
+                    self.debug('Max number of simultaneous project execution reached.')
+                    break
+                
+                last_ts  = self._exe_time_v[proj]
+                if not proj_ptr.active():
+
+                    (code,out,err) = proj_ptr.clear()
+
+                    if out or err:
+
+                        self.info(' %s returned %s @ %s' % (proj,code,now_str))
+                        print out,err
+                        
+                    if ( last_ts is None or 
+                         last_ts < ( now_ts - proj_ptr._info._period) ):
+
+                        try:
+                            self.info('Execute %s @ %s' % (proj,now_str))
+                            proj_ptr.execute()
+                            self._exe_time_v[proj] = now_ts
+                            self._exe_ctr_v[proj] += 1
+                            
+                        except DSException as e:
+                            self.critical('Call expert and review project %s' % proj)
+
+                            if self._config._email:
+                                try:
+                                    pub_smtp(receiver = self._config._email,
+                                             subject  = 'Daemon Error',
+                                             text = 'Failed to execute project \'%s\' @ %s' % (proj,now_str))
+
+                                except DSException as  e:
+                                    self.critical('Report to daemon experts failed!')
+                    
+
+        self.finish()
+        self._exit_routine = False
+
+if __name__ == '__main__':
+
+    k=proc_daemon()
+    ## For ctrl+C
+    def sig_kill(signal,frame):
+        k._exit_routine=True
+        k.warning('SIGINT detected. Finishing the program gracefully.')
+        k.warning('Terminating proc_daemon::routine function.')
+    signal.signal(signal.SIGINT, sig_kill)
+    k.routine()
