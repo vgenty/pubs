@@ -17,7 +17,9 @@ case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
 	source /uboone/larsoft/setup
+	setup git
 	setup psycopg2 v2_5_4
+	setup postgres v9_2_4
 	;;
     (*)
 	echo No special setup done for the server `uname -n`
