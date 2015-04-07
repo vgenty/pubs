@@ -31,7 +31,6 @@ class pubdb_conn_info(object):
 
     @classmethod
     def writer_info(cls):
-        print pubdb_env.kWRITER_PASS
         return cls(pubdb_env.kWRITER_HOST,
                    pubdb_env.kWRITER_PORT,
                    pubdb_env.kWRITER_DB,
@@ -41,7 +40,6 @@ class pubdb_conn_info(object):
 
     @classmethod
     def admin_info(cls):
-        print pubdb_env.kADMIN_PASS
         return cls(pubdb_env.kADMIN_HOST,
                    pubdb_env.kADMIN_PORT,
                    pubdb_env.kADMIN_DB,

@@ -248,9 +248,9 @@ BEGIN
   FOR myRec IN SELECT Project FROM ProcessTable LOOP
     EXECUTE RemoveProject(myRec.Project);
   END LOOP;
-  DROP TABLE ProcessTable;
-  DROP TABLE DaemonTable;
-  DROP TABLE DaemonLogTable;
+  DROP TABLE IF EXISTS ProcessTable;
+  DROP TABLE IF EXISTS DaemonTable;
+  DROP TABLE IF EXISTS DaemonLogTable;
   RETURN;
 END;
 $$ LANGUAGE PLPGSQL;

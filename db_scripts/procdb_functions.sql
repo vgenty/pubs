@@ -1,3 +1,4 @@
+--SET ROLE uboonedaq_admin;
 --Overwrite functions if they already exist
 
 ---------------------------------------------------------------------

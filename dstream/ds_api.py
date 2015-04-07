@@ -660,19 +660,25 @@ class death_star(ds_master):
         
         if not self._ask_binary(): return False
         
-        query = 'SELECT CreateTestRunTable();'
+        query = 'SELECT RemoveProcessDB();'
 
         result = self.commit(query)
 
         if result:
 
-            query = 'SELECT RemoveProcessDB();'
+            query = 'SELECT CreateProcessTable();'
 
             result = self.commit(query)
 
         if result:
 
-            query = 'SELECT CreateProcessTable();'
+            query = 'SELECT CreateDaemonTable();'
+
+            result = self.commit(query)
+
+        if result:
+
+            query = 'SELECT CreateDaemonLogTable();'
 
             result = self.commit(query)
 
@@ -690,7 +696,7 @@ class death_star(ds_master):
     #  @details
     #  Recreate MainRun table. This requires to drop all projects first.\n
     #  Outcome is a newly filled MainRun table with an empty ProcessTable
-    def refill_death_star(self,name,run,subrun):
+    def refill_death_star(self,name,run,subrun,recreate=False):
 
         try:
             run=int(run)
@@ -715,19 +721,20 @@ class death_star(ds_master):
             self._logger.warning('Death Star re-built failed. My god.')
             return False
 
-        query = 'DROP TABLE IF EXISTS %s;' % name
+        if recreate:
+            query = 'DROP TABLE IF EXISTS %s;' % name
 
-        if not self.commit(query):
-            self._logger.warning('Death Star re-built failed. My god.')
-            return False
+            if not self.commit(query):
+                self._logger.warning('Death Star re-built failed. My god.')
+                return False
 
-        query = 'SELECT CreateTestRunTable(\'%s\')' % name
+            query = 'SELECT CreateTestRunTable(\'%s\')' % name
 
-        if not self.commit(query):
-            self._logger.warning('Death Star re-built failed. My god.')
-            return False
+            if not self.commit(query):
+                self._logger.warning('Death Star re-built failed. My god.')
+                return False
 
-        query = 'SELECT FillTestRunTable(%s,%d,%d);' % (name,run,subrun)
+        query = 'SELECT FillTestRunTable(\'%s\',%d,%d);' % (name,run,subrun)
 
         if not self.commit(query):
             self._logger.warning('Death Star re-built failed. My god.')

@@ -1,3 +1,4 @@
+--SET ROLE uboonedaq_admin;
 SELECT RemoveProcessDB();
 DROP TABLE IF EXISTS TestRun;
 SELECT CreateTestRunTable('TestRun');
