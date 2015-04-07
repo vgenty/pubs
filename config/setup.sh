@@ -27,14 +27,14 @@ case `uname -n` in
 	echo Setting up for ubdaq-prod machines...
         source /uboone/setup_online.sh
 	source /uboone/larsoft/setup
-	setup git
-        setup sam_web_client
-        setup ifdhc
-	setup postgres v9_2_4
-	setup psycopg2 v2_5_4
-        setup uboonecode v03_04_00 -q e6:prof
-        source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
+	setup uboonecode v03_04_00 -q e6:prof
+        source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
+	setup git
+	setup sam_web_client
+	setup ifdhc
+	setup psycopg2 v2_5_4
+	setup postgres v9_2_4
 	;;
     (*)
 	echo No special setup done for the server `uname -n`
@@ -52,11 +52,9 @@ export PYTHONPATH=$PUB_TOP_DIR:$PYTHONPATH
 export PUB_BIN_DIR=$PUB_TOP_DIR
 export PATH=$PUB_BIN_DIR:$PATH
 
-
 #
 # Project configuration
 # 
-
 # Default logger level
 export PUB_LOGGER_LEVEL=kLOGGER_DEBUG
 # Default message drain

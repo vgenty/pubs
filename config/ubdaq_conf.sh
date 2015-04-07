@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # SQL reader account config
 export PUB_PSQL_READER_HOST=192.168.144.189
 export PUB_PSQL_READER_PORT=""
