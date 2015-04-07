@@ -16,6 +16,7 @@ case `uname -n` in
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
+        source /uboone/setup_online.sh
 	source /uboone/larsoft/setup
 	setup git
         setup sam_web_client
