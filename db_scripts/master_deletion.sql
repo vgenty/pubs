@@ -103,6 +103,8 @@ DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
 
 DROP FUNCTION IF EXISTS ListEnabledProject();
 DROP FUNCTION IF EXISTS ListProject();
+DROP FUNCTION IF EXISTS ListEnabledDaemon();
+DROP FUNCTION IF EXISTS ListDaemon();
 DROP FUNCTION IF EXISTS AllProjectRunSynch();
 DROP FUNCTION IF EXISTS OneProjectRunSynch( project      TEXT,
 					    project_ver  SMALLINT,

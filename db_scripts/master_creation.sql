@@ -867,6 +867,50 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS ListEnabledDaemon();
+
+CREATE OR REPLACE FUNCTION ListEnabledDaemon() 
+       	  	  	   RETURNS TABLE ( Server        TEXT, 
+			   	   	   MaxProjCtr    INT,
+					   LifeTime      INT,
+					   LogRange      INT,
+					   RunSyncPeriod INT,
+					   UpdatePeriod  INT,
+					   CleanUpPeriod INT,
+					   EMail         TEXT,
+					   LogTime       TIMESTAMP ) AS $$
+DECLARE
+BEGIN
+  RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.LogRange, A.RunSyncPeriod,
+  	      	      A.UpdatePeriod, A.CleanUpPeriod, A.EMail, A.LogTime
+	       FROM   DaemonTable AS A
+	       WHERE  Enabled;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION ListDaemon() 
+       	  	  	   RETURNS TABLE ( Server        TEXT, 
+			   	   	   MaxProjCtr    INT,
+					   LifeTime      INT,
+					   LogRange      INT,
+					   RunSyncPeriod INT,
+					   UpdatePeriod  INT,
+					   CleanUpPeriod INT,
+					   EMail         TEXT,
+					   Enabled       BOOLEAN,
+					   LogTime       TIMESTAMP ) AS $$
+DECLARE
+BEGIN
+  RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.LogRange, A.RunSyncPeriod,
+  	       	      A.UpdatePeriod, A.CleanUpPeriod, A.EMail, A.Enabled, A.LogTime
+	       FROM   DaemonTable AS A;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 DROP FUNCTION IF EXISTS ListEnabledProject();
 
 CREATE OR REPLACE FUNCTION ListEnabledProject() 
