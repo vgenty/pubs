@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+# If PUB_TOP_DIR not set, try to guess
+if [[ -z $PUB_TOP_DIR ]]; then
+    # Find the location of this script:
+    me="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    # Find the directory one above.
+    export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
+fi
+
 #
 # PSQL configuration
 #
@@ -25,6 +34,7 @@ case `uname -n` in
 	setup psycopg2 v2_5_4
         setup uboonecode v03_04_00 -q e6:prof
         source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
+	source $PUB_TOP_DIR/config/ubdaq_conf.sh
 	;;
     (*)
 	echo No special setup done for the server `uname -n`
@@ -34,13 +44,6 @@ esac
 #
 # Python configuration
 #
-# If PUB_TOP_DIR not set, try to guess
-if [[ -z $PUB_TOP_DIR ]]; then
-    # Find the location of this script:
-    me="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    # Find the directory one above.
-    export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
-fi
 # Set PATH
 export PATH=$PUB_TOP_DIR/bin:$PATH
 # Set PYTHONPATH
