@@ -177,7 +177,7 @@ class ds_reader(pubdb_reader):
 
         server = str(server)
 
-        query  = ' SELECT MaxProjCtr, LifeTime, LogRange, EMail, Enabled'
+        query  = ' SELECT MaxProjCtr, LifeTime, LogRange, RunSyncPeriod, UpdatePeriod, CleanUpPeriod, EMail, Enabled'
         query += ' FROM DaemonTable'
         query += ' WHERE Server=\'%s\'; ' % server
 
@@ -188,7 +188,15 @@ class ds_reader(pubdb_reader):
 
         x = self.fetchone()
 
-        return ds_daemon(server, x[0], x[1], x[2], x[3], x[4], x[5])
+        return ds_daemon( server, 
+                          max_proj_ctr = x[0], 
+                          lifetime     = x[1], 
+                          log_lifetime = x[2],
+                          runsync_time = x[3],
+                          update_time  = x[4],
+                          cleanup_time = x[5],
+                          email        = x[6], 
+                          enable       = x[7] )
 
     ## Fetch a daemon log for the specified server. Returns a tuple of ds_daemon_log if found. Else None.
     def daemon_log(self,server):
