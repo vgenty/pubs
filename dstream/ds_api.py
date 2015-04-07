@@ -664,23 +664,17 @@ class death_star(ds_master):
 
         result = self.commit(query)
 
-        if result:
+        query = 'SELECT CreateProcessTable();'
+        
+        result = result and self.commit(query)
+        
+        query = 'SELECT CreateDaemonTable();'
+        
+        result = result and self.commit(query)
 
-            query = 'SELECT CreateProcessTable();'
+        query = 'SELECT CreateDaemonLogTable();'
 
-            result = self.commit(query)
-
-        if result:
-
-            query = 'SELECT CreateDaemonTable();'
-
-            result = self.commit(query)
-
-        if result:
-
-            query = 'SELECT CreateDaemonLogTable();'
-
-            result = self.commit(query)
+        result = result and self.commit(query)
 
         if result:
 
@@ -696,7 +690,7 @@ class death_star(ds_master):
     #  @details
     #  Recreate MainRun table. This requires to drop all projects first.\n
     #  Outcome is a newly filled MainRun table with an empty ProcessTable
-    def refill_death_star(self,name,run,subrun,recreate=False):
+    def refill_death_star(self,name,run,subrun):
 
         try:
             run=int(run)
@@ -717,22 +711,23 @@ class death_star(ds_master):
 
         query = 'SELECT RemoveProcessDB();'
 
-        if not self.commit(query):
+        result = self.commit(query)
+
+        if not result:
             self._logger.warning('Death Star re-built failed. My god.')
             return False
 
-        if recreate:
-            query = 'DROP TABLE IF EXISTS %s;' % name
+        query = 'DROP TABLE IF EXISTS %s;' % name
 
-            if not self.commit(query):
-                self._logger.warning('Death Star re-built failed. My god.')
-                return False
-
-            query = 'SELECT CreateTestRunTable(\'%s\')' % name
-
-            if not self.commit(query):
-                self._logger.warning('Death Star re-built failed. My god.')
-                return False
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
+        
+        query = 'SELECT CreateTestRunTable(\'%s\')' % name
+        
+        if not self.commit(query):
+            self._logger.warning('Death Star re-built failed. My god.')
+            return False
 
         query = 'SELECT FillTestRunTable(\'%s\',%d,%d);' % (name,run,subrun)
 
@@ -741,9 +736,20 @@ class death_star(ds_master):
             return False
 
         query = 'SELECT CreateProcessTable();'
-        if not self.commit(query):
+        
+        result = result and self.commit(query)
+        
+        query = 'SELECT CreateDaemonTable();'
+        
+        result = result and self.commit(query)
+
+        query = 'SELECT CreateDaemonLogTable();'
+
+        result = result and self.commit(query)
+
+        if not result:
             self._logger.warning('Death Star re-built failed. My god.')
-            return False
+            return False            
 
         self._logger.warning('Death Star is re-built and complete.')
         

@@ -27,5 +27,5 @@ k=death_star( pubdb_conn_info.admin_info(),
 if not k.connect():
     sys.exit(1)
 
-k.refill_death_star(args.name,args.nruns,args.nsubruns,True)
+k.refill_death_star(args.name,args.nruns,args.nsubruns)
 
