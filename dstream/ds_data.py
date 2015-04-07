@@ -91,14 +91,14 @@ class ds_daemon(object):
 
     ## @brief default == operator override
     def __eq__(self,rhs):
-        if ( not self._server == info._server or 
-             not self._max_proj_ctr == info._max_proj_ctr or
-             not self._lifetime == info._lifetime or
-             not self._log_lifetime == info._log_lifetime or
-             not self._runsync_time == info._runsync_time or
-             not self._update_time == info._update_time or
-             not self._email_time == info._email_time or
-             not self._enable == info._enable) :
+        if ( not self._server == rhs._server or 
+             not self._max_proj_ctr == rhs._max_proj_ctr or
+             not self._lifetime == rhs._lifetime or
+             not self._log_lifetime == rhs._log_lifetime or
+             not self._runsync_time == rhs._runsync_time or
+             not self._update_time == rhs._update_time or
+             not self._email == rhs._email or
+             not self._enable == rhs._enable) :
             return False
         return True
 
@@ -152,7 +152,10 @@ class ds_daemon(object):
     ## A method to make sure the instance is at least not stupid
     def is_valid(self):
         
-        if ( not self._server or self._lifetime <= 0 ):
+        if ( not self._server or 
+             self._lifetime <= 0 or
+             self._runsync_time <= 0 or
+             self._update_time <= 0 ):
             return False
 
         else: return True

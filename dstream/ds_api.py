@@ -129,6 +129,32 @@ class ds_reader(pubdb_reader):
                 runs.append(x)
         return runs
 
+    ## Fetch a list of enabled daemons for execution. Return is an array of ds_daemon.
+    def list_daemon(self):
+
+        query  = ' SELECT Server, MaxProjCtr, LifeTime, LogRange, RunSyncPeriod, UpdatePeriod, CleanUpPeriod, EMail, Enabled'
+        query += ' FROM ListDaemon();'
+
+        self.execute(query)
+        
+        info_array = []
+
+        if not self.nrows() or self.nrows() <= 0: return info_array
+
+        for x in self:
+
+            info_array.append( ds_daemon( server       = x[0],
+                                          max_proj_ctr = x[1],
+                                          lifetime     = x[2],
+                                          log_lifetime = x[3],
+                                          runsync_time = x[4],
+                                          update_time  = x[5],
+                                          cleanup_time = x[6],
+                                          email        = x[7],
+                                          enable       = x[8] ) );
+
+        return info_array
+
     ## @brief Fetch run/subrun for a set of specified project with status
     #  @details
     # Fetch run & sub-runs for a group of projects and status.\n
