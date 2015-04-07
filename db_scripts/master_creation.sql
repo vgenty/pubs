@@ -1,3 +1,5 @@
+--SET ROLE uboonedaq_admin;
+
 --CREATE EXTENSION HSTORE;
 
 ---------------------------------------------------------------------
@@ -547,6 +549,7 @@ DROP FUNCTION IF EXISTS DefineProject( project_name TEXT,
      	      	 		       command      TEXT,
 				       frequency    INT,
 				       email        TEXT,
+				       sleepAfter   INT,
 				       nodename     TEXT,
 				       runtable     TEXT,
 				       start_run    INT,

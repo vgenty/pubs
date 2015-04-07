@@ -1,3 +1,4 @@
+--SET ROLE uboonedaq_admin;
 DROP FUNCTION IF EXISTS DoesProcessExist(TEXT);
 DROP FUNCTION IF EXISTS DoesProjectExist(TEXT);
 DROP FUNCTION IF EXISTS DoesTableExist(TEXT);
@@ -6,7 +7,15 @@ DROP FUNCTION IF EXISTS RemoveProcessDB();
 DROP FUNCTION IF EXISTS CreateTestRunTable();
 DROP FUNCTION IF EXISTS CreateTestRunTable(TEXT);
 DROP FUNCTION IF EXISTS CreateDaemonTable();
-DROP FUNCTION IF EXISTS UpdateDaemonTable();
+DROP FUNCTIOn IF EXISTS UpdateDaemonTable( nodename       TEXT,
+                        		   max_proj_ctr   INT,
+                                           max_uptime     INT,
+                                           log_duration   INT,
+                                           sync_period    INT,
+                                           update_period  INT,
+                                           cleanup_period INT,
+                                           mail_address   TEXT,
+                                           enable         BOOLEAN );
 DROP FUNCTION IF EXISTS CreateDaemonLogTable();
 DROP FUNCTION IF EXISTS UpdateDaemonLog( TEXT,
      	      	 			 INT, INT, INT, INT,
@@ -34,20 +43,23 @@ DROP FUNCTION IF EXISTS DefineProject( project_name TEXT,
      	      	 		       command      TEXT,
 				       frequency    INT,
 				       email        TEXT,
-				       start_run    INT,
-				       start_subrun INT,
-				       resource     HSTORE,
-				       enabled      BOOLEAN);
-DROP FUNCTION IF EXISTS DefineProject( project_name TEXT,
-     	      	 		       command      TEXT,
-				       frequency    INT,
-				       email        TEXT,
+				       sleepAfter   INT,
 				       nodename     TEXT,
 				       runtable     TEXT,
 				       start_run    INT,
 				       start_subrun INT,
 				       resource     HSTORE,
 				       enabled      BOOLEAN);
+
+DROP FUNCTION IF EXISTS DefineProject( project_name TEXT,
+     	      	 		       command      TEXT,
+				       frequency    INT,
+				       email        TEXT,
+				       start_run    INT,
+				       start_subrun INT,
+				       resource     HSTORE,
+				       enabled      BOOLEAN);
+
 DROP FUNCTION IF EXISTS UpdateProjectConfig( project_name TEXT,
      	      	 		       	     command      TEXT,
 				       	     frequency    INT,
