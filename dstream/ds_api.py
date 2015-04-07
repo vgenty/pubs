@@ -36,6 +36,16 @@ class ds_reader(pubdb_reader):
                 exist = x[0]
         return exist
 
+    ## Checks if a specified daemon server exists or not.
+    def daemon_exist(self,daemon):
+
+        query = 'SELECT DoesDaemonExist(\'%s\');' % daemon
+        exist = False
+        if self.execute(query,True):
+            for x in self._cursor:
+                exist = x[0]
+        return exist
+
     ## Function to get project's resource
     def get_resource(self,project):
         
@@ -137,19 +147,19 @@ class ds_reader(pubdb_reader):
             raise DSException()
 
         query_table = ''
-        for x in table_v:
-            if x == table_v[0]:  
-                query_table += 'ARRAY[\'%s\'::TEXT' % x
+        for index in xrange(len(table_v)):
+            if not index:
+                query_table += 'ARRAY[\'%s\'::TEXT' % table_v[index]
             else:
-                query_table += (',\'%s\'::TEXT' % x )
+                query_table += (',\'%s\'::TEXT' % table_v[index] )
         query_table += ']'
 
         query_status = ''
-        for x in status_v:
-            if x == status_v[0]:  
-                query_status += 'ARRAY[%d::SMALLINT' % x
+        for index in xrange(len(status_v)):
+            if not index:
+                query_status += 'ARRAY[%d::SMALLINT' % status_v[index]
             else:
-                query_status += (',' + '%d::SMALLINT' % x )
+                query_status += (',%d::SMALLINT' % status_v[index] )
         query_status += ']'
 
         query = 'SELECT Run, SubRun FROM GetRuns(%s,%s);' % (query_table,query_status)

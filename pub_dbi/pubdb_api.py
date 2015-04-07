@@ -54,6 +54,7 @@ class pubdb_reader(object):
     def execute(self,query,throw=False):
         self._raise_cursor_exception()
         try:
+            self._logger.debug(query)
             self._cursor.execute(query)
         except psycopg2.ProgrammingError as e:
             self._logger.error(e.pgerror)

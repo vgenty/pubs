@@ -1,3 +1,5 @@
+--SET ROLE uboonedaq_admin;
+
 --CREATE EXTENSION HSTORE;
 
 ---------------------------------------------------------------------
@@ -144,6 +146,32 @@ BEGIN
 			  LogTime < ( CURRENT_TIMESTAMP - INTERVAL ''%s seconds'')', nodename,range);
   EXECUTE query;
   RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+--Check if a table already exists. Used by many other functions here.
+CREATE OR REPLACE FUNCTION DoesDaemonExist(tname TEXT) RETURNS BOOLEAN AS $$
+DECLARE
+doesExist BOOLEAN;
+BEGIN
+	
+  IF NOT DoesTableExist('DaemonTable') THEN
+    --RAISE EXCEPTION 'Process Table not found!!!!';
+    RETURN FALSE;
+  END IF;
+  --RAISE WARNING 'Process Table found...';  
+  --RAISE EXCEPTION 'SELECT TRUE FROM ProcessTable WHERE Project = % LIMIT 1 INTO doesExist;', tname;
+  SELECT TRUE FROM DaemonTable WHERE Server = tname LIMIT 1 INTO doesExist;
+  IF doesExist IS NULL THEN
+    RETURN FALSE;
+  ELSE
+    RETURN TRUE;
+  END IF;
+      	
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -521,6 +549,7 @@ DROP FUNCTION IF EXISTS DefineProject( project_name TEXT,
      	      	 		       command      TEXT,
 				       frequency    INT,
 				       email        TEXT,
+				       sleepAfter   INT,
 				       nodename     TEXT,
 				       runtable     TEXT,
 				       start_run    INT,

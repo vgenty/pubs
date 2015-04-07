@@ -1,6 +1,6 @@
-## @namespace dstream.dummy_prod
-#  @ingroup dstream
-#  @brief Defines a project dummy_prod
+## @namespace dstream_prod.production
+#  @ingroup dstream_prod
+#  @brief Defines a project production
 #  @author yuntse
 
 # python include
@@ -18,11 +18,11 @@ from dstream import ds_status
 # Parse xml
 import xml.etree.ElementTree as ET
 
-## @class dummy_prod
+## @class production
 #  @brief A fake job submission process, only printing out the commands
 #  @details
-#  This dummy project prints out the job submission commands using project.py
-class dummy_prod(ds_project_base):
+#  This production project prints out the job submission commands using project.py
+class production(ds_project_base):
 
     PROD_STATUS = ( kDONE,
                     kINITIATED,
@@ -346,7 +346,7 @@ Job IDs    : %s
     # def __decode_status__()
 
     # Define project name as class attribute
-    _project = 'dummy_prod'
+    _project = 'production'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
@@ -358,7 +358,7 @@ Job IDs    : %s
         self._project = arg
 
         # Call base class ctor
-        super(dummy_prod,self).__init__()
+        super(production,self).__init__()
 
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
                              self.kINITIATED     : self.submit,
@@ -460,7 +460,7 @@ if __name__ == '__main__':
 
     proj_name = sys.argv[1]
 
-    test_obj = dummy_prod(proj_name)
+    test_obj = production(proj_name)
 
     test_obj.process()
 
