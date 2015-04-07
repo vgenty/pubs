@@ -1,14 +1,14 @@
 # SQL reader account config
 export PUB_PSQL_READER_HOST=192.168.144.189
 export PUB_PSQL_READER_USER=$USER
-# export PUB_PSQL_READER_USER=echurch
+export PUB_PSQL_READER_ROLE="uboonedaq_admin"
 export PUB_PSQL_READER_DB=procdb
 export PUB_PSQL_READER_PASS="${USER}argon!"
 
 # SQL writer account config
 export PUB_PSQL_WRITER_HOST=192.168.144.189
 export PUB_PSQL_WRITER_USER=$USER
-# export PUB_PSQL_WRITER_USER=echurch
+export PUB_PSQL_WRITER_ROLE="uboonedaq_admin"
 export PUB_PSQL_WRITER_DB=procdb
 export PUB_PSQL_WRITER_PASS="${USER}argon!"
 

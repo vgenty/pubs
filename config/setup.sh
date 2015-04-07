@@ -20,8 +20,8 @@ case `uname -n` in
 	setup git
         setup sam_web_client
         setup ifdhc
+	setup postgres v9_2_4
 	setup psycopg2 v2_5_4
-	setup postgres v9_2_4 -f slf6.x86_64.prof
         setup uboonecode v03_04_00 -q e6:prof
         source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	;;
