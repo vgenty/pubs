@@ -36,6 +36,16 @@ class ds_reader(pubdb_reader):
                 exist = x[0]
         return exist
 
+    ## Checks if a specified daemon server exists or not.
+    def daemon_exist(self,daemon):
+
+        query = 'SELECT DoesDaemonExist(\'%s\');' % daemon
+        exist = False
+        if self.execute(query,True):
+            for x in self._cursor:
+                exist = x[0]
+        return exist
+
     ## Function to get project's resource
     def get_resource(self,project):
         

@@ -5,7 +5,7 @@ from dstream  import ds_project
 from dstream.ds_api import ds_master
 import os,sys
 
-logger = pub_logger.get_logger('add_projects')
+logger = pub_logger.get_logger('register_project')
 # DB interface for altering ProcessTable
 conn=ds_master(pubdb_conn_info.writer_info(),logger)
 
@@ -37,7 +37,7 @@ def parse(contents):
         new_contents.append(tmpline)
 
     in_block = False
-    valid_keywords=('NAME','COMMAND','CONTACT','PERIOD','SERVER',
+    valid_keywords=('NAME','COMMAND','CONTACT','PERIOD','SERVER','SLEEP',
                     'RUNTABLE','RUN','SUBRUN','ENABLE','RESOURCE')
     for line in new_contents:
 
@@ -61,7 +61,8 @@ def parse(contents):
 
         keyword = line.split(None)[0]
         value   = line.replace(keyword,'').strip(' ')
-        if not keyword in valid_keywords or (keyword not in ['SERVER','RUNTABLE'] and len(line.split(None)) < 2):
+        if ( not keyword in valid_keywords or
+             (keyword not in ['SERVER','RUNTABLE','SLEEP'] and len(line.split(None)) < 2) ):
             logger.error('Invalid syntax found in the following line!')
             logger.error(line)
             logger.critical('Aborting...')
@@ -113,6 +114,11 @@ def parse(contents):
                 logger.error('SERVER tag appeared twice...')
                 logger.critical('Aborting...')
                 sys.exit(1)
+            elif value.find(' ')>=0:
+                logger.error('SERVER value contains a space!')
+                logger.error('\"%s\"' % value)
+                logger.critical('Aborting...')
+                sys.exit(1)
             project_v[-1]._server = str(value)
 
         elif keyword == 'RUNTABLE':
@@ -121,6 +127,13 @@ def parse(contents):
                 logger.critical('Aborting...')
                 sys.exit(1)
             project_v[-1]._runtable = str(value)
+
+        elif keyword == 'SLEEP':
+            if project_v[-1]._sleep:
+                logger.error('SLEEP tag appeared twice...')
+                logger.critical('Aborting')
+                sys.exit(1)
+            project_v[-1]._sleep = int(value)
 
         elif keyword == 'RUN':
             if project_v[-1]._run:
