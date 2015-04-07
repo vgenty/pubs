@@ -15,7 +15,7 @@ if not len(sys.argv) == 2:
     sys.exit(1)
 
 # DB interface for altering ProcessTable
-k=ds_master(pubdb_conn_info.writer_info(), logger)
+k=ds_master(pubdb_conn_info.admin_info(), logger)
 
 # Connect to DB
 k.connect()

@@ -5,7 +5,7 @@ from pub_dbi        import pubdb_conn_info
 from pub_util       import pub_logger
 
 logger = pub_logger.get_logger('death_star')
-k=death_star( pubdb_conn_info.writer_info(),
+k=death_star( pubdb_conn_info.admin_info(),
               logger )
 
 if not k.connect():

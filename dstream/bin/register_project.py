@@ -7,7 +7,7 @@ import os,sys
 
 logger = pub_logger.get_logger('register_project')
 # DB interface for altering ProcessTable
-conn=ds_master(pubdb_conn_info.writer_info(),logger)
+conn=ds_master(pubdb_conn_info.admin_info(),logger)
 
 # Connect to DB
 conn.connect()

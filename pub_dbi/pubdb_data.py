@@ -39,6 +39,16 @@ class pubdb_conn_info(object):
                    pubdb_env.kWRITER_PASS,
                    pubdb_env.kWRITER_ROLE)
 
+    @classmethod
+    def admin_info(cls):
+        print pubdb_env.kADMIN_PASS
+        return cls(pubdb_env.kADMIN_HOST,
+                   pubdb_env.kADMIN_PORT,
+                   pubdb_env.kADMIN_DB,
+                   pubdb_env.kADMIN_USER,
+                   pubdb_env.kADMIN_PASS,
+                   pubdb_env.kADMIN_ROLE)
+
     def __eq__(self,other):
         if isinstance(other,pubdb_conn_info):
             issame = ( self._host   == other._host and

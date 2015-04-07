@@ -56,3 +56,31 @@ if 'PUB_PSQL_WRITER_ROLE' in os.environ.keys():
 if 'PUB_PSQL_WRITER_PASS' in os.environ.keys():
     kWRITER_PASS = os.environ['PUB_PSQL_WRITER_PASS']
 
+#
+# Admin default configuration
+#
+kADMIN_HOST = 'localhost'
+kADMIN_PORT = ''
+kADMIN_DB   = 'procdb'
+kADMIN_USER = os.environ['USER']
+kADMIN_ROLE = ''
+kADMIN_PASS = ''
+
+if 'PUB_PSQL_ADMIN_HOST' in os.environ.keys():
+    kADMIN_HOST = os.environ['PUB_PSQL_ADMIN_HOST']
+
+if 'PUB_PSQL_ADMIN_PORT' in os.environ.keys():
+    kADMIN_PORT = os.environ['PUB_PSQL_ADMIN_PORT']
+    
+if 'PUB_PSQL_ADMIN_DB' in os.environ.keys():
+    kADMIN_DB = os.environ['PUB_PSQL_ADMIN_DB']
+    
+if 'PUB_PSQL_ADMIN_USER' in os.environ.keys():
+    kADMIN_USER = os.environ['PUB_PSQL_ADMIN_USER']
+
+if 'PUB_PSQL_ADMIN_ROLE' in os.environ.keys():
+    kADMIN_ROLE = os.environ['PUB_PSQL_ADMIN_ROLE']
+    
+if 'PUB_PSQL_ADMIN_PASS' in os.environ.keys():
+    kADMIN_PASS = os.environ['PUB_PSQL_ADMIN_PASS']
+

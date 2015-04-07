@@ -30,7 +30,7 @@ myparser.add_argument('--timeend',dest='te',action='store',
 args = myparser.parse_args()
 
 logger = pub_logger.get_logger('death_star')
-k=death_star( pubdb_conn_info.writer_info(),
+k=death_star( pubdb_conn_info.admin_info(),
               logger )
 
 if not k.connect():
