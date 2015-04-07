@@ -7,6 +7,8 @@ DROP FUNCTION IF EXISTS RemoveProcessDB();
 DROP FUNCTION IF EXISTS CreateTestRunTable();
 DROP FUNCTION IF EXISTS CreateTestRunTable(TEXT);
 DROP FUNCTION IF EXISTS CreateDaemonTable();
+DROP FUNCTION IF EXISTS ListDaemonLog(TEXT,TIMESTAMP,TIMESTAMP);
+DROP FUNCTION IF EXISTS ListDaemonLog(TIMESTAMP,TIMESTAMP);
 DROP FUNCTIOn IF EXISTS UpdateDaemonTable( nodename       TEXT,
                         		   max_proj_ctr   INT,
                                            max_uptime     INT,

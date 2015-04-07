@@ -867,6 +867,82 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS ListDaemonLog(TEXT,TIMESTAMP,TIMESTAMP);
+
+CREATE OR REPLACE FUNCTION ListDaemonLog( NodeName TEXT,
+       	  	  	   		  TStart TIMESTAMP DEFAULT NULL,
+					  TEnd   TIMESTAMP DEFAULT NULL)
+			   RETURNS TABLE( MaxProjCtr INT,
+			   	   	  LifeTime   INT,
+			   	   	  ProjCtr    INT,
+					  UpTime     INT,
+					  LogItem    HSTORE,
+					  LogTime    TIMESTAMP) AS $$
+DECLARE
+BEGIN
+  IF TStart IS NULL AND TEnd IS NULL THEN
+    RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  Server = NodeName
+		 ORDER BY A.LogTime;
+  ELSIF TStart IS NULL THEN
+    RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  Server = NodeName AND LogTime < TEnd
+		 ORDER BY A.LogTime;
+  ELSIF TEnd IS NULL THEN
+    RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  Server = NodeName AND LogTime > TStart
+		 ORDER BY A.LogTime;
+  ELSE
+    RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  Server = NodeName AND LogTime > TStart AND LogTime < TEnd
+		 ORDER BY A.LogTime;
+  END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+DROP FUNCTION IF EXISTS ListDaemonLog(TIMESTAMP,TIMESTAMP);
+CREATE OR REPLACE FUNCTION ListDaemonLog( TStart TIMESTAMP DEFAULT NULL,
+					  TEnd   TIMESTAMP DEFAULT NULL)
+			   RETURNS TABLE( Server     TEXT,
+			   	   	  MaxProjCtr INT,
+			   	   	  LifeTime   INT,
+			   	   	  ProjCtr    INT,
+					  UpTime     INT,
+					  LogItem    HSTORE,
+					  LogTime    TIMESTAMP) AS $$
+DECLARE
+BEGIN
+  IF TStart IS NULL AND TEnd IS NULL THEN
+    RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A 
+		 ORDER BY A.Server, A.LogTime;
+  ELSIF TStart IS NULL THEN
+    RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  LogTime < TEnd
+		 ORDER BY A.Server, A.LogTime;
+  ELSIF TEnd IS NULL THEN
+    RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  LogTime > TStart
+		 ORDER BY A.Server, A.LogTime;
+  ELSE
+    RETURN QUERY SELECT A.Server, A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
+	       	 FROM   DaemonLogTable AS A
+	       	 WHERE  LogTime > TStart AND LogTime < TEnd
+		 ORDER BY A.Server, A.LogTime;
+  END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 DROP FUNCTION IF EXISTS ListEnabledDaemon();
 
 CREATE OR REPLACE FUNCTION ListEnabledDaemon() 
