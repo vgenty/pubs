@@ -69,10 +69,10 @@ class pubdb_conn(object):
                                         password=conn_info._passwd)
                 cls._conn_v.append(conn)
                 cls._conn_info_v.append(copy.copy(conn_info))
-                cls._logger.info('Connected to DB: (%s,%s,%s,%s,XXX)' % (conn_info._host,
-                                                                        conn_info._port,
-                                                                        conn_info._db,
-                                                                        conn_info._user))
+                cls._logger.debug('Connected to DB: (%s,%s,%s,%s,XXX)' % (conn_info._host,
+                                                                          conn_info._port,
+                                                                          conn_info._db,
+                                                                          conn_info._user))
                 if conn_info._role:
                     cursor = cls.cursor(conn_info)
                     try:

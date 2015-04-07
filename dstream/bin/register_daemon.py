@@ -36,8 +36,8 @@ def parse(contents):
         new_contents.append(tmpline)
 
     in_block = False
-    valid_keywords=('SERVER','MAX_CTR','LIFETIME','LOG_PERIOD','SYNC_PERIOD',
-                    'UPDATE_PERIOD','CLEANUP_TIME','EMAIL','ENABLE')
+    valid_keywords=('SERVER','MAX_CTR','LIFETIME','LOG_LIFETIME','SYNC_TIME',
+                    'UPDATE_TIME','CLEANUP_TIME','CONTACT','ENABLE')   
     for line in new_contents:
 
         if line=='DAEMON_BEGIN':
@@ -72,9 +72,6 @@ def parse(contents):
             logger.critical('Aborting...')
             sys.exit(1)
 
-        valid_keywords=('SERVER','MAX_CTR','LIFETIME','LOG_TIME','SYNC_TIME',
-                        'UPDATE_TIME','CLEANUP_TIME','CONTACT','ENABLE')   
-
         if keyword == 'SERVER':
             if daemon_v[-1]._server:
                 logger.error('SERVER tag appeared twice...')
@@ -88,7 +85,6 @@ def parse(contents):
                 sys.exit(1)
             if value.upper() == 'CURRENT_SERVER':
                 value = pub_env.kSERVER_NAME
-            print value
             daemon_v[-1]._server = value
 
         elif keyword == 'CONTACT':
@@ -153,6 +149,21 @@ def parse(contents):
                     raise ValueError
             except ValueError:
                 logger.error('UPDATE_TIME tab value must be a positive integer!')
+                logger.error('Your provided: \"%s\"' % value)
+                logger.critical('Aborting...')
+                sys.exit(1)
+
+        elif keyword == 'LOG_LIFETIME':
+            if daemon_v[-1]._log_lifetime:
+                logger.error('LOG_LIFETIME tag appeared twice...')
+                logger.critical('Aborting...')
+                sys.exit(1)
+            try:
+                exec('daemon_v[-1]._log_lifetime = int(%s)' % value)
+                if daemon_v[-1]._log_lifetime <= 0:
+                    raise ValueError
+            except ValueError:
+                logger.error('LOG_LIFETIME tab value must be a positive integer!')
                 logger.error('Your provided: \"%s\"' % value)
                 logger.critical('Aborting...')
                 sys.exit(1)

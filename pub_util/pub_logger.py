@@ -78,7 +78,7 @@ class pub_logger:
             else:
                 cls._openStream(str(name))
             cls._loggers[str(name)].setLevel(cls._globalLevel)
-            cls._loggers[name].info("OPENED LOGGER %s" % name)
+            cls._loggers[name].debug("OPENED LOGGER %s" % name)
 
     @classmethod
     def _openStream(cls,name):
