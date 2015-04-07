@@ -265,6 +265,8 @@ class proc_daemon(ds_base):
                 self.info('Routine RunSync Start @ %s' % now_str)
                 self.runsync_projects()
                 self.info('Routine RunSync Done  @ %s' % now_str)
+
+            if now_ts < self._next_exec_time: continue
                 
             for proj in self.ordered_projects():
 
@@ -281,7 +283,11 @@ class proc_daemon(ds_base):
                     self.debug('Max number of simultaneous project execution reached.')
                     break
                 
-                last_ts  = self._exe_time_v[proj]
+                last_ts = self._exe_time_v[proj]
+                now_ts  = time.time()
+
+                if now_ts < self._next_exec_time: continue
+                
                 if not proj_ptr.active():
 
                     (code,out,err) = proj_ptr.clear()
@@ -297,8 +303,9 @@ class proc_daemon(ds_base):
                         try:
                             self.info('Execute %s @ %s' % (proj,now_str))
                             proj_ptr.execute()
-                            self._exe_time_v[proj] = now_ts
+                            self._exe_time_v[proj] = time.time()
                             self._exe_ctr_v[proj] += 1
+                            self._next_exec_time = self._exe_time_v[proj] + proj_ptr._info._sleep
                             
                         except DSException as e:
                             self.critical('Call expert and review project %s' % proj)
