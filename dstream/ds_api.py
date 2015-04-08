@@ -481,6 +481,20 @@ class ds_writer(pubdb_writer,ds_reader):
         
         return True
 
+    ## Update project running status to TRUE
+    def project_running(self,project):
+        
+        query = 'SELECT ProjectRunning(\'%s\');' % str(project);
+
+        return self.commit(query)
+
+    ## Update project running status to FALSE
+    def project_stopped(self,project):
+        
+        query = 'SELECT ProjectStopped(\'%s\');' % str(project);
+
+        return self.commit(query)
+
     ## Update the database table contents with a provided info (ds_status instance).
     def log_status(self, info):
 

@@ -742,6 +742,22 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
+DROP FUNCTION IF EXISTS ProjectRunning(TEXT);
+CREATE OR REPLACE FUNCTION ProjectRunning(project_name TEXT) RETURNS VOID AS $$
+  UPDATE ProcessTable SET Running=TRUE WHERE Project = project_name;
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+DROP FUNCTION IF EXISTS ProjectStopped(TEXT);
+CREATE OR REPLACE FUNCTION ProjectStopped(project_name TEXT) RETURNS VOID AS $$
+  UPDATE ProcessTable SET Running=FALSE WHERE Project = project_name;
+$$ LANGUAGE SQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
 -- Function to update project version
 DROP FUNCTION IF EXISTS ProjectVersionUpdate( project_name TEXT,
      	      	 		       	      new_cmd      TEXT,

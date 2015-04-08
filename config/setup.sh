@@ -62,5 +62,8 @@ export PUB_LOGGER_DRAIN=kLOGGER_COUT
 #export PUB_LOGGER_DRAIN=kLOGGER_FILE
 export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log
 
-# setup ubutil v01_08_01 -qe6:prof
+#
+# Daemon configuration
+#
+export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_smc
 

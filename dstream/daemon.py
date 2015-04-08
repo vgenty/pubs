@@ -6,7 +6,7 @@
 #  Includes class proc_action (a unit process executor) and proc_daemon (a process manager)
 
 # Python include
-import time, copy, os, signal
+import time, copy, os, signal, sys
 from subprocess   import Popen, PIPE
 # dstream include
 from pub_util     import pub_env
@@ -18,7 +18,6 @@ from ds_data      import ds_project, ds_daemon, ds_daemon_log
 from pub_dbi      import pubdb_conn_info, DBException
 # pub_util package include
 from pub_util     import pub_logger, pub_smtp, BaseException
-# dstream module include
 
 ## @class proc_action
 #  @brief A single process executor for a project
@@ -75,7 +74,7 @@ class proc_action(object):
             self._logger.error(e.strerror)
             self._logger.error('Error executing %s! Sending e-mail report...' % self._info._project)
             try:
-                pub_smtp(receiver = self._info._email.split(None),
+                pub_smtp(receiver = self._info._email,
                          subject  = 'Failed execution of project %s' % self.name(),
                          text     = e.strerror)
             except BaseException as be:
@@ -127,6 +126,22 @@ class proc_daemon(ds_base):
         ## SIGINT marker
         self._exit_routine = False
 
+        ## Log function
+        self._logger_func = None
+
+    ## Attach logger function dynamically
+    def attach_logger_func(self,ptr):
+        self._logger_func=ptr
+        try:
+            log = self._logger_func()
+            if not type(log) == type(dict()):
+                raise ValueError
+        except Exception as e:
+            print e
+            self.error('Attached logger function is incompatible!')
+            return False
+        return True
+
     ## Access DB and load daemon info for execution
     def load_daemon(self):
         self._config = self._api.daemon_info(self._server)
@@ -144,11 +159,15 @@ class proc_daemon(ds_base):
         uptime   = int(time.time() - self._creation_ts)
         proj_ctr = 0
         for x in self._project_v.values():
-            if x.active(): project_ctr += 1
+            if x.active(): proj_ctr += 1
+
+        hstore = dict()
+        if self._logger_func:
+            hstore = self._logger_func()
 
         self._log.log( proj_ctr = proj_ctr,
                        uptime   = uptime,
-                       log      = self._log._log,
+                       log      = hstore,
                        max_proj_ctr = self._config._max_proj_ctr,
                        lifetime = self._config._lifetime )
 
@@ -290,12 +309,14 @@ class proc_daemon(ds_base):
                 
                 if not proj_ptr.active():
 
+                    self._api.project_stopped(proj)
                     (code,out,err) = proj_ptr.clear()
 
                     if out or err:
 
                         self.info(' %s returned %s @ %s' % (proj,code,now_str))
-                        print out,err
+
+                        self.info(' %s stdout/stderr:\n %s\n%s' % (out,err))
                         
                     if ( last_ts is None or 
                          last_ts < ( now_ts - proj_ptr._info._period) ):
@@ -303,9 +324,7 @@ class proc_daemon(ds_base):
                         try:
                             self.info('Execute %s @ %s' % (proj,now_str))
                             proj_ptr.execute()
-                            self._exe_time_v[proj] = time.time()
-                            self._exe_ctr_v[proj] += 1
-                            self._next_exec_time = self._exe_time_v[proj] + proj_ptr._info._sleep
+                            self._api.project_running(proj)
                             
                         except DSException as e:
                             self.critical('Call expert and review project %s' % proj)
@@ -318,14 +337,40 @@ class proc_daemon(ds_base):
 
                                 except DSException as  e:
                                     self.critical('Report to daemon experts failed!')
-                    
+
+                        self._exe_time_v[proj] = time.time()
+                        self._exe_ctr_v[proj] += 1
+                        self._next_exec_time = self._exe_time_v[proj] + proj_ptr._info._sleep
 
         self.finish()
         self._exit_routine = False
 
 if __name__ == '__main__':
 
+    # if daemon is already running, do not allow another instance
+    
+
     k=proc_daemon()
+
+    # logger function attachment
+    cmd=''
+    if pub_env.kDAEMON_LOG_MODULE:
+        modname = pub_env.kDAEMON_LOG_MODULE
+        if modname.find('.') < 0:
+            cmd = 'import %s as daemon_log_dict'
+        else:
+            fname = modname[modname.find('.')+1:len(modname)]
+            modname = modname[0:modname.find('.')]
+            cmd = 'from %s import %s as daemon_log_dict' % (modname,fname)
+        try:
+            exec(cmd)
+        except ImportError:
+            cmd=''
+            k.error('Failed to import a logger module: %s' % pub_env.kDAEMON_LOG_MODULE)
+            sys.exit(1)
+        if not k.attach_logger_func(daemon_log_dict):
+            sys.exit(1)
+
     ## For ctrl+C
     def sig_kill(signal,frame):
         k._exit_routine=True
