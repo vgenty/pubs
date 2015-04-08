@@ -192,7 +192,15 @@ class ds_daemon_log(object):
                      self._logtime,
                      len(self._log) )
         return msg
-        
+
+    ## @brief dump custom log variables
+    def dump_log(self):
+        if not self._log: return ''
+        msg = ' %s ' % self._logtime
+        for key in self._log:
+            msg += '| %s : %s ' % (key,self._log[key])
+        return msg
+
     ## @brief initializer from ds_daemon
     def init(self, conf):
 
