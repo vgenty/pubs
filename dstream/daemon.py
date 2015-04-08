@@ -206,7 +206,7 @@ class proc_daemon(ds_base):
     def load_projects(self):
 
         # Load new/updated projects
-        for x in self._api.list_projects():
+        for x in self._api.list_all_projects():
 
             if x._server and not x._server in self._server:
                 self.debug('Skipping a project on irrelevant server: %s',x._project)
@@ -377,8 +377,6 @@ class proc_daemon(ds_base):
 if __name__ == '__main__':
 
     # if daemon is already running, do not allow another instance
-    
-
     k=proc_daemon()
 
     # logger function attachment
@@ -386,10 +384,10 @@ if __name__ == '__main__':
     if pub_env.kDAEMON_LOG_MODULE:
         modname = pub_env.kDAEMON_LOG_MODULE
         if modname.find('.') < 0:
-            cmd = 'import %s as daemon_log_dict'
+            cmd = 'import %s as daemon_log_dict' % modname
         else:
-            fname = modname[modname.find('.')+1:len(modname)]
-            modname = modname[0:modname.find('.')]
+            fname = modname[modname.rfind('.')+1:len(modname)]
+            modname = modname[0:modname.rfind('.')]
             cmd = 'from %s import %s as daemon_log_dict' % (modname,fname)
         try:
             exec(cmd)
@@ -404,10 +402,10 @@ if __name__ == '__main__':
     if pub_env.kDAEMON_HANDLER_MODULE:
         modname = pub_env.kDAEMON_HANDLER_MODULE
         if modname.find('.') < 0:
-            cmd = 'import %s as daemon_server_handler'
+            cmd = 'import %s as daemon_server_handler' % modname
         else:
-            fname = modname[modname.find('.')+1:len(modname)]
-            modname = modname[0:modname.find('.')]
+            fname = modname[modname.rfind('.')+1:len(modname)]
+            modname = modname[0:modname.rfind('.')]
             cmd = 'from %s import %s as daemon_server_handler' % (modname,fname)
         try:
             exec(cmd)
@@ -423,5 +421,6 @@ if __name__ == '__main__':
         k._exit_routine=True
         k.warning('SIGINT detected. Finishing the program gracefully.')
         k.warning('Terminating proc_daemon::routine function.')
+
     signal.signal(signal.SIGINT, sig_kill)
     k.routine()
