@@ -337,7 +337,7 @@ class ds_reader(pubdb_reader):
     ## @brief Fetch a list of all projects for execution. Return is an array of ds_project.
     def list_all_projects(self):
 
-        query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Enabled,Resource'
+        query  = ' SELECT Project,Command,Server,SleepAfter,RunTable,Frequency,StartRun,StartSubRun,Email,Enabled,Resource'
         query += ' FROM ListProject()'
 
         self.execute(query)
@@ -351,9 +351,9 @@ class ds_reader(pubdb_reader):
             resource = {}
 
             # handle resource string conversion into a map
-            if x[7]:
+            if x[10]:
 
-                for y in x[7].split(','):
+                for y in x[10].split(','):
 
                     tmp = y.split("=>")
 
@@ -361,11 +361,14 @@ class ds_reader(pubdb_reader):
 
             info_array.append( ds_project( project  = x[0],
                                            command  = x[1],
-                                           period   = int(x[2]),
-                                           run      = int(x[3]),
-                                           subrun   = int(x[4]),
-                                           email    = x[5],
-                                           enable   = x[6], 
+                                           server   = x[2],
+                                           sleep    = x[3],
+                                           runtable = x[4],
+                                           period   = int(x[5]),
+                                           run      = int(x[6]),
+                                           subrun   = int(x[7]),
+                                           email    = x[8],
+                                           enable   = x[9], 
                                            resource = resource ) )
 
         return info_array
@@ -577,7 +580,7 @@ class ds_master(ds_writer,ds_reader):
         return True
 
     ## @brief Define a daemon. Input is ds_daemon object.
-    def define_daemon(self,daemon_info):
+    def define_daemon(self,daemon_info,check=True):
 
         if not isinstance(daemon_info,ds_daemon):
 
@@ -588,6 +591,26 @@ class ds_master(ds_writer,ds_reader):
 
             self._logger.error('Provided daemon info contains invalid values!')
             return False
+
+        orig_info = self.daemon_info(daemon_info._server)
+
+        if orig_info == daemon_info:
+            self._logger.info('Identical daemon info already in DB.')
+            return True
+
+        if check:
+            self._logger.warning('Attempting to alter daemon configuration...')
+            self._logger.info('Server       : %s => %s' % (orig_info._server, daemon_info._server ))
+            self._logger.info('Max. Ctr     : %s => %s' % (orig_info._max_proj_ctr, daemon_info._max_proj_ctr))
+            self._logger.info('Lifetime     : %d => %d' % (orig_info._lifetime, daemon_info._lifetime))
+            self._logger.info('Log Life     : %d => %d' % (orig_info._log_lifetime, daemon_info._log_lifetime))
+            self._logger.info('Sync Time    : %s => %s' % (orig_info._runsync_time, daemon_info._runsync_time))
+            self._logger.info('Update Time  : %s => %s' % (orig_info._update_time, daemon_info._update_time))
+            self._logger.info('CleanUp Time : %s => %s' % (orig_info._cleanup_time, daemon_info._cleanup_time))
+            self._logger.info('Contact      : %s => %s' % (orig_info._email, daemon_info._email))
+            self._logger.info('Enable       : %s => %s' % (orig_info._enable, daemon_info._enable))
+
+            if not self._ask_binary(): return False;
 
         query = 'SELECT UpdateDaemonTable(\'%s\',%d,%d,%d,%d,%d,%d,\'%s\',%s);'
 

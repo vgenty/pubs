@@ -185,7 +185,9 @@ def parse(contents):
 
         elif keyword == 'ENABLE':
             try:
-                daemon_v[-1]._enable = bool(value)
+                if not value.lower() in ['true','false','0','1']:
+                    raise ValueError
+                daemon_v[-1]._enable = value.lower() in ['true','1']
             except ValueError:
                 logger.error('ENABLE tab value must be a boolean type!')
                 logger.error('Your provided: \"%s\"' % value)
@@ -202,7 +204,7 @@ def parse(contents):
 
         if conn.daemon_exist(v._server):
 
-            logger.info('Daemon %s already exist in DB!' % v._server)
+            logger.debug('Daemon %s already exist in DB!' % v._server)
             orig_info = conn.daemon_info(v._server)
 
             diff = orig_info.diff(v)

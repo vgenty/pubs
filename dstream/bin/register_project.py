@@ -62,7 +62,7 @@ def parse(contents):
         keyword = line.split(None)[0]
         value   = line.replace(keyword,'').strip(' ')
         if ( not keyword in valid_keywords or
-             (keyword not in ['SERVER','RUNTABLE','SLEEP'] and len(line.split(None)) < 2) ):
+             (keyword not in ['RUNTABLE','SLEEP'] and len(line.split(None)) < 2) ):
             logger.error('Invalid syntax found in the following line!')
             logger.error(line)
             logger.critical('Aborting...')
@@ -119,6 +119,8 @@ def parse(contents):
                 logger.error('\"%s\"' % value)
                 logger.critical('Aborting...')
                 sys.exit(1)
+            if value.upper() == 'CURRENT_SERVER':
+                value = pub_env.kSERVER_NAME
             project_v[-1]._server = str(value)
 
         elif keyword == 'RUNTABLE':
@@ -167,7 +169,9 @@ def parse(contents):
 
         elif keyword == 'ENABLE':
             try:
-                project_v[-1]._enable = bool(value)
+                if not value.lower() in ['true','false','0','1']:
+                    raise ValueError
+                project_v[-1]._enable = value.lower() in ['true','1']
             except ValueError:
                 logger.error('ENABLE tab value must be a boolean type!')
                 logger.error('Your provided: \"%s\"' % value)
@@ -213,6 +217,10 @@ def parse(contents):
                 sys.exit(1)
             if not orig_info._subrun == project_v[-1]._subrun:
                 logger.error('Your configuration has different sub-run number (not allowed)!')
+                logger.critical('Aborting...')
+                sys.exit(1)
+            if not orig_info._runtable == project_v[-1]._runtable:
+                logger.error('Your configuration has different run-table name (not allowed)!')
                 logger.critical('Aborting...')
                 sys.exit(1)
 
