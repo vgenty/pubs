@@ -8,24 +8,37 @@ if [ -z $1 ] ; then
 fi
 
 daemon_script=$PUB_TOP_DIR/dstream/daemon.py
+proc=$(ps aux | grep "dstream/daemon.py" | grep "python" | awk '{print $2}');
 
 case $1 in
     (start)
-	echo starting;
+    if [[ -z $proc ]]; then
+	echo starting daemon;
 	export PUB_LOGGER_LEVEL=kLOGGER_INFO
 	export PUB_LOGGER_DRAIN=kLOGGER_FILE
 	nohup $PUB_TOP_DIR/dstream/daemon.py > /dev/null &
+    else
+	echo daemon already running;
+    fi
 	;;
     (stop)
-	echo stopping;
-	kill $(ps aux | grep 'dstream/daemon.py' | awk '{print $2}')
-	;;
+    if [[ -z $proc ]]; then
+	echo daemon is not running...;
+    else
+	echo stopping daemon;
+	kill $proc;
+    fi
+    ;;
     (restart)
-	echo restarting;
-	export PUB_LOGGER_LEVEL=kLOGGER_INFO
-	export PUB_LOGGER_DRAIN=kLOGGER_FILE
-	kill $(ps aux | grep 'dstream/daemon.py' | awk '{print $2}')	
-	nohup $PUB_TOP_DIR/dstream/daemon.py > /dev/null &
-	;;
+    if [[ $proc ]]; then
+	echo restarting daemon;
+	kill $proc;
+    else
+	echo starting daemon;
+    fi
+    export PUB_LOGGER_LEVEL=kLOGGER_INFO
+    export PUB_LOGGER_DRAIN=kLOGGER_FILE
+    nohup $PUB_TOP_DIR/dstream/daemon.py > /dev/null &
+    ;;
 esac
 
