@@ -56,9 +56,12 @@ if 'PUB_SMTP_PASS' in os.environ:
     exec('kSMTP_PASS=\'%s\'' % os.environ['PUB_SMTP_PASS'])
 
 #
-# Daemon log function
+# Daemon server functions
 #
 kDAEMON_LOG_MODULE = ''
 if 'PUB_DAEMON_LOG_MODULE' in os.environ:
     kDAEMON_LOG_MODULE = os.environ['PUB_DAEMON_LOG_MODULE']
+kDAEMON_HANDLER_MODULE = ''
+if 'PUB_DAEMON_HANDLER_MODULE' in os.environ:
+    kDAEMON_HANDLER_MODULE = os.environ['PUB_DAEMON_HANDLER_MODULE']
     

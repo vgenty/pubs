@@ -129,6 +129,9 @@ class proc_daemon(ds_base):
         ## Log function
         self._logger_func = None
 
+        ## Server status handler
+        self._server_handler = None
+
     ## Attach logger function dynamically
     def attach_logger_func(self,ptr):
         self._logger_func=ptr
@@ -137,11 +140,22 @@ class proc_daemon(ds_base):
             if not type(log) == type(dict()):
                 raise ValueError
         except Exception as e:
-            print e
             self.error('Attached logger function is incompatible!')
             return False
         return True
 
+    ## Attach server status handler dynamically
+    def attach_server_handler(self,ptr):
+        self._server_handler=ptr
+        try:
+            status, msg = self._server_handler()
+            if not type(status) == type(bool()) or not type(msg) == type(str()):
+                raise ValueError
+        except Exception as e:
+            self.error('Attached server handler function is incompatible!')
+            return False
+        return True
+            
     ## Access DB and load daemon info for execution
     def load_daemon(self):
         self._config = self._api.daemon_info(self._server)
@@ -172,8 +186,22 @@ class proc_daemon(ds_base):
                        lifetime = self._config._lifetime )
 
         self._api.log_daemon(self._log)
-        
-        
+
+        if self._server_handler:
+            status,msg = self._server_handler()
+
+            if msg and self._config._email:
+                if not status:
+                    pub_smtp(receiver = self._config._email,
+                             subject  = '[DAEMON SHUT DOWN] Message from Server Handler',
+                             text     = msg)
+                else:
+                    pub_smtp(receiver = self._config._email,
+                             subject  = '[NOTICE] Message from Server Handler',
+                             text     = msg)
+
+            self._exit_routine = not status
+
     ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
@@ -273,7 +301,8 @@ class proc_daemon(ds_base):
                 
                 self.info('Routine project update @ %s ' % now_str)
                 self.load_daemon()
-                self.load_projects()
+                if self._config._enable:
+                    self.load_projects()
                 self.log_daemon()
 
             if not self._config._enable:
@@ -369,6 +398,24 @@ if __name__ == '__main__':
             k.error('Failed to import a logger module: %s' % pub_env.kDAEMON_LOG_MODULE)
             sys.exit(1)
         if not k.attach_logger_func(daemon_log_dict):
+            sys.exit(1)
+
+    # server function attachment
+    if pub_env.kDAEMON_HANDLER_MODULE:
+        modname = pub_env.kDAEMON_HANDLER_MODULE
+        if modname.find('.') < 0:
+            cmd = 'import %s as daemon_server_handler'
+        else:
+            fname = modname[modname.find('.')+1:len(modname)]
+            modname = modname[0:modname.find('.')]
+            cmd = 'from %s import %s as daemon_server_handler' % (modname,fname)
+        try:
+            exec(cmd)
+        except ImportError:
+            cmd=''
+            k.error('Failed to import a logger module: %s' % pub_env.kDAEMON_HANDLER_MODULE)
+            sys.exit(1)
+        if not k.attach_server_handler(daemon_server_handler):
             sys.exit(1)
 
     ## For ctrl+C
