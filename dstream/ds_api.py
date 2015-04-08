@@ -16,7 +16,7 @@ from pub_dbi      import pubdb_reader, pubdb_writer
 # dstream import
 from ds_data      import ds_status, ds_project, ds_daemon, ds_daemon_log
 from ds_exception import DSException
-from datetime     import datetime
+from datetime import tzinfo, timedelta, datetime
 
 ## @class ds_reader 
 # @brief Most basic read-only API for dstream database
@@ -129,7 +129,7 @@ class ds_reader(pubdb_reader):
                 runs.append(x)
         return runs
 
-    ## Fetch a list of enabled daemons for execution. Return is an array of ds_daemon.
+    ## @brief Fetch a list of enabled daemons for execution. Return is an array of ds_daemon.
     def list_daemon(self):
 
         query  = ' SELECT Server, MaxProjCtr, LifeTime, LogRange, RunSyncPeriod, UpdatePeriod, CleanUpPeriod, EMail, Enabled'
@@ -198,7 +198,7 @@ class ds_reader(pubdb_reader):
                 runs.append(x)
         return runs
 
-    ## Fetch a daemon configuration for the specified server. Returns ds_daemon if found. Else None.
+    ## @brief Fetch a daemon configuration for the specified server. Returns ds_daemon if found. Else None.
     def daemon_info(self,server):
 
         server = str(server)
@@ -224,7 +224,7 @@ class ds_reader(pubdb_reader):
                           email        = x[6], 
                           enable       = x[7] )
 
-    ## Fetch a daemon log for the specified server. Returns a tuple of ds_daemon_log if found. Else None.
+    ## @brief Fetch a daemon log for the specified server. Returns a tuple of ds_daemon_log if found. Else None.
     def daemon_log(self,server):
 
         server = str(server)
@@ -251,7 +251,7 @@ class ds_reader(pubdb_reader):
 
         return tuple(log_array)
     
-    ## Fetch project information. Return is a ds_project data holder instance.
+    ## @brief Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
         
         project = str(project)
@@ -296,7 +296,7 @@ class ds_reader(pubdb_reader):
                           ver      = x[9],
                           enable   = x[10])
 
-    ## Fetch a list of enabled projects for execution. Return is an array of ds_project.
+    ## @brief Fetch a list of enabled projects for execution. Return is an array of ds_project.
     def list_projects(self):
 
         query  = ' SELECT Project,Command,Frequency,Server,SleepAfter,RunTable,StartRun,StartSubRun,Email,Resource'
@@ -334,7 +334,7 @@ class ds_reader(pubdb_reader):
                                            enable   = True ) )
         return info_array
 
-    ## Fetch a list of all projects for execution. Return is an array of ds_project.
+    ## @brief Fetch a list of all projects for execution. Return is an array of ds_project.
     def list_all_projects(self):
 
         query  = ' SELECT Project,Command,Frequency,StartRun,StartSubRun,Email,Enabled,Resource'
@@ -370,7 +370,68 @@ class ds_reader(pubdb_reader):
 
         return info_array
 
-    ## Fetch DAQ run start/end time stamp
+    ## @brief Fetch a list of daemon logs. One can specify a server name, start & end time stamp
+    def list_daemon_log(self, server=None, start=None, end=None):
+
+        result=[]
+        query = ''
+        if not server:
+            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime, Server FROM ListDaemonLog(';
+        else:
+            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime FROM ListDaemonLog(%s,' % server;
+
+        t_type = type(datetime.now())
+            
+        if start is not None and not type(start) == t_type:
+            self.error('start time must be %s type' % t_type)
+            return result
+        if end and not None and not type(end) == t_type:
+            self.error('end time must be %s type' % t_type)
+            return result
+        
+        if start:
+            datetime.strptime(str(start),"%Y-%m-%d %H:%M:%S")
+            query += '\'%s\'::TIMESTAMP,' % start
+        else:
+            query += 'NULL,'
+        if end:
+            datetime.strptime(str(end),"%Y-%m-%d %H:%M:%S")
+            query += '\'%s\'::TIMESTAMP);' % end
+        else:
+            query += 'NULL);'
+
+        self.execute(query)
+        
+        if not self.nrows() or self.nrows() <= 0: return result
+
+        for x in self:
+
+            log_item = {}
+
+            # handle resource string conversion into a map
+            if x[4]:
+
+                for y in x[4].split(','):
+
+                    tmp = y.split("=>")
+
+                    exec('log_item[%s]=%s' % (tmp[0],tmp[1]))
+                    
+            this_server = server
+            if not this_server: this_server = x[6]
+
+            result.append( ds_daemon_log( server = this_server,
+                                          max_proj_ctr = x[0],
+                                          lifetime = x[1],
+                                          proj_ctr = x[2],
+                                          uptime   = x[3],
+                                          log      = log_item ) )
+            result[-1]._logtime = x[5]
+            result[-1].is_valid()
+
+        return result
+
+    ## @brief Fetch DAQ run start/end time stamp
     def run_timestamp(self,run,subrun):
 
         try:

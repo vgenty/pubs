@@ -10,6 +10,7 @@
 import inspect, copy
 # pub_util package import
 from pub_util import pub_logger
+from datetime import tzinfo, timedelta, datetime
 
 ## @class ds_status
 # @brief Holds status of a project, and is used to log a status in DB.
@@ -181,6 +182,16 @@ class ds_daemon_log(object):
                   logtime = None,
                   max_proj_ctr = max_proj_ctr,
                   lifetime = lifetime )
+
+    ## @brief __str__ override
+    def __str__(self):
+        msg = '%s | Project %-2d/%-2d | UpTime %-6d/%-6d | %s | %d log variables'
+        msg = msg % (self._server, 
+                     self._proj_ctr, self._max_proj_ctr,
+                     self._uptime, self._lifetime,
+                     self._logtime,
+                     len(self._log) )
+        return msg
         
     ## @brief initializer from ds_daemon
     def init(self, conf):
@@ -214,9 +225,6 @@ class ds_daemon_log(object):
             if not logtime is None:
                 self._logtime  = float(logtime)                
 
-            if not self.is_valid():
-                raise ValueError
-
         except ValueError:
             name   = '%s' % inspect.stack()[1][3]
             pub_logger.get_logger(name).critical('Invalid value type!')
@@ -229,7 +237,7 @@ class ds_daemon_log(object):
              self._proj_ctr < 0 or
              self._uptime < 0 or
              not type(self._log) == type(dict()) or
-             self._logtime and not type(self._logtime) == type(float()) ):
+             self._logtime and not type(self._logtime) == type(datetime.now())):
             return False
         return True
 

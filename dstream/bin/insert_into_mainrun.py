@@ -3,7 +3,6 @@ import argparse, sys
 from dstream.ds_api import death_star
 from pub_dbi        import pubdb_conn_info
 from pub_util       import pub_logger
-
 from datetime import tzinfo, timedelta, datetime
 
 myparser = argparse.ArgumentParser(description='Insert individual run/subrun into MainRun DB table.')

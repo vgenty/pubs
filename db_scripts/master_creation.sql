@@ -870,8 +870,8 @@ $$ LANGUAGE PLPGSQL;
 DROP FUNCTION IF EXISTS ListDaemonLog(TEXT,TIMESTAMP,TIMESTAMP);
 
 CREATE OR REPLACE FUNCTION ListDaemonLog( NodeName TEXT,
-       	  	  	   		  TStart TIMESTAMP DEFAULT NULL,
-					  TEnd   TIMESTAMP DEFAULT NULL)
+       	  	  	   		  TStart TIMESTAMP,
+					  TEnd   TIMESTAMP)
 			   RETURNS TABLE( MaxProjCtr INT,
 			   	   	  LifeTime   INT,
 			   	   	  ProjCtr    INT,
@@ -906,8 +906,8 @@ $$ LANGUAGE PLPGSQL;
 
 
 DROP FUNCTION IF EXISTS ListDaemonLog(TIMESTAMP,TIMESTAMP);
-CREATE OR REPLACE FUNCTION ListDaemonLog( TStart TIMESTAMP DEFAULT NULL,
-					  TEnd   TIMESTAMP DEFAULT NULL)
+CREATE OR REPLACE FUNCTION ListDaemonLog( TStart TIMESTAMP,
+					  TEnd   TIMESTAMP)
 			   RETURNS TABLE( Server     TEXT,
 			   	   	  MaxProjCtr INT,
 			   	   	  LifeTime   INT,
