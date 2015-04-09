@@ -259,7 +259,7 @@ class ds_project(object):
 
     ## @brief default ctor to specify all data members
     def __init__ (self, project, command='', run=0, subrun=0,
-                  email='', server='', runtable='', sleep=5,
+                  email='', server='', runtable='', sleep=0,
                   period=0, enable=True, resource={}, ver=-1):
         if not resource: resource = {}
         try:
