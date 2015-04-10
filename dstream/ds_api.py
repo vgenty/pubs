@@ -381,7 +381,7 @@ class ds_reader(pubdb_reader):
         if not server:
             query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime, Server FROM ListDaemonLog(';
         else:
-            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime FROM ListDaemonLog(%s,' % server;
+            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime FROM ListDaemonLog(\'%s\',' % server;
 
         t_type = type(datetime.now())
             

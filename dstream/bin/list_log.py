@@ -8,6 +8,10 @@ from pub_util import pub_logger
 # pub_dbi import
 from pub_dbi  import pubdb_conn_info
 
+sname = ''
+if len(sys.argv) > 1:
+    sname = sys.argv[1]
+
 logger = pub_logger.get_logger('list_log')
 
 # DB interface for altering ProcessTable
@@ -17,7 +21,7 @@ k=ds_reader(pubdb_conn_info.reader_info(), logger)
 k.connect()
 
 # Define a project
-projects = k.list_daemon_log()
+projects = k.list_daemon_log(sname)
 
 if not projects: 
     print 'No project found... aborting!'
