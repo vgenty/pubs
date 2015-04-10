@@ -901,7 +901,7 @@ class death_star(ds_master):
 
     ## @brief Contribute to a dark-side run-by-run.
     #  @details Fill the MainRun table with a specified run/sub-run number
-    def insert_into_death_star(self,run,subrun,ts_start,ts_end):
+    def insert_into_death_star(self, runtable, run,subrun,ts_start,ts_end):
 
         try:
             datetime.strptime(str(ts_start),"%Y-%m-%d %H:%M:%S")
@@ -910,9 +910,9 @@ class death_star(ds_master):
             self.error('TimeStamp not in the right format! (must be %Y-%m-%d %H:%M:%S)')
             return False
 
-        query = 'SELECT InsertIntoTestRunTable(%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)'
+        query = 'SELECT InsertIntoTestRunTable(\'%s\',%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)'
         
-        query = query % (run,subrun,str(ts_start),str(ts_end))
+        query = query % (runtable, run,subrun,str(ts_start),str(ts_end))
 
         result = self.commit(query)
         
