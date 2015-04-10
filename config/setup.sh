@@ -61,8 +61,9 @@ case `uname -n` in
 	setup git
 	setup sam_web_client
 	setup ifdhc
-	setup psycopg2 v2_5_4
-	setup postgres v9_2_4
+	# setup psycopg2 v2_5_4
+	# setup postgres v9_2_4
+        setup postgresql v9_3_6 -q p278
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	;;
