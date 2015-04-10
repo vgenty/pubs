@@ -47,6 +47,7 @@ case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
+        source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
 	setup uboonecode v04_03_01 -q e7:prof
 	;;
