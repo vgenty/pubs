@@ -345,7 +345,7 @@ class proc_daemon(ds_base):
 
                         self.info(' %s returned %s @ %s' % (proj,code,now_str))
 
-                        self.info(' %s stdout/stderr:\n %s\n%s' % (out,err))
+                        self.info(' %s stdout/stderr:\n %s\n%s' % (proj,out,err))
                         
                     if ( last_ts is None or 
                          last_ts < ( now_ts - proj_ptr._info._period) ):

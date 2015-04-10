@@ -10,6 +10,10 @@ myparser = argparse.ArgumentParser(description='Insert individual run/subrun int
 ts = (datetime.now()+timedelta(seconds= 0)).strftime('%Y-%m-%d %H:%M:%S')
 te = (datetime.now()+timedelta(seconds=10)).strftime('%Y-%m-%d %H:%M:%S')
 
+myparser.add_argument('--runtable', dest = 'runtable', action = 'store',
+                      default = 'TestRun', type = str,
+                      help='run table to be filled')
+
 myparser.add_argument('--run', dest='run', action='store',
                       default=0, type=int,
                       help='run to fill a new MainRun')
@@ -35,5 +39,5 @@ k=death_star( pubdb_conn_info.admin_info(),
 if not k.connect():
     sys.exit(1)
 
-k.insert_into_death_star(args.run,args.subrun,ts,te)
+k.insert_into_death_star(args.runtable, args.run,args.subrun,ts,te)
 
