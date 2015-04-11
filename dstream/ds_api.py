@@ -381,7 +381,7 @@ class ds_reader(pubdb_reader):
         if not server:
             query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime, Server FROM ListDaemonLog(';
         else:
-            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime FROM ListDaemonLog(%s,' % server;
+            query = ' SELECT MaxProjCtr, LifeTime, ProjCtr, UpTime, LogItem, LogTime FROM ListDaemonLog(\'%s\',' % server;
 
         t_type = type(datetime.now())
             
@@ -594,21 +594,33 @@ class ds_master(ds_writer,ds_reader):
 
         orig_info = self.daemon_info(daemon_info._server)
 
-        if orig_info == daemon_info:
+        if orig_info and orig_info == daemon_info:
             self._logger.info('Identical daemon info already in DB.')
             return True
 
         if check:
-            self._logger.warning('Attempting to alter daemon configuration...')
-            self._logger.info('Server       : %s => %s' % (orig_info._server, daemon_info._server ))
-            self._logger.info('Max. Ctr     : %s => %s' % (orig_info._max_proj_ctr, daemon_info._max_proj_ctr))
-            self._logger.info('Lifetime     : %d => %d' % (orig_info._lifetime, daemon_info._lifetime))
-            self._logger.info('Log Life     : %d => %d' % (orig_info._log_lifetime, daemon_info._log_lifetime))
-            self._logger.info('Sync Time    : %s => %s' % (orig_info._runsync_time, daemon_info._runsync_time))
-            self._logger.info('Update Time  : %s => %s' % (orig_info._update_time, daemon_info._update_time))
-            self._logger.info('CleanUp Time : %s => %s' % (orig_info._cleanup_time, daemon_info._cleanup_time))
-            self._logger.info('Contact      : %s => %s' % (orig_info._email, daemon_info._email))
-            self._logger.info('Enable       : %s => %s' % (orig_info._enable, daemon_info._enable))
+            if orig_info:
+                self._logger.warning('Attempting to alter daemon configuration...')
+                self._logger.info('Server       : %s => %s' % (orig_info._server, daemon_info._server ))
+                self._logger.info('Max. Ctr     : %s => %s' % (orig_info._max_proj_ctr, daemon_info._max_proj_ctr))
+                self._logger.info('Lifetime     : %d => %d' % (orig_info._lifetime, daemon_info._lifetime))
+                self._logger.info('Log Life     : %d => %d' % (orig_info._log_lifetime, daemon_info._log_lifetime))
+                self._logger.info('Sync Time    : %s => %s' % (orig_info._runsync_time, daemon_info._runsync_time))
+                self._logger.info('Update Time  : %s => %s' % (orig_info._update_time, daemon_info._update_time))
+                self._logger.info('CleanUp Time : %s => %s' % (orig_info._cleanup_time, daemon_info._cleanup_time))
+                self._logger.info('Contact      : %s => %s' % (orig_info._email, daemon_info._email))
+                self._logger.info('Enable       : %s => %s' % (orig_info._enable, daemon_info._enable))
+            else:
+                self._logger.warning('Attempting to create a new daemon configuration...')
+                self._logger.info('Server       : %s' % (daemon_info._server ))
+                self._logger.info('Max. Ctr     : %s' % (daemon_info._max_proj_ctr))
+                self._logger.info('Lifetime     : %d' % (daemon_info._lifetime))
+                self._logger.info('Log Life     : %d' % (daemon_info._log_lifetime))
+                self._logger.info('Sync Time    : %s' % (daemon_info._runsync_time))
+                self._logger.info('Update Time  : %s' % (daemon_info._update_time))
+                self._logger.info('CleanUp Time : %s' % (daemon_info._cleanup_time))
+                self._logger.info('Contact      : %s' % (daemon_info._email))
+                self._logger.info('Enable       : %s' % (daemon_info._enable))
 
             if not self._ask_binary(): return False;
 
@@ -889,7 +901,7 @@ class death_star(ds_master):
 
     ## @brief Contribute to a dark-side run-by-run.
     #  @details Fill the MainRun table with a specified run/sub-run number
-    def insert_into_death_star(self,run,subrun,ts_start,ts_end):
+    def insert_into_death_star(self, runtable, run,subrun,ts_start,ts_end):
 
         try:
             datetime.strptime(str(ts_start),"%Y-%m-%d %H:%M:%S")
@@ -898,9 +910,9 @@ class death_star(ds_master):
             self.error('TimeStamp not in the right format! (must be %Y-%m-%d %H:%M:%S)')
             return False
 
-        query = 'SELECT InsertIntoTestRunTable(%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)'
+        query = 'SELECT InsertIntoTestRunTable(\'%s\',%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)'
         
-        query = query % (run,subrun,str(ts_start),str(ts_end))
+        query = query % (runtable, run,subrun,str(ts_start),str(ts_end))
 
         result = self.commit(query)
         

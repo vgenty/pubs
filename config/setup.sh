@@ -47,8 +47,11 @@ case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
+        source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
 	setup uboonecode v04_03_01 -q e7:prof
+	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
+	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
@@ -60,13 +63,16 @@ case `uname -n` in
 	setup git
 	setup sam_web_client
 	setup ifdhc
-	setup postgres v9_2_4
 	setup psycopg2 v2_5_4
-	# wtf. But, otherwise from ROOT import * gacks.
+	# setup postgres v9_2_4
+        setup postgresql v9_3_6 -q p278
 	unsetup uboonecode
-	setup uboonecode v03_04_00 -q e6:prof
+ 	setup uboonecode v03_04_00 -q e6:prof	
+        export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
+	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
+	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	;;
     (*)
 	echo No special setup done for the server `uname -n`

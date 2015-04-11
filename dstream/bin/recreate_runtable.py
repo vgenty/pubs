@@ -7,7 +7,7 @@ from pub_util       import pub_logger
 myparser = argparse.ArgumentParser(description='Drop & Create a run table.')
 
 myparser.add_argument('--name', dest='name', action='store',
-                      default='TestMainRun', type=str,
+                      default='TestRun', type=str,
                       help='Name of a run table to create/alter')
 
 myparser.add_argument('--nruns', dest='nruns', action='store',
