@@ -106,7 +106,6 @@ class get_assembler_metadata(ds_project_base):
 #                shutil.copyfile(in_file,out_file)
 
                 try:
-
                     d = DaqFile(in_file)
                     e = d.GetEventObj(d.NumEvents()-1) 
                     integ = Integral()

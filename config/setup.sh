@@ -56,6 +56,13 @@ case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
         source /uboone/setup_online.sh
+	export UBOONEDAQ_HOME_DIR=${HOME}/development
+	cd $UBOONEDAQ_HOME_DIR/build
+	# Install will go to version specified in ../uboonedaq/projects/ups/product_deps
+	export CET_PRIVATE_UPS_DIR=${HOME}/install/privateups
+	export PRIVATE_UPS_DIR=${HOME}/development/install
+	source ../uboonedaq/projects/ups/setup_for_development -d;
+
 	source /uboone/larsoft/setup
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
  	setup uboonecode v03_04_00 -q e6:prof
