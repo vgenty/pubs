@@ -55,13 +55,16 @@ case `uname -n` in
         source /uboone/setup_online.sh
 	source /uboone/larsoft/setup
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
-	setup uboonecode v03_04_00 -q e6:prof
+ 	setup uboonecode v03_04_00 -q e6:prof
         source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	setup git
 	setup sam_web_client
 	setup ifdhc
-	setup psycopg2 v2_5_4
 	setup postgres v9_2_4
+	setup psycopg2 v2_5_4
+	# wtf. But, otherwise from ROOT import * gacks.
+	unsetup uboonecode
+	setup uboonecode v03_04_00 -q e6:prof
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	;;
