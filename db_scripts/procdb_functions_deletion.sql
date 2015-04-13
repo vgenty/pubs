@@ -1,4 +1,5 @@
 --SET ROLE uboonedaq_admin;
+--SET ROLE uboone_admin;
 DROP TYPE IF EXISTS RunSubrunList CASCADE;
 DROP FUNCTION IF EXISTS MakeProjTable(TEXT);
 DROP FUNCTION IF EXISTS InsertIntoProjTable(TEXT,INT,INT);

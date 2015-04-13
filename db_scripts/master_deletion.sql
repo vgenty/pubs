@@ -1,4 +1,5 @@
 --SET ROLE uboonedaq_admin;
+--SET ROLE uboone_admin;
 DROP FUNCTION IF EXISTS DoesProcessExist(TEXT);
 DROP FUNCTION IF EXISTS DoesProjectExist(TEXT);
 DROP FUNCTION IF EXISTS DoesTableExist(TEXT);
