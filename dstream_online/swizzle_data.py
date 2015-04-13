@@ -48,7 +48,8 @@ class swizzle_data(ds_project_base):
         
         self._nruns = int(resource['NRUNS'])
         self._fcl_file = '%s' % (resource['FCLFILE'])
-        self._log_file = "lar_out_"
+        self._fcl_file = os.environ["PWD"] + "/" + self._fcl_file
+        self._log_file =  os.environ["PWD"] + "/lar_out_"
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
@@ -144,8 +145,8 @@ class swizzle_data(ds_project_base):
                         raise Exception( " raising Exception: not enough memory available." )
 
 
-                    self._proc = sub.Popen(cmd.split(),stderr=sub.STDOUT,stdout=sub.PIPE)
-                    self.info( ' Swizzling (run,subrun) = (%d,%d)...' % (run,subrun))
+                    self._proc = sub.Popen(cmd.split(" "),stderr=sub.STDOUT,stdout=sub.PIPE)
+                    self.info( ' Swizzling (run,subrun,processID) = (%d,%d,%d)...' % (run,subrun,self._proc.pid))
 # This will block! #        (logfile,err) = self._proc.communicate()
                             
                     time.sleep (2)
@@ -209,7 +210,7 @@ class swizzle_data(ds_project_base):
                     self.info('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
 
             else:
-                self.info('Swizzling job %d still running for: run=%d, subrun=%d ...' % (self._proc,run,subrun))
+                self.info('Swizzling job %d still running for: run=%d, subrun=%d ...' % (self._proc.pid,run,subrun))
                 status = 2
 
 
