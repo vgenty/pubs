@@ -12,27 +12,27 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 import datetime
+import subprocess as sub
 
 
 
-
-## @Class swizzle_sam_data
+## @Class swizzle_data
 #  @brief The swizzler
 #  @details
 #  This project swizzles the data that has successfully been declared, validated, signed, sealed delivered to SAM.
 #  Eventually we will in fact ask also that the beamdaq has been retrieved and merged, but that's only a config
 #  change in this project's config chunk. We submit lar jobs to local node only, by-passsing condor altogether for now.
-class swizzle_sam_data(ds_project_base):
+class swizzle_data(ds_project_base):
 
 
     # Define project name as class attribute
-    _project = 'swizzle_sam_data'
+    _project = 'swizzle_data'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
         # Call base class ctor
-        super(swizzle_sam_data,self).__init__()
+        super(swizzle_data,self).__init__()
 
         self._nruns = None
         self._out_dir = ''
@@ -48,13 +48,15 @@ class swizzle_sam_data(ds_project_base):
         
         self._nruns = int(resource['NRUNS'])
         self._fcl_file = '%s' % (resource['FCLFILE'])
+        self._fcl_file = os.environ["PWD"] + "/" + self._fcl_file
+        self._log_file =  os.environ["PWD"] + "/lar_out_"
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
         self._cpu_frac_limit = resource['USED_CPU_FRAC_LIMIT']
-        self._available_memory = resource['AVAILABLE_MEMORY']
+        self._available_memory = resource['AVAIL_MEMORY']
         self._disk_frac_limit = resource['USED_DISK_FRAC_LIMIT']
 
     ## @brief access DB and retrieves new runs and process
@@ -80,7 +82,7 @@ class swizzle_sam_data(ds_project_base):
             ctr -= 1
 
             (run, subrun) = (int(x[0]), int(x[1]))
-
+            self._log_file += str(run) + "_" + str(subrun) + ".txt"
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
@@ -97,7 +99,15 @@ class swizzle_sam_data(ds_project_base):
 
                 try:
 # setup the LArSoft envt
-                    cmd = "lar -c "+ self._fcl_file + " -s " +in_file + " -o " + out_file + " -T " + os.path.basename(out_file)+"_hist.root >& " + self._logfile
+                    print "Putting together cmd "
+                    print "\t fcl_file ", self._fcl_file
+                    print "\t in_file", in_file
+                    print "\t out_file", out_file
+                    print "\t basename out_file", os.path.basename(out_file)
+                    print "\t _log_file", self._log_file
+
+                    cmd = "lar -c "+ self._fcl_file + " -s " +in_file + " -o " + out_file + " -T " + os.path.basename(out_file).strip(".root") + "_hist.root >& " + self._log_file 
+                    print "cmd is ", cmd
 
                 except:
                     print "Unexpected error:", sys.exc_info()[0]
@@ -117,31 +127,32 @@ class swizzle_sam_data(ds_project_base):
                         
                     if (disk_frac_used > self._disk_frac_limit):
                         self.info('%i%% of disk space used (%s), will not swizzle until %i%% is reached.'%(disk_frac_used, self._in_dir, self._disk_frac_limit))
-                        status = 99
+                        status = 1
                         raise Exception( " raising Exception: not enough disk space." )
 
                     # Check available cpu
-                    cpu_used = int(os.open("top -bn 2 -d 0.01 | grep '^Cpu.s.' | tail -n 1 | gawk '{print $2+$4+$6}'"))
+                    cpu_used = float(os.popen("top -bn 2 -d 0.01 | grep '^Cpu.s.' | tail -n 1 | gawk '{print $2+$4+$6}'").read().strip("\n"))
                     if (cpu_used > self._cpu_frac_limit):
-                        self.info('%i%% of cpu space used (%s), will not swizzle until %i%% is reached.'%(cpu_used, self._in_dir, self._cpu_frac_limit))
-                        status = 98
+                        self.info('%i of cpu used; will not swizzle until %i is reached.'%(cpu_used, self._cpu_frac_limit))
+                        status = 1
                         raise Exception( " raising Exception: not enough cpu." )
 
                     # Check available memory
-                    mem_avail = int(os.open(free -m | grep buffers | tail -n 1|  gawk '{print $4}'))
-                    if (mem_avail < self._available_memory):
-                        status = 97
-                        raise Exception( " raising Exception: not enough memory." )
+                    mem_avail = float(os.popen("free -m | grep buffers | tail -n 1|  gawk '{print $4}'").read().strip("\n"))
+                    if (mem_avail < int(self._available_memory)):
+                        self.info('%d Memory available, will not swizzle until %d is reached.'%(mem_avail, int(self._available_memory)))
+                        status = 1
+                        raise Exception( " raising Exception: not enough memory available." )
 
 
-                    self._proc = sub.Popen(cmd.split(),stderr=STDOUT,stdout=PIPE)
-                    self.info( ' Swizzling (run,subrun) = (%d,%d)...' % (run,subrun))
-# This will block! #        (self._logfile,err) = proc.communicate()
+                    self._proc = sub.Popen(cmd.split(" "),stderr=sub.STDOUT,stdout=sub.PIPE)
+                    self.info( ' Swizzling (run,subrun,processID) = (%d,%d,%d)...' % (run,subrun,self._proc.pid))
+# This will block! #        (logfile,err) = self._proc.communicate()
                             
-
+                    time.sleep (2)
                     # Set status to 2 only if all is well so far.
                     if not os.path.isfile(self._log_file):
-                        status = 96
+                        status = 1
                         raise Exception( " raising Exception: no log file." )
                     
                     status = 2
@@ -188,14 +199,19 @@ class swizzle_sam_data(ds_project_base):
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
             self._proc.poll()
-            if   self._proc.returncode:
+            if not  self._proc.returncode:
 # Check the status of the self._proc. If it's not running self._proc.returncode evaluates to None
 # Then check the _logfile for signs of success. If all's well set the status here to 0.
 
-                if self._logfile.find('Art has completed and will exit with status 0') < 0:
+                if open(self._log_file).read().find('Art has completed and will exit with status 0') > 0:
+                    self.info('Swizzling successfully completed for: run=%d, subrun=%d ...' % (run,subrun))
                     status = 0
+                else:
+                    self.info('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
+
             else:
-                status = 100
+                self.info('Swizzling job %d still running for: run=%d, subrun=%d ...' % (self._proc.pid,run,subrun))
+                status = 2
 
 
             # Create a status object to be logged to DB (if necessary)
@@ -261,7 +277,7 @@ class swizzle_sam_data(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = swizzle_sam_data()
+    test_obj = swizzle_data()
 
     test_obj.process_newruns()
 

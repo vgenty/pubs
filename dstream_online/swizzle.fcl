@@ -8,6 +8,20 @@ services:
   Timing:       {}
   RandomNumberGenerator: {} #ART native random number generator
   user:         { }
+  FileCatalogMetadata: { applicationFamily: "art"
+                         applicationVersion: "vxx_yy_zz"
+                         fileType: "data"
+                         group: "uboone"
+                         runType: "physics"
+                         service_type: "FileCatalogMetadata"
+                        }
+  FileCatalogMetadataMicroBooNE: { FCLName: "prodcosmics_uboone.fcl"
+                                   FCLVersion: "vxx_yy_zz"
+                                   ProjectName: "Swizzler"
+                                   ProjectStage: "swizzle"
+                                   ProjectVersion: "vxx_yy_zz"
+                                   service_type: "FileCatalogMetadataMicroBooNE"
+            			 }
 }
 
 #Start each new event with an empty event.
@@ -30,6 +44,7 @@ outputs:
    module_type: RootOutput
    fileName:    LARSOFT_OUTPUT #default file name, can override from command line with -o or --output
    compressionLevel: 1			    
+   dataTier: "raw"
   }
 }
 
@@ -43,5 +58,4 @@ physics:
 
  end_paths: [ stream1 ]  #end_path are things that do not modify art::Event, includes analyzers and output modules. all items here can be run simultaneously
 }
-
 

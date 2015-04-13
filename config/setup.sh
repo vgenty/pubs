@@ -56,16 +56,25 @@ case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
         source /uboone/setup_online.sh
+	export UBOONEDAQ_HOME_DIR=${HOME}/development
+	cd $UBOONEDAQ_HOME_DIR/build
+	# Install will go to version specified in ../uboonedaq/projects/ups/product_deps
+	export CET_PRIVATE_UPS_DIR=${HOME}/install/privateups
+	export PRIVATE_UPS_DIR=${HOME}/development/install
+	source ../uboonedaq/projects/ups/setup_for_development -d;
+
 	source /uboone/larsoft/setup
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
-	setup uboonecode v03_04_00 -q e6:prof
+ 	setup uboonecode v03_04_00 -q e6:prof
         source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	setup git
 	setup sam_web_client
 	setup ifdhc
-	# setup psycopg2 v2_5_4
+	setup psycopg2 v2_5_4
 	# setup postgres v9_2_4
         setup postgresql v9_3_6 -q p278
+	unsetup uboonecode
+ 	setup uboonecode v03_04_00 -q e6:prof	
         export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc

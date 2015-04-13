@@ -427,7 +427,7 @@ BEGIN
     RAISE EXCEPTION 'Project % does not exist!', project_name;
   END IF;
 
-  query := format('SELECT RefName FROM ProcessTable WHERE Project=''%s'' LIMIT 1');
+  query := format('SELECT RefName FROM ProcessTable WHERE Project=''%s'' LIMIT 1', project_name);
   EXECUTE QUERY INTO rec;
 
   runtablename := rec.RefName;
