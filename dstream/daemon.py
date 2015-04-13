@@ -341,9 +341,9 @@ class proc_daemon(ds_base):
                     self._api.project_stopped(proj)
                     (code,out,err) = proj_ptr.clear()
 
-                    if out or err:
+                    self.info(' %s returned %s @ %s' % (proj,code,now_str))
 
-                        self.info(' %s returned %s @ %s' % (proj,code,now_str))
+                    if out or err:
 
                         self.info(' %s stdout/stderr:\n %s\n%s' % (proj,out,err))
                         

@@ -4,7 +4,7 @@
 #  @author yuntse
 
 # python include
-import time,os,sys
+import time,os,sys,time
 import subprocess
 # pub_dbi package include
 from pub_dbi import DBException
@@ -461,6 +461,13 @@ if __name__ == '__main__':
     proj_name = sys.argv[1]
 
     test_obj = production(proj_name)
-
+    
+    now_str = time.strftime('%Y-%m-%d %H:%M:%S')
+    test_obj.info("Project %s start @ %s" % (proj_name,now_str))
+    
     test_obj.process()
+    
+    now_str = time.strftime('%Y-%m-%d %H:%M:%S')
+    test_obj.info("Project %s end @ %s" % (proj_name,now_str))
 
+    sys.exit(0)

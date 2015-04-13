@@ -2,6 +2,7 @@ import inspect
 import copy
 import psycopg2
 import pubdb_env
+import time
 from pub_util        import pub_logger,pub_exception
 from pubdb_exception import DBException
 from pubdb_data      import pubdb_conn_info
@@ -61,6 +62,8 @@ class pubdb_conn(object):
 
         if conn_index < 0:
 
+            now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
+
             try:
                 conn = psycopg2.connect(host=conn_info._host,
                                         port=conn_info._port,
@@ -69,10 +72,11 @@ class pubdb_conn(object):
                                         password=conn_info._passwd)
                 cls._conn_v.append(conn)
                 cls._conn_info_v.append(copy.copy(conn_info))
-                cls._logger.debug('Connected to DB: (%s,%s,%s,%s,XXX)' % (conn_info._host,
-                                                                          conn_info._port,
-                                                                          conn_info._db,
-                                                                          conn_info._user))
+                cls._logger.info('Connected to DB: (%s,%s,%s,%s,XXX) @ %s' % (conn_info._host,
+                                                                              conn_info._port,
+                                                                              conn_info._db,
+                                                                              conn_info._user,
+                                                                              now_str))
                 if conn_info._role:
                     cursor = cls.cursor(conn_info)
                     try:
@@ -86,10 +90,11 @@ class pubdb_conn(object):
                         raise DBException()
 
             except psycopg2.OperationalError as e:
-                cls._logger.critical('Connection failed (%s,%s,%s,%s,XXX)' % (conn_info._host,
-                                                                              conn_info._port,
-                                                                              conn_info._db,
-                                                                              conn_info._user) )
+                cls._logger.critical('Connection failed (%s,%s,%s,%s,XXX) @ %s ' % (conn_info._host,
+                                                                                    conn_info._port,
+                                                                                    conn_info._db,
+                                                                                    conn_info._user,
+                                                                                    now_str) )
                 
                 raise DBException()
             
