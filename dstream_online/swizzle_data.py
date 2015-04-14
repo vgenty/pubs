@@ -40,6 +40,11 @@ class swizzle_data(ds_project_base):
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
+        self._proc_list = []
+        self._log_file_list = []
+        self._run_list = []
+        self._subrun_list = []
+
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -48,8 +53,9 @@ class swizzle_data(ds_project_base):
         
         self._nruns = int(resource['NRUNS'])
         self._fcl_file = '%s' % (resource['FCLFILE'])
-        self._fcl_file = os.environ["PWD"] + "/" + self._fcl_file
-        self._log_file =  os.environ["PWD"] + "/lar_out_"
+        self._fcl_file = os.environ["PUB_TOP_DIR"] + "/dstream_online/" + self._fcl_file
+        self._fcl_file_new  = self._fcl_file.replace(".fcl","_local.fcl")
+        self._log_file =  os.environ["PUB_TOP_DIR"] + "/lar_out_"
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
@@ -58,6 +64,18 @@ class swizzle_data(ds_project_base):
         self._cpu_frac_limit = resource['USED_CPU_FRAC_LIMIT']
         self._available_memory = resource['AVAIL_MEMORY']
         self._disk_frac_limit = resource['USED_DISK_FRAC_LIMIT']
+
+        # First update the place-holder version currently in the fcl file
+        f = open (self._fcl_file)
+        n = open (self._fcl_file_new,'w')
+        for i in f:
+            if i.find('vxx_yy_zz')<0:
+                n.write(i)
+            else:
+                n.write(i.replace('vxx_yy_zz',os.environ["LARSOFT_VERSION"]))
+        f.close()
+        n.close()
+
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -71,7 +89,7 @@ class swizzle_data(ds_project_base):
         if self._nruns is None:
             self.get_resource()
 
-        # self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -82,7 +100,7 @@ class swizzle_data(ds_project_base):
             ctr -= 1
 
             (run, subrun) = (int(x[0]), int(x[1]))
-            self._log_file += str(run) + "_" + str(subrun) + ".txt"
+            self._log_file_local = self._log_file +  str(run) + "_" + str(subrun) + ".txt"
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
@@ -94,20 +112,23 @@ class swizzle_data(ds_project_base):
 
 #
 #
+            print "Looking for ", in_file
             if os.path.isfile(in_file):
                 self.info('Found %s' % (in_file))
 
                 try:
 # setup the LArSoft envt
-                    print "Putting together cmd "
-                    print "\t fcl_file ", self._fcl_file
-                    print "\t in_file", in_file
-                    print "\t out_file", out_file
-                    print "\t basename out_file", os.path.basename(out_file)
-                    print "\t _log_file", self._log_file
 
-                    cmd = "lar -c "+ self._fcl_file + " -s " +in_file + " -o " + out_file + " -T " + os.path.basename(out_file).strip(".root") + "_hist.root >& " + self._log_file 
-                    print "cmd is ", cmd
+                    # print "Putting together cmd "
+                    # print "\t fcl_file ", self._fcl_file_new
+                    # print "\t in_file", in_file
+                    # print "\t out_file", out_file
+                    # print "\t basename out_file", os.path.basename(out_file)
+                    # print "\t _log_file", self._log_file_local
+
+                    cmd = "lar -c "+ self._fcl_file_new + " -s " +in_file + " -o " + out_file + " -T " + os.path.basename(out_file).strip(".root") + "_hist.root "
+                    # print "cmd is ", cmd
+                    self.info('Launch cmd is ' + cmd)
 
                 except:
                     print "Unexpected error:", sys.exc_info()[0]
@@ -145,17 +166,13 @@ class swizzle_data(ds_project_base):
                         raise Exception( " raising Exception: not enough memory available." )
 
 
-                    self._proc = sub.Popen(cmd.split(" "),stderr=sub.STDOUT,stdout=sub.PIPE)
-                    self.info( ' Swizzling (run,subrun,processID) = (%d,%d,%d)...' % (run,subrun,self._proc.pid))
-# This will block! #        (logfile,err) = self._proc.communicate()
-                            
-                    time.sleep (2)
-                    # Set status to 2 only if all is well so far.
-                    if not os.path.isfile(self._log_file):
-                        status = 1
-                        raise Exception( " raising Exception: no log file." )
-                    
-                    status = 2
+                    self._proc_list.append(sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE))
+                    self._log_file_list.append(self._log_file_local)
+                    self._run_list.append(x[0])
+                    self._subrun_list.append(x[1])
+                    self.info( ' Swizzling (run,subrun,processID) = (%d,%d,%d)...' % (run,subrun,self._proc_list[-1].pid))
+                    status = 3
+                    time.sleep (1)
 
                 # Create a status object to be logged to DB (if necessary)
                 status = ds_status( project = self._project,
@@ -166,9 +183,49 @@ class swizzle_data(ds_project_base):
             
                 # Log status
                 self.log_status( status )
-
-            # Break from loop if counter became 0
+            print "ctr ", str(ctr)
+            # Break from run/subrun loop if counter became 0
             if not ctr: break
+'''
+#############################################################################################
+# NOTE that the below "poll" solution deadlocks with piping. Yet, I can't read to break the deadlock till
+# done, so let's for now just block each process till done. I need 'em all anyway before I can proceed.
+# The real time cost here seems to be in the reading (out,err) into local files. And then grep'ing 
+# for the success mesage -- "Art has completed ...".
+#############################################################################################
+'''
+
+# Now continually loop over all the running processes and ask for them each to be finished before we break out
+#        while (1):
+#            proc_alive=False
+        for x in xrange(len(self._proc_list)):
+              #  if self._proc_list[x].poll() is None:
+              #      print 'Process ', self._proc_list[x].pid, ' is still running!'
+              #      proc_alive=True
+              #  else:
+              #      print 'Process ', x, ' is done...'
+              #      self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
+            self.info('Awaiting Swizzling job %d : ...' % (self._proc_list[x].pid))
+            (out,err) = self._proc_list[x].communicate()
+            self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
+            fout = open(str(self._log_file_list[x]),'w')
+            fout.write(out)
+            fout.close()
+                        # Create a status object to be logged to DB 
+            status = 2
+            status = ds_status( project = self._project,
+                                run     = int(self._run_list[x]),
+                                subrun  = int(self._subrun_list[x]),
+                                seq     = 0,
+                                status  = status )
+            
+                        # Log status
+            self.log_status( status )
+
+#            if not proc_alive: break
+ #           time.sleep(3)
+
+
 
     ## @brief access DB and retrieves processed run for validation
     def validate(self):
@@ -190,7 +247,7 @@ class swizzle_data(ds_project_base):
             ctr -=1
 
             (run, subrun) = (int(x[0]), int(x[1]))
-
+            self._log_file_local = self._log_file + str(run) + "_" + str(subrun) + ".txt"
             # Report starting
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
@@ -198,21 +255,15 @@ class swizzle_data(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-            self._proc.poll()
-            if not  self._proc.returncode:
-# Check the status of the self._proc. If it's not running self._proc.returncode evaluates to None
-# Then check the _logfile for signs of success. If all's well set the status here to 0.
 
-                if open(self._log_file).read().find('Art has completed and will exit with status 0') > 0:
+            if os.path.exists(self._log_file_local):
+                if open(self._log_file_local).read().find('Art has completed and will exit with status 0') > 0:
                     self.info('Swizzling successfully completed for: run=%d, subrun=%d ...' % (run,subrun))
                     status = 0
                 else:
                     self.info('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
-
             else:
-                self.info('Swizzling job %d still running for: run=%d, subrun=%d ...' % (self._proc.pid,run,subrun))
-                status = 2
-
+                    self.info('Swizzling has no corresponding logfile for: run=%d, subrun=%d ...' % (run,subrun))
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -273,6 +324,12 @@ class swizzle_data(ds_project_base):
 
             # Break from loop if counter became 0
             if not ctr: break
+            
+        try:
+            os.remove(self._fcl_file_new)
+        except OSError:
+            pass
+
 
 # A unit test section
 if __name__ == '__main__':

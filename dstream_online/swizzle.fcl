@@ -16,7 +16,7 @@ services:
                          service_type: "FileCatalogMetadata"
                         }
   FileCatalogMetadataMicroBooNE: { FCLName: "prodcosmics_uboone.fcl"
-                                   FCLVersion: "vxx_yy_zz"
+                                   FCLVersion: "vswizzle"
                                    ProjectName: "Swizzler"
                                    ProjectStage: "swizzle"
                                    ProjectVersion: "vxx_yy_zz"
