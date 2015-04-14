@@ -48,7 +48,7 @@ class proc_action(object):
 
     ## Boolean function to check if the project's execution process is alive or not
     def active(self):
-        if self._proc is None: return False
+        if self._proc is None: return None
         else: return (self._proc.poll() is None)
 
     ## @brief Clears a project process, if exists, and returns (stdout,stderr). 
@@ -290,16 +290,32 @@ class proc_daemon(ds_base):
             except DBException as e:
                 self.error('Failed connection to DB @ %s ... Retry in 1 minute' % now_str)
                 routine_sleep = 60
+                if self._config and self._config._email:
+                    pub_smtp(receiver = self._config._email,
+                             subject  = 'Daemon Error',
+                             text = 'Failed to establish DB connection @ %s' % now_str)
                 continue
             
             # Exit if time exceeds the daemon lifetime
             if self._config and (now_ts - self._creation_ts) > self._config._lifetime:
                 self.warning('Exceeded pre-defined lifetime. Exiting...')
-                return True
+                break
 
             if (routine_ctr-1) % self._config._update_time == 0:
                 
                 self.info('Routine project update @ %s ' % now_str)
+                if self._api.is_cursor_connected() is None:
+                    self._api.connect()
+                else:
+                    self._api.reconnect()
+
+                if not self._api.is_cursor_connected():
+                    if self._config._email:
+                        pub_smtp(receiver = self._config._email,
+                                 subject  = 'Daemon Error',
+                                 text = 'Failed to establish DB connection @ %s' % now_str)
+                    continue
+                    
                 self.load_daemon()
                 if self._config._enable:
                     self.load_projects()
@@ -335,17 +351,19 @@ class proc_daemon(ds_base):
                 now_ts  = time.time()
 
                 if now_ts < self._next_exec_time: continue
-                
-                if not proj_ptr.active():
 
-                    self._api.project_stopped(proj)
-                    (code,out,err) = proj_ptr.clear()
+                proj_active = proj_ptr.active()
+                if not proj_active:
 
-                    self.info(' %s returned %s @ %s' % (proj,code,now_str))
+                    if proj_active is not None:
+                        self._api.project_stopped(proj)
+                        (code,out,err) = proj_ptr.clear()
 
-                    if out or err:
+                        self.info(' %s returned %s @ %s' % (proj,code,now_str))
 
-                        self.info(' %s stdout/stderr:\n %s\n%s' % (proj,out,err))
+                        if out or err:
+                            
+                            self.info(' %s stdout/stderr:\n %s\n%s' % (proj,out,err))
                         
                     if ( last_ts is None or 
                          last_ts < ( now_ts - proj_ptr._info._period) ):

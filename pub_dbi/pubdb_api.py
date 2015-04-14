@@ -1,4 +1,4 @@
-import inspect,logging,psycopg2
+import inspect,logging,psycopg2,time
 from pub_util import pub_logger
 from pubdb_exception import DBException
 from pubdb_conn import pubdb_conn
@@ -7,10 +7,13 @@ from pubdb_data import pubdb_conn_info
 class pubdb_reader(object):
 
     def __init__(self,conn_info,logger=None):
+
         self._cursor    = None
         self._conn_info = conn_info
         self._logger    = logger
-          
+        self._n_retrial = 10
+        self._sleep     = 10
+
         if not self._logger:
             self._logger = pub_logger.get_logger('pubdb')
             
@@ -18,22 +21,52 @@ class pubdb_reader(object):
             pub_logger.get_logger('pubdb').critical('Invalid logger!')
             raise DBException()
 
+        self.debug    = self._logger.debug
+        self.info     = self._logger.info
+        self.warning  = self._logger.warning
+        self.error    = self._logger.error
+        self.critical = self._logger.critical
+
     def fetchone(self):
         if not self._cursor: return None
         return self._cursor.fetchone()
 
-    def connect(self):
-        if self._cursor: return True
-        self._cursor = pubdb_conn.cursor(self._conn_info)
-        if self._conn_info._role:
-            self._cursor.execute('SET ROLE %s;' % self._conn_info._role)
-        return bool(self._cursor)
-            
-    def _raise_cursor_exception(self):
-        if not self._cursor:
-            self._logger.critical('Connection not established!')
-            raise DBException()
+    def is_cursor_connected(self):
+        if not self._cursor: return None
+        if self._cursor.closed: return False
+        # Check if connection is still valid
+        self._cursor.execute('SELECT 1;')
+        return bool(self._cursor.rowcount)
 
+    def is_conn_alive(self):
+        if not self.is_cursor_connected(): return False
+        return pubdb_conn.is_connected(self._conn_info)
+
+    def connect(self):
+        if self.is_cursor_connected(): return True
+        if self._cursor:
+            self._cursor.close()
+
+        self._cursor = pubdb_conn.cursor(self._conn_info)
+
+        if not self._cursor:
+            raise DBException('Failed to obtain a cursor (connection not established)')
+
+        return True
+
+    def reconnect(self):
+        if self._cursor:
+            self._cursor.close()
+            self._cursor = None
+        return pubdb_conn.reconnect(self._conn_info)
+            
+    def _raise_cursor_exception(self,check_conn=False):
+        if not self._cursor:
+            raise DBException('Connection has never been established yet!')
+        if check_conn and not self.is_connected():
+            if not self.connect():
+                raise DBException('Connection disappeared and cannot re-connect!')
+            
     def __iter__(self):
         self._raise_cursor_exception()
         return self._cursor
@@ -45,23 +78,25 @@ class pubdb_reader(object):
     def __del__(self):
         if self._cursor:
             self._cursor.close()
-        self._logger.debug('Reader cursor destroyed.')
+        self.debug('Reader cursor destroyed.')
 
     def nrows(self):
         self._raise_cursor_exception()
         return self._cursor.rowcount
 
     def execute(self,query,throw=False):
-        self._raise_cursor_exception()
+        if not self.connect():
+            self.error("Failed to connect the DB...")
+            return False
         try:
-            self._logger.debug(query)
+            self.debug(query)
             self._cursor.execute(query)
         except psycopg2.ProgrammingError as e:
-            self._logger.error(e.pgerror)
+            self.error(e.pgerror)
             if throw: raise
             return False
         except psycopg2.InternalError as e:
-            self._logger.error(e.pgerror)
+            self.error(e.pgerror)
             if throw: raise
             return False
         return True
@@ -69,18 +104,18 @@ class pubdb_reader(object):
 class pubdb_writer(pubdb_reader):
 
     def commit(self,query,throw=False):
-        self._raise_cursor_exception()
+        if not self.connect():
+            self.error("Failed to connect the DB...")
+            return False
         try:
             self.execute(query)
             pubdb_conn.commit(self._conn_info)
         except psycopg2.ProgrammingError as e:
-            self._logger.error(e.pgerror)
+            self.error(e.pgerror)
             if throw: raise
             return False
         except psycopg2.InternalError as e:
-            self._logger.error(e.pgerror)
+            self.error(e.pgerror)
             if throw: raise
             return False
         return True
-
-    
