@@ -44,6 +44,7 @@ class pubdb_reader(object):
 
     def connect(self):
         if self.is_cursor_connected(): return True
+
         if self._cursor:
             self._cursor.close()
 
@@ -58,8 +59,11 @@ class pubdb_reader(object):
         if self._cursor:
             self._cursor.close()
             self._cursor = None
-        return pubdb_conn.reconnect(self._conn_info)
-            
+        if not pubdb_conn.reconnect(self._conn_info):
+            return False
+        self._cursor = pubdb_conn.cursor(self._conn_info)
+        return bool(self._cursor)
+
     def _raise_cursor_exception(self,check_conn=False):
         if not self._cursor:
             raise DBException('Connection has never been established yet!')

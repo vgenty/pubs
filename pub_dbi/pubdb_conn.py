@@ -88,7 +88,6 @@ class pubdb_conn(object):
         conn_index=cls.check_conn_info_exist(conn_info)
 
         if conn_index >= 0 and cls.is_connected(conn_info):
-            print 'connection already exists'
             return conn_index
 
         now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -147,7 +146,8 @@ class pubdb_conn(object):
 
     @classmethod
     def reconnect(cls,conn_info):
-        cls.close(conn_info)
+        if not cls.close(conn_info):
+            raise Exception()
         return cls.connect(conn_info)
 
     @classmethod
