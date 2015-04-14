@@ -39,7 +39,6 @@ def parse(contents):
     valid_keywords=('SERVER','MAX_CTR','LIFETIME','LOG_LIFETIME','SYNC_TIME',
                     'UPDATE_TIME','CLEANUP_TIME','CONTACT','ENABLE')   
     for line in new_contents:
-
         if line=='DAEMON_BEGIN':
             if in_block:
                 logger.error('DAEMON_BEGIN found before DAEMON_END!')
@@ -64,6 +63,7 @@ def parse(contents):
                 sys.exit(1)
             in_block=False
             continue
+
         keyword = line.split(None)[0]
         value   = line[line.find(keyword)+len(keyword):len(line)].strip(' ')
         if not keyword in valid_keywords or len(line.split(None)) < 2:

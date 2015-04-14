@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from pub_util import pub_logger
+from pub_util import pub_logger, pub_env
 from pub_dbi  import pubdb_conn_info
 from dstream  import ds_project
 from dstream.ds_api import ds_master
@@ -60,7 +60,7 @@ def parse(contents):
             continue
 
         keyword = line.split(None)[0]
-        value   = line.replace(keyword,'').strip(' ')
+        value   = line[line.find(keyword)+len(keyword):len(line)].strip(' ')
         if ( not keyword in valid_keywords or
              (keyword not in ['RUNTABLE','SLEEP'] and len(line.split(None)) < 2) ):
             logger.error('Invalid syntax found in the following line!')
