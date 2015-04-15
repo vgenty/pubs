@@ -872,9 +872,7 @@ class death_star(ds_master):
 
         # Attempt to drop
         query = 'SELECT RemoveTestRunTable(\'%s\');' % name
-
         result = self.commit(query)
-
         if not result:
             self._logger.warning('Death Star re-built failed. My god.')
             return False

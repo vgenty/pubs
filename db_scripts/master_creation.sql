@@ -259,7 +259,7 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
--- (Re-)create TestRunTable
+-- Create TestRunTable
 DROP FUNCTION IF EXISTS CreateTestRunTable();
 DROP FUNCTION IF EXISTS CreateTestRunTable(TEXT);
 
@@ -282,6 +282,39 @@ BEGIN
 		       TimeStop     TIMESTAMP NOT NULL,
 		       ConfigID     INT NOT NULL,
 		       PRIMARY KEY (RunNumber,SubRunNumber) ); ', RunTableName);
+  EXECUTE query;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- Delete TestRunTable
+DROP FUNCTION IF EXISTS RemoveTestRunTable(TEXT);
+CREATE OR REPLACE FUNCTION RemoveTestRunTable(RunTableName TEXT) RETURNS VOID AS $$
+DECLARE
+query TEXT;
+mybool BOOLEAN;
+BEGIN
+
+  -- Cannot remove non-existing run table --
+  SELECT DoesTableExist(RunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '+++++++++ Run Table w/ name % does not exist ++++++++++',RunTableName;
+  END IF;
+
+  query := format('DROP TABLE %s;',RunTableName);
+  -- Make sure there is no project using this run table --
+  SELECT DoesTableExist('ProcessTable') INTO mybool;
+  IF mybool THEN
+    SELECT TRUE FROM ProcessTable WHERE lower(RefName) = lower(RunTableName) LIMIT 1 INTO mybool;
+    IF mybool THEN
+      RAISE EXCEPTION '++++++++++ Cannot drop a run table used by projects! ++++++++++';
+    END IF;
+  END IF;
+  query := format('DROP TABLE %s;',RunTableName);
   EXECUTE query;
   RETURN;
 END;

@@ -112,14 +112,14 @@ class pubdb_writer(pubdb_reader):
             self.error("Failed to connect the DB...")
             return False
         try:
-            self.execute(query)
+            status = self.execute(query)
             pubdb_conn.commit(self._conn_info)
         except psycopg2.ProgrammingError as e:
             self.error(e.pgerror)
             if throw: raise
-            return False
+            status = False
         except psycopg2.InternalError as e:
             self.error(e.pgerror)
             if throw: raise
-            return False
-        return True
+            status = False
+        return status

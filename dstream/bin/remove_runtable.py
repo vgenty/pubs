@@ -4,7 +4,7 @@ from dstream.ds_api import death_star
 from pub_dbi        import pubdb_conn_info
 from pub_util       import pub_logger
 
-myparser = argparse.ArgumentParser(description='Create a run table.')
+myparser = argparse.ArgumentParser(description='Remove a run table.')
 
 if not len(sys.argv) == 2:
     print 'Usage: %s TABLE_NAME' % sys.argv[0]
@@ -18,5 +18,5 @@ k=death_star( pubdb_conn_info.admin_info(),
 if not k.connect():
     sys.exit(1)
 
-k.create_death_star(tname)
+k.end_of_galaxy(tname)
 
