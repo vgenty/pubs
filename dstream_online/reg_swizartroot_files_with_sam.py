@@ -1,7 +1,7 @@
 ## @namespace dummy_dstream.dummy_nubin_xfer
 #  @ingroup dummy_dstream
 #  @brief Defines a project dummy_nubin_xfer
-#  @author kazuhiro
+#  @author echurch
 
 # python include
 import time, os, shutil, sys, subprocess, string
@@ -19,7 +19,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 # below requires setting up samweb
 import samweb_cli
-
+import extractor_dict
 
 ## @class dummy_nubin_xfer
 #  @brief A dummy nu bin file xfer project
@@ -52,42 +52,9 @@ class reg_swizartroot_files_with_sam(ds_project_base):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-        self._out_dir = '%s' % (resource['OUTDIR'])
-        self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
-        self._parent_project = resource['SOURCE_PROJECT']
-
-    ## stolen out of project.py and edited for our purposes, rather than us needing to depend on ubutil in the DAQ
-    def docheck_declarations(in_file,declare):
-        # Loop over root files listed in files.list.
-        # native SAM python call, instead of a system call
-        samweb = samweb_cli.SAMWebClient(experiment="uboone")
-        # make sure you've done get-cert
-
-        roots = [in_file]
-        for root in roots:
-            path = string.strip(root)
-            fn = os.path.basename(path)
-        # Check metadata
-            has_metadata = False
-            try:
-                md = samweb.getMetadata(filenameorid=fn)
-                has_metadata = True
-            except samweb_cli.exceptions.FileNotFound:
-                pass
-        # Report or declare file.
-            if has_metadata:
-                print 'Metadata OK: %s' % fn
-            else:
-                if declare:
-                    print 'Declaring: %s' % fn
-                    # extractor_dict.getmetadata comes from ubutil
-                    md = extractor_dict.getmetadata(path)
-                    samweb.declareFile(md=md)
-                else:
-                    print 'Not declared: %s' % fn
-        return 0
+        self._parent_project = resource['PARENT_PROJECT']
 
 
 
@@ -119,40 +86,44 @@ class reg_swizartroot_files_with_sam(ds_project_base):
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 1
+            status = 100
             
             # Check input file exists. Otherwise report error
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            json_file = in_file.replace("ubdaq","json")
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun)) # out_dir is the dropbox.
 
-
+            print 'Looking for %s' % (in_file)
             if os.path.isfile(in_file):
                 self.info('Found %s' % (in_file))
 
+                # Check metadata
+                has_metadata = False
                 try:
-                    shutil.copyfile(in_file,out_file)
-
-                    # We presume that the swizzler fcl file is such as to have properly generated and attached
-                    # metadata to the artroot file. (But not yet declared it to SAM.)
-                    # Thus, retrieve metadata from file; use it to declare file with SAM.
-                    docheck_declaration(in_file,1) # cnpasted from project.py
-                    subprocess.call(['ifdh', 'cp', '--force=gridftp', in_file, out_file])
-                    status = 2
+                    samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                    md = samweb.getMetadata(filenameorid=in_file)
+                    print 'Here 0' % md
+                    self.info('Weirdly, metadata already registered in SAM for %s.  ... ' % (in_file))
+                    has_metadata = True
                 except:
-                    print "Unexpected error: samweb declareFile problem: ", sys.exc_info()[0]
-                    # print "Give some null properties to this meta data"
-                    print "Give this file a status 100"
-                    status = 100
-                    
+                    pass
 
+                # Should be that metadata is in the artroot file. (But not yet declared it to SAM.)
+                # Thus, retrieve metadata from file; use it to declare file with SAM.
+                if not has_metadata:
+                    try:
+                        print ' I feel a couple woos comin on, cus '
+                        md = extractor_dict.getmetadata(in_file)
+                        print ' there it was '
+                        status = 3
+                        try:
+                            samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                            samweb.declareFile(md=md)
+                            status = 2
+                            self.info('Successful extraction of artroot metadata and declaring it to SAM for %s.  ... ' % (in_file))
+                        except:
+                            self.info('Failed declaring metadata to SAM for %s.  ... ' % (in_file))
+                    except:
+                        self.info('Failed extracting artroot metadata for %s.  ... ' % (in_file))
 
-
-            else:
-                status = 100
-
-            # Pretend I'm doing something
-            time.sleep(1)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -193,13 +164,14 @@ class reg_swizartroot_files_with_sam(ds_project_base):
 
             status = 1
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-            if os.path.isfile(out_file):
-#                os.system('rm %s' % in_file)
-                status = 0
-            else:
-                status = 100
+            #samweb = samweb_cli.SAMWebClient(experiment="uboone")
+            # Check if the file already exists at SAM
+            #try:
+            #    samweb.getMetadata(filenameorid=in_file_base)
+            #    status = 0
+            #except samweb_cli.exceptions.FileNotFound:
+            #    status = 100
 
             # Pretend I'm doing something
             time.sleep(1)
@@ -208,9 +180,9 @@ class reg_swizartroot_files_with_sam(ds_project_base):
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
-                                seq     = int(x[2]),
+                                seq     = 0,
                                 status  = status )
-            
+
             # Log status
             self.log_status( status )
 
@@ -242,11 +214,6 @@ class reg_swizartroot_files_with_sam(ds_project_base):
             self.info('cleaning failed run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 1
-
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
-
-            if os.path.isfile(out_file):
-                os.system('rm %s' % out_file)
 
             # Pretend I'm doing something
             time.sleep(1)
