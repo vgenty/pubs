@@ -775,54 +775,50 @@ class death_star(ds_master):
         if not self._ask_binary(): return False
         
         query = ' SELECT RemoveProcessDB();'
-
         result = self.commit(query)
-
-        if result:
-
-            query = 'SELECT CreateProcessTable();'
-
-            result = self.commit(query)
-
-        if result:
-
-            self._logger.warning('Destroyed the planet Alderaan!')
-            
-        else:
-
+        if not result:
             self._logger.warning('SuperBeam broken and didn\'t work...')
+            return result
+
+        query = 'SELECT CreateProcessTable();'
+        result = self.commit(query)
+        if not result:
+            self._logger.warning('SuperBeam broken and didn\'t work...')
+            return result
+
+        query = 'SELECT CreateDaemonTable();'
+        result = self.commit(query)
+        if not result:
+            self._logger.warning('SuperBeam broken and didn\'t work...')
+            return result
+
+        query = 'SELECT CreateDaemonLogTable();'
+        result = self.commit(query)
+        if not result:
+            self._logger.warning('SuperBeam broken and didn\'t work...')
+            return result
+
+        else:
+            self._logger.warning('Destroyed the planet Alderaan!')
 
         return result
 
-    ## @brief Dark-side never disappears. Rebuild a new Anakin from scratch.
+    ## @brief Destruction of a galaxy requires a care although it is a piece of pie for dark-side.
     #  @details
-    #  Drop & re-create MainRun table. This requires to drop all projects.\n
-    #  Outcome is an empty MainRun and ProcessTable.
-    def recreate_death_star(self):
+    #  Drop a run table w/ a specified name. It fails if any project is currently using this table.
+    def end_of_galaxy(self,tablename):
 
-        self._logger.warning('Attempting to re-build MainRunTable! (will be empty)...')
+        self._logger.warning('Attempting to destroy a run table %s! (will be empty)...' % tablename)
         
         if not self._ask_binary(): return False
         
-        query = 'SELECT RemoveProcessDB();'
+        query = 'SELECT RemoveTestRunTable(\'%s\');' % tablename;
 
         result = self.commit(query)
 
-        query = 'SELECT CreateProcessTable();'
-        
-        result = result and self.commit(query)
-        
-        query = 'SELECT CreateDaemonTable();'
-        
-        result = result and self.commit(query)
-
-        query = 'SELECT CreateDaemonLogTable();'
-
-        result = result and self.commit(query)
-
         if result:
 
-            self._logger.warning('Death Star is re-born.')
+            self._logger.warning('Galaxy is destroyed.')
 
         else:
 
@@ -830,10 +826,32 @@ class death_star(ds_master):
 
         return result
 
-    ## @brief Dark-side can create anything, even real data, and you will not notice.
+    ## @brief The birth of dark-side is at the beginning of the mother universe.
     #  @details
-    #  Recreate MainRun table. This requires to drop all projects first.\n
-    #  Outcome is a newly filled MainRun table with an empty ProcessTable
+    #  Create a run table w/ a specified name. It fails if there is a table with the same name already exist.
+    def create_death_star(self,tablename):
+
+        self._logger.warning('Attempting to build a new run table %s! (will be empty)...' % tablename)
+        
+        if not self._ask_binary(): return False
+        
+        query = 'SELECT CreateTestRunTable(\'%s\');' % tablename;
+
+        result = self.commit(query)
+
+        if result:
+
+            self._logger.warning('Death Star is born.')
+
+        else:
+
+            self._logger.warning('Failed re-building the Death Star.')
+
+        return result
+
+    ## @brief Fill Anakin the absolute power of dark-side
+    #  @details
+    #  Recreate a run table of the specified name, filled with run/subruns. It fails if any project is currently using this table.
     def refill_death_star(self,name,run,subrun):
 
         try:
@@ -845,55 +863,32 @@ class death_star(ds_master):
             self._logger.error('Provided (run,subrun) in an wrong type!' % (str(run),str(subrun)))
             return False
 
-        self._logger.warning('Attempting to re-build MainRun table.')
-        self._logger.warning('Requires to drop all projects as well.')
-        self._logger.warning('Will be filled with %d runs (%d sub-runs each).' % (run,subrun))
+        self._logger.warning('Attempting to re-build run table %s.' % name)
+        self._logger.warning('Requires all projects using this table to be dropped as well.')
 
         if not self._ask_binary():
             self._logger.warning('Death Star re-built failed. My god.')
             return False
 
-        query = 'SELECT RemoveProcessDB();'
-
+        # Attempt to drop
+        query = 'SELECT RemoveTestRunTable(\'%s\');' % name
         result = self.commit(query)
-
         if not result:
             self._logger.warning('Death Star re-built failed. My god.')
             return False
 
-        query = 'DROP TABLE IF EXISTS %s;' % name
-
-        if not self.commit(query):
-            self._logger.warning('Death Star re-built failed. My god.')
-            return False
-        
-        query = 'SELECT CreateTestRunTable(\'%s\')' % name
+        query = 'SELECT CreateTestRunTable(\'%s\');' % name
         
         if not self.commit(query):
             self._logger.warning('Death Star re-built failed. My god.')
             return False
 
+        self._logger.warning('Will be filled with %d runs (%d sub-runs each).' % (run,subrun))
         query = 'SELECT FillTestRunTable(\'%s\',%d,%d);' % (name,run,subrun)
 
         if not self.commit(query):
             self._logger.warning('Death Star re-built failed. My god.')
             return False
-
-        query = 'SELECT CreateProcessTable();'
-        
-        result = result and self.commit(query)
-        
-        query = 'SELECT CreateDaemonTable();'
-        
-        result = result and self.commit(query)
-
-        query = 'SELECT CreateDaemonLogTable();'
-
-        result = result and self.commit(query)
-
-        if not result:
-            self._logger.warning('Death Star re-built failed. My god.')
-            return False            
 
         self._logger.warning('Death Star is re-built and complete.')
         

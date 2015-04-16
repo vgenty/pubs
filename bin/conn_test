@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 from pub_dbi import pubdb_conn, pubdb_conn_info
-pubdb_conn._connect(pubdb_conn_info.reader_info())
-pubdb_conn._connect(pubdb_conn_info.writer_info())
-#pubdb_conn._connect(pubdb_conn_info.admin_info())
+pubdb_conn.connect(pubdb_conn_info.reader_info())
+pubdb_conn.connect(pubdb_conn_info.writer_info())
+pubdb_conn._connect(pubdb_conn_info.admin_info())

@@ -308,7 +308,6 @@ class proc_daemon(ds_base):
                     self._api.connect()
                 else:
                     self._api.reconnect()
-
                 if not self._api.is_cursor_connected():
                     if self._config._email:
                         pub_smtp(receiver = self._config._email,

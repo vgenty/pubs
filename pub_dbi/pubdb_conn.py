@@ -68,7 +68,8 @@ class pubdb_conn(object):
     @classmethod
     def is_connected(cls,conn_info):
 
-        if cls.closed(conn_info): return False
+        if cls.closed(conn_info): 
+            return False
 
         conn_index = cls.check_conn_info_exist(conn_info,True)
         valid_conn = False
@@ -87,7 +88,6 @@ class pubdb_conn(object):
         conn_index=cls.check_conn_info_exist(conn_info)
 
         if conn_index >= 0 and cls.is_connected(conn_info):
-            print 'connection already exists'
             return conn_index
 
         now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -104,7 +104,7 @@ class pubdb_conn(object):
                                                                   now_str))
 
             if conn_info._role:
-                cursor = cls.cursor(conn_info)
+                cursor = conn.cursor()
                 try:
                     cursor.execute('SET ROLE %s;' % conn_info._role)
                     cursor.close()
@@ -135,7 +135,6 @@ class pubdb_conn(object):
     def connect(cls,conn_info):
         conn_index = cls._connect(conn_info)
         connected = bool(conn_index >= 0 and cls.is_connected(conn_info))
-
         ctr = conn_info._ntrial
         while not connected and ctr > 0:
             time.sleep(conn_info._sleep)
@@ -147,7 +146,8 @@ class pubdb_conn(object):
 
     @classmethod
     def reconnect(cls,conn_info):
-        cls.close(conn_info)
+        if not cls.close(conn_info):
+            raise Exception()
         return cls.connect(conn_info)
 
     @classmethod
