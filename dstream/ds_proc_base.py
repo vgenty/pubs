@@ -25,13 +25,16 @@ class ds_base(object):
     #  CTor is where it implements a common logger feature.\n
     #  Note logger functions (debug, info, warning, error, critical) are imported\n
     #  directly.
-    def __init__(self):
+    def __init__(self,logger_name=None):
 
-        ## Attach a logger for each instance with a name = class name
-        self._logger  = pub_logger.get_logger(self.__class__.__name__)
-        
+        ## Attach a logger for each instance with a default name = class name
+        if not logger_name:
+            self._logger = pub_logger.get_logger(self.__class__.__name__)
+        else:
+            self._logger = pub_logger.get_logger(logger_name)
+
         # Import message functions from logger
-        
+
         ## @brief pub_logger.debug function. 
         #  @details Takes a string as an input for debug message
         self.debug    = self._logger.debug
@@ -74,9 +77,9 @@ class ds_project_base(ds_base):
     #  @details
     #  Constructor implements database API on top of base class logger feature.\n
     #  Note it also imports connect method directly from ds_writer API.
-    def __init__(self):
+    def __init__(self,arg=None):
 
-        super(ds_project_base,self).__init__()
+        super(ds_project_base,self).__init__(arg)
 
         ## @brief Use ds_writer API so inherit classes (projects) can log status
         self._api = ds_writer(pubdb_conn_info.writer_info(),

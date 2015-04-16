@@ -351,14 +351,14 @@ Job IDs    : %s
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
+        # Call base class ctor
+        super(production,self).__init__(arg)
+
         if not arg:
             self.error('No project name specified!')
             raise Exception
 
         self._project = arg
-
-        # Call base class ctor
-        super(production,self).__init__()
 
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
                              self.kINITIATED     : self.submit,

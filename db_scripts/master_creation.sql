@@ -166,7 +166,7 @@ BEGIN
   END IF;
   --RAISE WARNING 'Process Table found...';  
   --RAISE EXCEPTION 'SELECT TRUE FROM ProcessTable WHERE Project = % LIMIT 1 INTO doesExist;', tname;
-  SELECT TRUE FROM DaemonTable WHERE Server = tname LIMIT 1 INTO doesExist;
+  SELECT TRUE FROM DaemonTable WHERE lower(Server) = lower(tname) LIMIT 1 INTO doesExist;
   IF doesExist IS NULL THEN
     RETURN FALSE;
   ELSE
@@ -192,7 +192,7 @@ BEGIN
   END IF;
   --RAISE WARNING 'Process Table found...';  
   --RAISE EXCEPTION 'SELECT TRUE FROM ProcessTable WHERE Project = % LIMIT 1 INTO doesExist;', tname;
-  SELECT TRUE FROM ProcessTable WHERE Project = tname LIMIT 1 INTO doesExist;
+  SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(tname) LIMIT 1 INTO doesExist;
   IF doesExist IS NULL THEN
     RETURN FALSE;
   ELSE
@@ -620,7 +620,7 @@ BEGIN
   END IF;
   
   -- Make sure project does not yet exist in ProcessTable
-  SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO myBool;
+  SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO myBool;
   IF NOT myBool IS NULL THEN
     RAISE WARNING '+++++++++ Project % already exists... +++++++++',project_name;
     RETURN -1;
@@ -632,7 +632,7 @@ BEGIN
   END IF;
 
   -- Get the version number
-  SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO myVersion;
+  SELECT MAX(ProjectVer) FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO myVersion;
   IF myVersion IS NULL THEN
     myVersion := 0;
   ELSE
@@ -644,7 +644,7 @@ BEGIN
   	      		     StartRun, StartSubRun, Email, Server, Resource, Enabled, Running)
   	      VALUES ( project_name, command, myVersion, frequency, sleepAfter, runtable,
 	      	       start_run, start_subrun, email, nodename, resource, enabled, FALSE);
-  SELECT ID FROM ProcessTable WHERE Project = project_name INTO myInt;
+  SELECT ID FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO myInt;
   IF myInt IS NULL THEN
     --SELECT DropStatusTable(project_name);
     --SELECT DropFileTable(project_name);
@@ -659,7 +659,7 @@ BEGIN
     RETURN -1;
   END IF;
 
-  SELECT MAX(ID) FROM ProcessTable WHERE Project = project_name INTO myInt;
+  SELECT MAX(ID) FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO myInt;
 
   EXECUTE OneProjectRunSynch(project_name, myVersion, start_run, start_subrun);
 
@@ -715,7 +715,7 @@ myBool      BOOLEAN;
 BEGIN
 
   -- Make sure project exists in ProcessTable
-  SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO myBool;
+  SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO myBool;
   IF myBool IS NULL THEN
     RAISE WARNING '+++++++++ Project % does not exist... +++++++++',project_name;
     RETURN FALSE;
@@ -726,7 +726,7 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO project_ver; 
+  SELECT MAX(ProjectVer) FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO project_ver; 
 
   query := 'UPDATE ProcessTable SET ';
 
@@ -764,7 +764,7 @@ BEGIN
 
   query := TRIM( TRAILING ',' FROM query);
 
-  query := format('%s WHERE ProjectVer=%s AND Project=''%s''',query,project_ver,project_name);
+  query := format('%s WHERE ProjectVer=%s AND lower(Project)=lower(''%s'')',query,project_ver,project_name);
 
   EXECUTE query;
 
@@ -778,7 +778,7 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 DROP FUNCTION IF EXISTS ProjectRunning(TEXT);
 CREATE OR REPLACE FUNCTION ProjectRunning(project_name TEXT) RETURNS VOID AS $$
-  UPDATE ProcessTable SET Running=TRUE WHERE Project = project_name;
+  UPDATE ProcessTable SET Running=TRUE WHERE lower(Project) = lower(project_name);
 $$ LANGUAGE SQL;
 
 ---------------------------------------------------------------------
@@ -786,7 +786,7 @@ $$ LANGUAGE SQL;
 ---------------------------------------------------------------------
 DROP FUNCTION IF EXISTS ProjectStopped(TEXT);
 CREATE OR REPLACE FUNCTION ProjectStopped(project_name TEXT) RETURNS VOID AS $$
-  UPDATE ProcessTable SET Running=FALSE WHERE Project = project_name;
+  UPDATE ProcessTable SET Running=FALSE WHERE lower(Project) = lower(project_name);
 $$ LANGUAGE SQL;
 
 ---------------------------------------------------------------------
@@ -833,48 +833,48 @@ DECLARE
 BEGIN
 
   -- Make sure project exists in ProcessTable
-  SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO value_bool;
+  SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO value_bool;
   IF value_bool IS NULL THEN
     RAISE WARNING '+++++++++ Project % does not exist... +++++++++',project_name;
     RETURN -1;
   END IF;
 
-  SELECT MAX(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO current_ver;
+  SELECT MAX(ProjectVer) FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO current_ver;
 
   IF new_cmd IS NULL THEN
-    SELECT Command FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_cmd;
+    SELECT Command FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_cmd;
   END IF;
 
   IF new_freq IS NULL THEN
-    SELECT Frequency FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_freq;
+    SELECT Frequency FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_freq;
   END IF;
 
   IF new_sleepAfter IS NULL THEN
-    SELECT SleepAfter FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_sleepAfter;
+    SELECT SleepAfter FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_sleepAfter;
   END IF;
 
   IF new_email IS NULL THEN
-    SELECT Email FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_email;
+    SELECT Email FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_email;
   END IF;
 
   IF new_nodename IS NULL THEN
-    SELECT Server FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_nodename;
+    SELECT Server FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_nodename;
   END IF;
 
   IF new_src IS NULL THEN
-    SELECT Resource FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_src;
+    SELECT Resource FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_src;
   END IF;
 
   IF new_en IS NULL THEN
-    SELECT Enabled FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_en;
+    SELECT Enabled FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_en;
   END IF;
 
   IF new_run IS NULL THEN
-    SELECT StartRun FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_run;
+    SELECT StartRun FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_run;
   END IF;
 
   IF new_subrun IS NULL THEN
-    SELECT StartSubRun FROM ProcessTable WHERE Project = project_name AND ProjectVer = current_ver INTO new_subrun;
+    SELECT StartSubRun FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_subrun;
   END IF;
 
   current_ver := current_ver + 1;
@@ -933,22 +933,22 @@ BEGIN
   IF TStart IS NULL AND TEnd IS NULL THEN
     RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
 	       	 FROM   DaemonLogTable AS A
-	       	 WHERE  Server = NodeName
+	       	 WHERE  lower(Server) = lower(NodeName)
 		 ORDER BY A.LogTime;
   ELSIF TStart IS NULL THEN
     RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
 	       	 FROM   DaemonLogTable AS A
-	       	 WHERE  Server = NodeName AND LogTime < TEnd
+	       	 WHERE  lower(Server) = lower(NodeName) AND LogTime < TEnd
 		 ORDER BY A.LogTime;
   ELSIF TEnd IS NULL THEN
     RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
 	       	 FROM   DaemonLogTable AS A
-	       	 WHERE  Server = NodeName AND LogTime > TStart
+	       	 WHERE  lower(Server) = lower(NodeName) AND LogTime > TStart
 		 ORDER BY A.LogTime;
   ELSE
     RETURN QUERY SELECT A.MaxProjCtr, A.LifeTime, A.ProjCtr, A.UpTime, A.LogItem, A.LogTime
 	       	 FROM   DaemonLogTable AS A
-	       	 WHERE  Server = NodeName AND LogTime > TStart AND LogTime < TEnd
+	       	 WHERE  lower(Server) = lower(NodeName) AND LogTime > TStart AND LogTime < TEnd
 		 ORDER BY A.LogTime;
   END IF;
 END;
@@ -1184,7 +1184,7 @@ BEGIN
   END IF;
   IF project_ver IS NULL THEN
     SELECT A.ProjectVer FROM ProcessTable AS A
-    	   WHERE A.Project = project_name 
+    	   WHERE lower(A.Project) = lower(project_name)
 	   ORDER BY A.ProjectVer 
 	   DESC LIMIT 1
 	   INTO project_ver;
@@ -1194,7 +1194,7 @@ BEGIN
   	       	      A.StartRun, A.StartSubRun, A.Email, A.Server,
 		      A.Resource, A.ProjectVer, A.Enabled
 		      FROM ProcessTable AS A 
-		      WHERE A.Project = project_name AND A.ProjectVer = project_ver;
+		      WHERE lower(A.Project) = lower(project_name) AND A.ProjectVer = project_ver;
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -1214,7 +1214,7 @@ BEGIN
   END IF;
 
   SELECT Resource FROM ProcessTable 
-  	 	  WHERE Project=project_name 
+  	 	  WHERE lower(Project) = lower(project_name)
 		  ORDER BY ProjectVer DESC
 		  LIMIT 1
 		  INTO res_resource;
@@ -1243,7 +1243,7 @@ BEGIN
 
   rec := NULL;
   project_info := lower(project_info);
-  SELECT TRUE FROM ProcessTable WHERE Project = project_name INTO project_validity;
+  SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO project_validity;
   IF project_validity IS NULL THEN
     RAISE WARNING '+++++++++ There is no such project: % +++++++++',project_name;
   END IF;
@@ -1254,16 +1254,16 @@ BEGIN
   END IF;
 
   IF version < 0 THEN
-    SELECT Max(ProjectVer) FROM ProcessTable WHERE Project = project_name INTO project_ver;
+    SELECT Max(ProjectVer) FROM ProcessTable WHERE lower(Project) = lower(project_name) INTO project_ver;
   ELSE
-    SELECT TRUE FROM ProcessTable WHERE Project = project_name AND ProjectVer = version INTO project_validity;
+    SELECT TRUE FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = version INTO project_validity;
     IF project_validity IS NULL THEN
       RAISE WARNING '++++++++++ Project % does not have a version % +++++++++',project_name,version;
       RETURN rec;
     END IF;
   END IF;
   
-  query := format('SELECT %s FROM ProcessTable WHERE Project=''%s'' AND ProjectVer=%s',project_info,project_name,project_ver);
+  query := format('SELECT %s FROM ProcessTable WHERE lower(Project)=lower(''%s'') AND ProjectVer=%s',project_info,project_name,project_ver);
   EXECUTE query INTO rec;
   RETURN rec;
 END;
