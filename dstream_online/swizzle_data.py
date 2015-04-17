@@ -198,6 +198,7 @@ class swizzle_data(ds_project_base):
 # Now continually loop over all the running processes and ask for them each to be finished before we break out
 #        while (1):
 #            proc_alive=False
+
         for x in xrange(len(self._proc_list)):
               #  if self._proc_list[x].poll() is None:
               #      print 'Process ', self._proc_list[x].pid, ' is still running!'
