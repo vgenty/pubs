@@ -186,26 +186,26 @@ class swizzle_data(ds_project_base):
             print "ctr ", str(ctr)
             # Break from run/subrun loop if counter became 0
             if not ctr: break
-'''
+
 #############################################################################################
 # NOTE that the below "poll" solution deadlocks with piping. Yet, I can't read to break the deadlock till
 # done, so let's for now just block each process till done. I need 'em all anyway before I can proceed.
 # The real time cost here seems to be in the reading (out,err) into local files. And then grep'ing 
 # for the success mesage -- "Art has completed ...".
 #############################################################################################
-'''
+
 
 # Now continually loop over all the running processes and ask for them each to be finished before we break out
 #        while (1):
 #            proc_alive=False
 
         for x in xrange(len(self._proc_list)):
-              #  if self._proc_list[x].poll() is None:
-              #      print 'Process ', self._proc_list[x].pid, ' is still running!'
-              #      proc_alive=True
-              #  else:
-              #      print 'Process ', x, ' is done...'
-              #      self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
+            #  if self._proc_list[x].poll() is None:
+            #      print 'Process ', self._proc_list[x].pid, ' is still running!'
+            #      proc_alive=True
+            #  else:
+            #      print 'Process ', x, ' is done...'
+            #      self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
             self.info('Awaiting Swizzling job %d : ...' % (self._proc_list[x].pid))
             (out,err) = self._proc_list[x].communicate()
             self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
