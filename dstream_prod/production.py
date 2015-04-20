@@ -86,7 +86,7 @@ class production(ds_project_base):
 
         # Tentatively do so; need to change!!!
         if not jobid:
-            return 100
+            return 1000
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
@@ -95,7 +95,7 @@ class production(ds_project_base):
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         # Here we may need some checks
         return statusCode
@@ -125,7 +125,7 @@ class production(ds_project_base):
         print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
 
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         return statusCode
     # def isSubmitted()
@@ -154,7 +154,7 @@ class production(ds_project_base):
         statusCode += istage
         print "Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode )
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         return statusCode
 
@@ -186,7 +186,7 @@ class production(ds_project_base):
         statusCode += istage
         print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         return statusCode
 
@@ -274,7 +274,7 @@ Job IDs    : %s
         print "Checked job, status: %d" % statusCode
 
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         # Here we may need some checks
 
@@ -318,7 +318,7 @@ Job IDs    : %s
 
         # Tentatively do so; need to change!!!
         if not jobid:
-            return 100
+            return 1000
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
@@ -327,7 +327,7 @@ Job IDs    : %s
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
-        time.sleep(60)
+        time.sleep(5)
 
         # Here we may need some checks
         return statusCode
