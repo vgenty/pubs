@@ -127,7 +127,16 @@ class production(ds_project_base):
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            self.error( jobinfo )
+            self.error( jobout )
+            subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n'
+            text += 'Status code is set to 1000!\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return 1000
 
         # Now grab the parent job id
@@ -449,7 +458,6 @@ Job IDs    : %s
                      subject = subject,
                      text = text)
             return ( statusCode + istage )
-            return ( statusCode + istage )
 
         # Grab the JobID
         jobid = ''
@@ -467,7 +475,16 @@ Job IDs    : %s
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            self.error( jobinfo )
+            self.error( jobout )
+            subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n'
+            text += 'Status code is set to 1000!\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return 1000
 
         # Now grab the parent job id
