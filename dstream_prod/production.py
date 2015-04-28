@@ -253,17 +253,19 @@ class production(ds_project_base):
                      text = text)
             return ( statusCode + istage )
 
-        nRunning = 0
+        is_running = False
         for line in jobout.split('\n'):
-            if ( jobid in line ):
-                if ( line.split()[1] == os.environ['USER'] ):
-                    nRunning += 1
-                    statusCode = self.kSUBMITTED
-                    if ( line.split()[5] == "R" ):
-                        statusCode = self.kRUNNING
-                        break
+            words = line.split()
+            if not jobid in words: continue
+            if not words[1] == os.environ['USER']: continue
+            job_state = words[5]
+            if job_state == 'X': continue
+            is_running = True
+            if job_state == 'R':
+                statusCode = self.kRUNNING
+                break
 
-        if ( nRunning == 0 ):
+        if not is_running:
             statusCode = self.kFINISHED
 
         statusCode += istage
@@ -315,6 +317,7 @@ class production(ds_project_base):
 
         # Get the number of events
         if "numevents" in self._data:
+
             holder = self._data.split(':')
             try:
                 inum = holder.index('numevents') + 1
@@ -347,7 +350,7 @@ class production(ds_project_base):
             return ( statusCode + istage )
 
         # Grab the good jobs and bad jobs
-        for line in jobout:
+        for line in jobout.split('\n'):
             if "good events" in line:
                 nGoodEvents = int( line.split()[0] )
 
