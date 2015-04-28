@@ -47,9 +47,10 @@ case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
+	source $HOME/.sqlaccess/prod_access.sh
         source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
-	setup uboonecode v04_03_01 -q e7:prof
+	setup uboonecode v04_06_00 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	;;
