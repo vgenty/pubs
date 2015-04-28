@@ -73,21 +73,27 @@ class production(ds_project_base):
             return ( statusCode + istage )
 
         # Check if te return code is 0
-        if jobinfo.poll() != 0:
-            self.error( jobinfo )
+        proc_return = jobinfo.poll()
+        if proc_return != 0:
+            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
+            self.error('Reporting STDOUT:\n %s' % jobout)
+            self.error('Reporting STDERR:\n %s' % joberr)
+            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
             return ( statusCode + istage )
 
-        # Check job error
+        # Check job out
         findResponse = 0
         for line in joberr:
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
-                    self.error( jobinfo )
+                    self.error('Non-successful status return from status query (STDERR below)!')
+                    self.error( joberr )
                     return ( statusCode + istage )
 
         if ( findResponse == 0 ):
-            self.error( jobinfo )
+            self.error('Unexpected format in STDERR return (show below)!')
+            self.error( joberr )
             return ( statusCode + istage )
 
         jobid = ''
@@ -202,7 +208,7 @@ class production(ds_project_base):
 
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
-            self.error( jobinfo )
+            self.error( joberr )
             return ( statusCode + istage )
 
         nRunning = 0
@@ -372,21 +378,27 @@ Job IDs    : %s
             return ( statusCode + istage )
 
         # Check if te return code is 0
-        if jobinfo.poll() != 0:
-            self.error( jobinfo )
+        proc_return = jobinfo.poll()
+        if proc_return != 0:
+            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
+            self.error('Reporting STDOUT:\n %s' % jobout)
+            self.error('Reporting STDERR:\n %s' % joberr)
+            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
             return ( statusCode + istage )
 
-        # Check job error
+        # Check job out
         findResponse = 0
         for line in joberr:
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
-                    self.error( jobinfo )
+                    self.error('Non-successful status return from status query (STDERR below)!')
+                    self.error( joberr )
                     return ( statusCode + istage )
 
         if ( findResponse == 0 ):
-            self.error( jobinfo )
+            self.error('Unexpected format in STDERR return (show below)!')
+            self.error( joberr )
             return ( statusCode + istage )
 
         # Grab the JobID
