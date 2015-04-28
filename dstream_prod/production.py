@@ -32,6 +32,9 @@ class production(ds_project_base):
                     kFINISHED,
                     kTOBERECOVERED ) = xrange(7)
 
+    def now_str(self):
+        return time.strftime('%Y-%m-%d %H:%M:%S')
+
     def checkNext( self, statusCode, istage ):
         nEvents = None
 
@@ -44,7 +47,7 @@ class production(ds_project_base):
     # def checkNext()
 
     def submit( self, statusCode, istage ):
-
+        
         # Report starting
         # self.info()
         self._data = str( self._data )
@@ -118,52 +121,51 @@ class production(ds_project_base):
 
     # def submit()
 
-"""
-    def isSubmitted( self, statusCode, istage ):
-
-        self._data = str( self._data )
-        jobid = self._data.strip().split(':')[-1]
-
-        # Main command
-        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        # print "isSubmitted cmd: %s" % cmd
-        try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-            jobout, joberr = jobinfo.communicate()
-        except:
-            return ( statusCode + istage )
-
-        # Check if te return code is 0
-        if jobinfo.poll() != 0:
-            self.error( jobinfo )
-            return ( statusCode + istage )
-
-        # Check job error
-        for line in joberr:
-            if "JOBSUB SERVER RESPONSE CODE" in line:
-                if not "Success" in line:
-                    self.error( jobinfo )
-                    return ( statusCode + istage )
-
-        for line in jobout:
-            if ( jobid in line ):
-                if ( line.split()[1] == os.environ['USER'] ):
-                    statusCode = self.kSUBMITTED
-
-                if ( line.split()[5] == "R" ):
-                    statusCode = self.kRUNNING
-                    break
-
-
-        statusCode += istage
-        print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
-
-        # Pretend I'm doing something
-        time.sleep(5)
-
-        return statusCode
-    # def isSubmitted()
-"""
+###
+###    def isSubmitted( self, statusCode, istage ):
+###
+###        self._data = str( self._data )
+###        jobid = self._data.strip().split(':')[-1]
+###
+###        # Main command
+###        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
+###        # print "isSubmitted cmd: %s" % cmd
+###        try:
+###            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+###            jobout, joberr = jobinfo.communicate()
+###        except:
+###            return ( statusCode + istage )
+###
+###        # Check if te return code is 0
+###        if jobinfo.poll() != 0:
+###            self.error( jobinfo )
+###            return ( statusCode + istage )
+###
+###        # Check job error
+###        for line in joberr:
+###            if "JOBSUB SERVER RESPONSE CODE" in line:
+###                if not "Success" in line:
+###                    self.error( jobinfo )
+###                    return ( statusCode + istage )
+###
+###        for line in jobout:
+###            if ( jobid in line ):
+###                if ( line.split()[1] == os.environ['USER'] ):
+###                    statusCode = self.kSUBMITTED
+###
+###                if ( line.split()[5] == "R" ):
+###                    statusCode = self.kRUNNING
+###                    break
+###
+###
+###        statusCode += istage
+###        print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
+###
+###        # Pretend I'm doing something
+###        time.sleep(5)
+###
+###        return statusCode
+###    # def isSubmitted()
 
     def isRunning( self, statusCode, istage ):
 
@@ -200,7 +202,7 @@ class production(ds_project_base):
         nRunning = 0
         for line in jobout:
             if ( jobid in line ):
-                if ( line.split()[1] == os.environ['USER'] ) 
+                if ( line.split()[1] == os.environ['USER'] ):
                     nRunning += 1
                     statusCode = self.kSUBMITTED
                     if ( line.split()[5] == "R" ):
@@ -218,39 +220,39 @@ class production(ds_project_base):
         return statusCode
 
     # def isRunning()
-"""
-    def isFinished( self, statusCode, istage ):
-
-        self._data = str( self._data )
-        jobid = self._data.strip().split(':')[-1]
-
-        # Main command
-        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        # print "isFinished cmd: %s" % cmd
-        try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
-        except:
-            return ( statusCode + istage )
-
-        nRunning = 0
-        for line in jobinfo:
-            if ( jobid in line ):
-                if ( line.split()[1] == os.environ['USER'] ):
-                    nRunning += 1
-
-        if ( nRunning == 0 ):
-            statusCode = self.kFINISHED
-
-        statusCode += istage
-        print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
-        # Pretend I'm doing something
-        time.sleep(5)
-
-        return statusCode
+###
+###    def isFinished( self, statusCode, istage ):
+###
+###        self._data = str( self._data )
+###        jobid = self._data.strip().split(':')[-1]
+###
+###        # Main command
+###        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
+###        # print "isFinished cmd: %s" % cmd
+###        try:
+###            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
+###            # jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
+###        except:
+###            return ( statusCode + istage )
+###
+###        nRunning = 0
+###        for line in jobinfo:
+###            if ( jobid in line ):
+###                if ( line.split()[1] == os.environ['USER'] ):
+###                    nRunning += 1
+###
+###        if ( nRunning == 0 ):
+###            statusCode = self.kFINISHED
+###
+###        statusCode += istage
+###        print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
+###        # Pretend I'm doing something
+###        time.sleep(5)
+###
+###        return statusCode
 
     # def isFinished()
-"""
+
     def check( self, statusCode, istage ):
         self._data = str( self._data )
         nEvents     = None
@@ -493,17 +495,17 @@ Job IDs    : %s
     def process( self ):
 
         self.loadProjectParams()
-
+        self.info('Project loaded @ %s' % self.now_str())
         ctr = self._nruns
         #return
         # Kazu's version of submit jobs
         for istage in self._stage_digits:
-            # self.warning('Inspecting stage %s' % istage)
+            # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in self.PROD_STATUS:
                 fstatus = istage + istatus
-                # self.warning('Inspecting status %s' % istatus)
+                self.debug('Inspecting status %s @ %s' % (istatus,self.now_str()))
                 for x in self.get_runs( self._project, fstatus ):
-                    # self.warning('Inspecting run/subrun: %s/%s' % (x[0],x[1]))
+                    self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (x[0],x[1],self.now_str()))
                     run    = int(x[0])
                     subrun = int(x[1])
 
@@ -515,6 +517,8 @@ Job IDs    : %s
                                                             x[0],x[1],x[2]))
                     self._data = status._data
                     statusCode = action( statusCode, istage )
+
+                    self.info('Finished executing an action: %s @ %s' % (action.__name__,self.now_str()))
 
                     # Create a status object to be logged to DB (if necessary)
                     status = ds_status( project = self._project,
