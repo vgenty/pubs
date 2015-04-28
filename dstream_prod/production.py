@@ -91,7 +91,7 @@ class production(ds_project_base):
 
         # Check job out
         findResponse = 0
-        for line in joberr:
+        for line in joberr.split('\n'):
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
@@ -114,7 +114,7 @@ class production(ds_project_base):
 
         jobid = ''
         # Grab the JobID
-        for line in jobout:
+        for line in jobout.split('\n'):
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
@@ -126,6 +126,7 @@ class production(ds_project_base):
 
         # Tentatively do so; need to change!!!
         if not jobid:
+            self.error('Failed to fetch job log id...')
             self.error( jobinfo )
             return 1000
 
@@ -222,7 +223,7 @@ class production(ds_project_base):
 
         # Check job out
         findResponse = 0
-        for line in joberr:
+        for line in joberr.split('\n'):
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
@@ -244,7 +245,7 @@ class production(ds_project_base):
             return ( statusCode + istage )
 
         nRunning = 0
-        for line in jobout:
+        for line in jobout.split('\n'):
             if ( jobid in line ):
                 if ( line.split()[1] == os.environ['USER'] ):
                     nRunning += 1
@@ -428,7 +429,7 @@ Job IDs    : %s
 
         # Check job out
         findResponse = 0
-        for line in joberr:
+        for line in joberr.split('\n'):
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
@@ -452,7 +453,7 @@ Job IDs    : %s
 
         # Grab the JobID
         jobid = ''
-        for line in jobout:
+        for line in jobout.split('\n'):
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
@@ -465,6 +466,7 @@ Job IDs    : %s
 
         # Tentatively do so; need to change!!!
         if not jobid:
+            self.error('Failed to fetch job log id...')
             self.error( jobinfo )
             return 1000
 
