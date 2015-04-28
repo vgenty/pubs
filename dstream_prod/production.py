@@ -79,6 +79,14 @@ class production(ds_project_base):
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
             self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            subject = 'Failed executing: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return ( statusCode + istage )
 
         # Check job out
@@ -94,6 +102,14 @@ class production(ds_project_base):
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
             self.error( joberr )
+            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return ( statusCode + istage )
 
         jobid = ''
@@ -194,6 +210,14 @@ class production(ds_project_base):
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
             self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            subject = 'Failed executing: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return ( statusCode + istage )
 
         # Check job out
@@ -209,6 +233,14 @@ class production(ds_project_base):
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
             self.error( joberr )
+            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return ( statusCode + istage )
 
         nRunning = 0
@@ -384,6 +416,14 @@ Job IDs    : %s
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
             self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            subject = 'Failed executing: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
             return ( statusCode + istage )
 
         # Check job out
@@ -399,6 +439,15 @@ Job IDs    : %s
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
             self.error( joberr )
+            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
+            text  = subject
+            text += '\n\n'
+            text += 'STDOUT:\n%s\n\n' % jobout
+            text += 'STDERR:\n%s\n\n' % joberr
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
+            return ( statusCode + istage )
             return ( statusCode + istage )
 
         # Grab the JobID
