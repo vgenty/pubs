@@ -62,19 +62,34 @@ class production(ds_project_base):
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
         # print "submit cmd: %s" % cmd
-        logname = self._xml_file.replace('.xml', '_sub.log')
-        logfile = open( logname, 'w' )
 
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobout, joberr = jobinfo.communicate()
         except:
+            return ( statusCode + istage )
+
+        # Check if te return code is 0
+        if jobinfo.poll() != 0:
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
+        # Check job error
+        findResponse = 0
+        for line in joberr:
+            if "JOBSUB SERVER RESPONSE CODE" in line:
+                findResponse = 1
+                if not "Success" in line:
+                    self.error( jobinfo )
+                    return ( statusCode + istage )
+
+        if ( findResponse == 0 ):
+            self.error( jobinfo )
             return ( statusCode + istage )
 
         jobid = ''
         # Grab the JobID
-        for line in jobinfo:
-            print >>logfile, line
+        for line in jobout:
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
@@ -86,12 +101,13 @@ class production(ds_project_base):
 
         # Tentatively do so; need to change!!!
         if not jobid:
+            self.error( jobinfo )
             return 1000
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
 
-        statusCode = istage + self.kTOBEVALIDATED
+        statusCode = istage + self.kSUBMITTED
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
@@ -102,6 +118,7 @@ class production(ds_project_base):
 
     # def submit()
 
+"""
     def isSubmitted( self, statusCode, istage ):
 
         self._data = str( self._data )
@@ -111,15 +128,32 @@ class production(ds_project_base):
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
         # print "isSubmitted cmd: %s" % cmd
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobout, joberr = jobinfo.communicate()
         except:
             return ( statusCode + istage )
 
-        for line in jobinfo:
+        # Check if te return code is 0
+        if jobinfo.poll() != 0:
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
+        # Check job error
+        for line in joberr:
+            if "JOBSUB SERVER RESPONSE CODE" in line:
+                if not "Success" in line:
+                    self.error( jobinfo )
+                    return ( statusCode + istage )
+
+        for line in jobout:
             if ( jobid in line ):
                 if ( line.split()[1] == os.environ['USER'] ):
                     statusCode = self.kSUBMITTED
+
+                if ( line.split()[5] == "R" ):
+                    statusCode = self.kRUNNING
+                    break
+
 
         statusCode += istage
         print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
@@ -129,7 +163,7 @@ class production(ds_project_base):
 
         return statusCode
     # def isSubmitted()
-
+"""
 
     def isRunning( self, statusCode, istage ):
 
@@ -140,16 +174,41 @@ class production(ds_project_base):
         cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
         # print "isRunning cmd: %s" % cmd
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/query.txt", 'r' ) # Here is temporary, for test
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobout, joberr = jobinfo.communicate()
         except:
             return ( statusCode + istage )
 
-        for line in jobinfo:
+        # Check if te return code is 0
+        if jobinfo.poll() != 0:
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
+        # Check job error
+        findResponse = 0
+        for line in joberr:
+            if "JOBSUB SERVER RESPONSE CODE" in line:
+                findResponse = 1
+                if not "Success" in line:
+                    self.error( jobinfo )
+                    return ( statusCode + istage )
+
+        if ( findResponse == 0 ):
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
+        nRunning = 0
+        for line in jobout:
             if ( jobid in line ):
-                if ( line.split()[1] == os.environ['USER'] ) and ( line.split()[5] == "R" ):
-                    statusCode = self.kRUNNING
-                    break
+                if ( line.split()[1] == os.environ['USER'] ) 
+                    nRunning += 1
+                    statusCode = self.kSUBMITTED
+                    if ( line.split()[5] == "R" ):
+                        statusCode = self.kRUNNING
+                        break
+
+        if ( nRunning == 0 ):
+            statusCode = self.kFINISHED
 
         statusCode += istage
         print "Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode )
@@ -159,7 +218,7 @@ class production(ds_project_base):
         return statusCode
 
     # def isRunning()
-
+"""
     def isFinished( self, statusCode, istage ):
 
         self._data = str( self._data )
@@ -191,7 +250,7 @@ class production(ds_project_base):
         return statusCode
 
     # def isFinished()
-
+"""
     def check( self, statusCode, istage ):
         self._data = str( self._data )
         nEvents     = None
@@ -221,13 +280,18 @@ class production(ds_project_base):
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--check' ]
         self.info( cmd )
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/check.txt", 'r' ) # Here is temporary, for test
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobout, joberr = jobinfo.communicate()
         except:
             return ( statusCode + istage )
 
+        # Check if te return code is 0
+        if jobinfo.poll() != 0:
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
         # Grab the good jobs and bad jobs
-        for line in jobinfo:
+        for line in jobout:
             if "good events" in line:
                 nGoodEvents = int( line.split()[0] )
 
@@ -293,19 +357,33 @@ Job IDs    : %s
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--makeup' ]
         self.info( cmd )
 
-        logname = self._xml_file.replace('.xml', '_resub.log')
-        logfile = open( logname, 'w' )
-
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-            # jobinfo = open( "test/submit.txt", 'r' ) # Here is temporary, for test
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobout, joberr = jobinfo.communicate()
         except:
+            return ( statusCode + istage )
+
+        # Check if te return code is 0
+        if jobinfo.poll() != 0:
+            self.error( jobinfo )
+            return ( statusCode + istage )
+
+        # Check job error
+        findResponse = 0
+        for line in joberr:
+            if "JOBSUB SERVER RESPONSE CODE" in line:
+                findResponse = 1
+                if not "Success" in line:
+                    self.error( jobinfo )
+                    return ( statusCode + istage )
+
+        if ( findResponse == 0 ):
+            self.error( jobinfo )
             return ( statusCode + istage )
 
         # Grab the JobID
         jobid = ''
-        for line in jobinfo:
-            print >>logfile, line
+        for line in jobout:
             if "JobsubJobId" in line:
                 jobid = line.strip().split()[-1]
                 try:
@@ -318,12 +396,13 @@ Job IDs    : %s
 
         # Tentatively do so; need to change!!!
         if not jobid:
+            self.error( jobinfo )
             return 1000
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
 
-        statusCode = istage + self.kTOBEVALIDATED
+        statusCode = istage + self.kSUBMITTED
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
 
         # Pretend I'm doing something
@@ -362,9 +441,9 @@ Job IDs    : %s
 
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
                              self.kINITIATED     : self.submit,
-                             self.kTOBEVALIDATED : self.isSubmitted,
+                             self.kTOBEVALIDATED : self.isRunning,
                              self.kSUBMITTED     : self.isRunning,
-                             self.kRUNNING       : self.isFinished,
+                             self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
                              self.kTOBERECOVERED : self.recover }
 
