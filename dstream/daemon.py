@@ -245,8 +245,10 @@ class proc_daemon(ds_base):
 
     ## Clean up @ end
     def finish(self):
-        self.info('Program exit: waiting %d [sec] for all projects to end...' % self._config._cleanup_time)
-        ctr=self._config._cleanup_time
+        ctr=300
+        if self._config:
+            ctr = self._config._cleanup_time
+        self.info('Program exit: waiting %d [sec] for all projects to end...' % ctr)
         ready = False
         while not ready and ctr:
             ready = True
@@ -306,16 +308,16 @@ class proc_daemon(ds_base):
                 self.info('Routine project update @ %s ' % now_str)
                 if self._api.is_cursor_connected() is None:
                     self._api.connect()
-                else:
-                    self._api.reconnect()
+                #else:
+                #    self._api.reconnect()
                 if not self._api.is_cursor_connected():
                     if self._config._email:
                         pub_smtp(receiver = self._config._email,
                                  subject  = 'Daemon Error',
                                  text = 'Failed to establish DB connection @ %s' % now_str)
                     continue
-                    
-                self.load_daemon()
+                if (routine_ctr-1):
+                    self.load_daemon()
                 if self._config._enable:
                     self.load_projects()
                 self.log_daemon()
@@ -439,5 +441,7 @@ if __name__ == '__main__':
         k.warning('SIGINT detected. Finishing the program gracefully.')
         k.warning('Terminating proc_daemon::routine function.')
 
-    signal.signal(signal.SIGINT, sig_kill)
+    signal.signal(signal.SIGINT,  sig_kill)
+    signal.signal(signal.SIGQUIT, sig_kill)
+    signal.signal(signal.SIGTERM, sig_kill)
     k.routine()
