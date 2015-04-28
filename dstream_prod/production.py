@@ -182,20 +182,26 @@ class production(ds_project_base):
             return ( statusCode + istage )
 
         # Check if te return code is 0
-        if jobinfo.poll() != 0:
-            self.error( jobinfo )
+        proc_return = jobinfo.poll()
+        if proc_return != 0:
+            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
+            self.error('Reporting STDOUT:\n %s' % jobout)
+            self.error('Reporting STDERR:\n %s' % joberr)
+            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
             return ( statusCode + istage )
 
-        # Check job error
+        # Check job out
         findResponse = 0
         for line in joberr:
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
-                    self.error( jobinfo )
+                    self.error('Non-successful status return from status query (STDERR below)!')
+                    self.error( joberr )
                     return ( statusCode + istage )
 
         if ( findResponse == 0 ):
+            self.error('Unexpected format in STDERR return (show below)!')
             self.error( jobinfo )
             return ( statusCode + istage )
 
@@ -213,7 +219,7 @@ class production(ds_project_base):
             statusCode = self.kFINISHED
 
         statusCode += istage
-        print "Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode )
+        self.info("Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode ) )
         # Pretend I'm doing something
         time.sleep(5)
 
@@ -297,7 +303,7 @@ class production(ds_project_base):
             if "good events" in line:
                 nGoodEvents = int( line.split()[0] )
 
-        print "nEvents: %d, nGoodEvents: %d" %( nEvents, nGoodEvents )
+        self.info("nEvents: %d, nGoodEvents: %d" %( nEvents, nGoodEvents ))
 
         # Compare the expected and the good events
         if nGoodEvents == nEvents:
@@ -337,7 +343,7 @@ Job IDs    : %s
            statusCode = self.kTOBERECOVERED
 
         statusCode += istage
-        print "Checked job, status: %d" % statusCode
+        self.info("Checked job, status: %d" % statusCode)
 
         # Pretend I'm doing something
         time.sleep(5)
