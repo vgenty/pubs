@@ -47,6 +47,8 @@ class production(ds_project_base):
     # def checkNext()
 
     def submit( self, statusCode, istage ):
+        current_status = statusCode + istage
+        error_status   = current_status + 1000
         
         # Report starting
         # self.info()
@@ -70,7 +72,7 @@ class production(ds_project_base):
             jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
             jobout, joberr = jobinfo.communicate()
         except:
-            return ( statusCode + istage )
+            return current_status
 
         # Check if te return code is 0
         proc_return = jobinfo.poll()
@@ -78,7 +80,7 @@ class production(ds_project_base):
             self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
-            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            self.warning('Status code remains same (%d)' % current_status)
             subject = 'Failed executing: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
@@ -87,7 +89,7 @@ class production(ds_project_base):
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         # Check job out
         findResponse = 0
@@ -97,7 +99,7 @@ class production(ds_project_base):
                 if not "Success" in line:
                     self.error('Non-successful status return from status query (STDERR below)!')
                     self.error( joberr )
-                    return ( statusCode + istage )
+                    return current_status
 
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
@@ -110,7 +112,7 @@ class production(ds_project_base):
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         jobid = ''
         # Grab the JobID
@@ -121,7 +123,7 @@ class production(ds_project_base):
                     AtSign = jobid.index('@')
                 except ValueError:
                     self.error('Failed to extract the @ index!')
-                    return ( statusCode + istage )
+                    return current_status
                 jobid = jobid[:AtSign]
 
         # Tentatively do so; need to change!!!
@@ -131,13 +133,13 @@ class production(ds_project_base):
             subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n'
-            text += 'Status code is set to 1000!\n\n'
+            text += 'Status code is set to %d!\n\n' % error_status
             text += 'STDOUT:\n%s\n\n' % jobout
             text += 'STDERR:\n%s\n\n' % joberr
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return 1000
+            return error_status
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]
@@ -200,6 +202,8 @@ class production(ds_project_base):
 ###    # def isSubmitted()
 
     def isRunning( self, statusCode, istage ):
+        current_status = statusCode + istage
+        error_status   = current_status + 1000
 
         self._data = str( self._data )
         jobid = self._data.strip().split(':')[-1]
@@ -219,7 +223,7 @@ class production(ds_project_base):
             self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
-            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            self.warning('Status code remains same (%d)' % current_status )
             subject = 'Failed executing: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
@@ -228,7 +232,7 @@ class production(ds_project_base):
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         # Check job out
         findResponse = 0
@@ -238,7 +242,7 @@ class production(ds_project_base):
                 if not "Success" in line:
                     self.error('Non-successful status return from status query (STDERR below)!')
                     self.error( joberr )
-                    return ( statusCode + istage )
+                    return current_status
 
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
@@ -251,7 +255,7 @@ class production(ds_project_base):
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         is_running = False
         for line in jobout.split('\n'):
@@ -406,7 +410,9 @@ Job IDs    : %s
 
 
     def recover( self, statusCode, istage ):
-
+        current_status = statusCode + istage
+        error_status   = current_status + 1000
+                             
         # Report starting
         # self.info()
         self._data = str( self._data )
@@ -420,7 +426,7 @@ Job IDs    : %s
             jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
             jobout, joberr = jobinfo.communicate()
         except:
-            return ( statusCode + istage )
+            return current_status
 
         # Check if te return code is 0
         proc_return = jobinfo.poll()
@@ -428,7 +434,7 @@ Job IDs    : %s
             self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
             self.error('Reporting STDOUT:\n %s' % jobout)
             self.error('Reporting STDERR:\n %s' % joberr)
-            self.warning('Status code remains same (%d)' % ( statusCode + istage) )
+            self.warning('Status code remains same (%d)' % current_status )
             subject = 'Failed executing: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
@@ -437,7 +443,7 @@ Job IDs    : %s
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         # Check job out
         findResponse = 0
@@ -447,7 +453,7 @@ Job IDs    : %s
                 if not "Success" in line:
                     self.error('Non-successful status return from status query (STDERR below)!')
                     self.error( joberr )
-                    return ( statusCode + istage )
+                    return current_status
 
         if ( findResponse == 0 ):
             self.error('Unexpected format in STDERR return (show below)!')
@@ -460,7 +466,7 @@ Job IDs    : %s
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return ( statusCode + istage )
+            return current_status
 
         # Grab the JobID
         jobid = ''
@@ -471,7 +477,7 @@ Job IDs    : %s
                     AtSign = jobid.index('@')
                 except ValueError:
                     self.error('Failed to extract the @ index!')
-                    return ( statusCode + istage )
+                    return current_status
 
                 jobid = jobid[:AtSign]
 
@@ -482,13 +488,13 @@ Job IDs    : %s
             subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n'
-            text += 'Status code is set to 1000!\n\n'
+            text += 'Status code is set to %d!\n\n' % error_status
             text += 'STDOUT:\n%s\n\n' % jobout
             text += 'STDERR:\n%s\n\n' % joberr
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
-            return 1000
+            return error_status
 
         # Now grab the parent job id
         self._data += ":%s" % jobid.split('.')[0]

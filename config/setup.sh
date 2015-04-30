@@ -50,7 +50,7 @@ case `uname -n` in
 	source $HOME/.sqlaccess/prod_access.sh
         source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
-	setup uboonecode v04_06_01 -q e7:prof
+	setup uboonecode v04_06_02 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	;;
