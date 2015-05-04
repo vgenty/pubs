@@ -47,10 +47,9 @@ case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
-	source $HOME/.sqlaccess/prod_access.sh
         source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
-	setup uboonecode v04_06_01 -q e7:prof
+	setup uboonecode v04_03_01 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	;;
@@ -66,7 +65,12 @@ case `uname -n` in
 
 	source /uboone/larsoft/setup
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
- 	setup uboonecode v03_04_00 -q e6:prof
+	export PRODUCTS=/home/echurch/larclient/prof.slf6.v04_05_00/localProducts_larsoft_v04_05_00_e7_prof:${PRODUCTS}
+# 	setup uboonecode v03_04_00 -q e6:prof
+ 	setup uboonecode v04_05_00 -q e7:prof
+#	cd /home/echurch/larclient/prof.slf6.v04_05_00
+#	source localProducts_larsoft_v04_05_00_e7_prof/setup
+#	mrbslp
         source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
 	setup git
 	setup sam_web_client
@@ -74,8 +78,8 @@ case `uname -n` in
 	setup psycopg2 v2_5_4
 	# setup postgres v9_2_4
         setup postgresql v9_3_6 -q p278
-	unsetup uboonecode
- 	setup uboonecode v03_04_00 -q e6:prof	
+	unsetup uboonedaq_datatypes
+	setup uboonedaq_datatypes v5_00_01 -qe7:prof
         export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
