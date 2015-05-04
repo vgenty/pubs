@@ -14,6 +14,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
+import extractor_dict
 import json
 import traceback
 
