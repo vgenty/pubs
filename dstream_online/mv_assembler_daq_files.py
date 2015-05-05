@@ -65,7 +65,7 @@ class mv_assembler_daq_files(ds_project_base):
 
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
-            subprocess.call(['rsync', '-e', 'ssh', 'uboonedaq@ubdaq-prod-evb.fnal.gov:%s' % in_file, out_file])
+            subprocess.call(['rsync', in_file, 'ubdaq-prod-near1.fnal.gov:%s' % out_file])
             # os.symlink(in_file, ('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
 # In the end, use the line below rather than the one above.
 #            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
