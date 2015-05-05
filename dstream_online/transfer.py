@@ -11,6 +11,8 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+# ifdh
+import ifdh
 
 
 ## @class transfer
@@ -93,13 +95,16 @@ class transfer( ds_project_base ):
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
             out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
 
+            # construct ifdh object
+            ih = ifdh.ifdh()
+
             if os.path.isfile( in_file ) and os.path.isfile( in_json ):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
 
                 try:
-                    subprocess.call(['rsync', '-e', 'ssh', in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
-                    subprocess.call(['rsync', '-e', 'ssh', in_json, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_json ])
+                    ih.cp(( in_file, out_file ))
+                    ih.cp(( in_json, out_json ))
                     status = 2
                 except:
                     status = 1
@@ -148,15 +153,18 @@ class transfer( ds_project_base ):
             self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 2
-            in_file = '%s/%s' % ( self._in_dir, self._infile_format % (run,subrun) )
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            out_file = '%s' % ( self._outfile_format % (run,subrun) )
+            out_json = '%s.json' %( self._outfile_format % (run,subrun) )
 
-            res = subprocess.call(['ssh', 'uboonegpvm06', '-x', 'ls', out_file])
-            if res:
-                # didn't find the file
-                status = 1
-            else:
+            # construct ifdh object
+            ih = ifdh.ifdh()
+
+            try:
+                ih.locateFile( out_file )
+                ih.locateFile( out_json )
                 status = 0
+            except:
+                status = 1
 
             # Pretend I'm doing something
             time.sleep(1)
