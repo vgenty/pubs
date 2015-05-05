@@ -211,15 +211,15 @@ def parse(contents):
             logger.info('Project %s already exist in DB!' % v._project)
             orig_info = conn.project_info(v._project)
 
-            if not orig_info._run == project_v[-1]._run:
-                logger.error('Your configuration has different run number (not allowed)!')
+            if not orig_info._run == v._run:
+                logger.error('Your configuration has different run number (%d) than what is in DB (%d) (not allowed)!' % (v._run,orig_info._run))
                 logger.critical('Aborting...')
                 sys.exit(1)
-            if not orig_info._subrun == project_v[-1]._subrun:
+            if not orig_info._subrun == v._subrun:
                 logger.error('Your configuration has different sub-run number (not allowed)!')
                 logger.critical('Aborting...')
                 sys.exit(1)
-            if not orig_info._runtable == project_v[-1]._runtable:
+            if not orig_info._runtable == v._runtable:
                 logger.error('Your configuration has different run-table name (not allowed)!')
                 logger.critical('Aborting...')
                 sys.exit(1)
