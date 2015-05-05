@@ -4,7 +4,7 @@
 #  @author yuntse
 
 # python include
-import time
+import time, sys
 # pub_dbi package include
 from pub_dbi import DBException
 # pub_util package include
@@ -45,6 +45,7 @@ class compare_checksum( ds_project_base ):
         self._ref_project = ''
         self._parent_project = ''
         self._experts = ''
+        self._data = ''
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -52,7 +53,7 @@ class compare_checksum( ds_project_base ):
         resource = self._api.get_resource( self._project )
 
         self._nruns = int(resource['NRUNS'])
-        self._ref_project = '%s' % (resource['REF_PROJECT'])
+        self._ref_project = resource['REF_PROJECT']
         self._parent_project = resource['PARENT_PROJECT']
         self._experts = resource['EXPERTS']
 
@@ -64,9 +65,7 @@ class compare_checksum( ds_project_base ):
 	    self.error('Cannot connect to DB! Aborting...')
 	    return
 
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
+        self.get_resource()
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -114,7 +113,7 @@ class compare_checksum( ds_project_base ):
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
-                                seq     = int(x[2]),
+                                seq     = seq,
                                 status  = statusCode,
                                 data    = self._data )
             

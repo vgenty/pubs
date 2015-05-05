@@ -1,6 +1,6 @@
-## @namespace dummy_dstream.dummy_nubin_xfer
-#  @ingroup dummy_dstream
-#  @brief Defines a project dummy_nubin_xfer
+## @namespace dstream_online.reg_files_to_sam
+#  @ingroup dstream_online
+#  @brief Defines a project reg_files_to_sam
 #  @author echurch,yuntse
 
 # python include
@@ -14,7 +14,6 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
-import extractor_dict
 import json
 import traceback
 
