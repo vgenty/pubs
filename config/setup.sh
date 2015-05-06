@@ -53,6 +53,7 @@ case `uname -n` in
 	setup uboonecode v04_06_02 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
+	export PUB_DAEMON_LOG_MODULE=ds_server_log.gpvm_logger
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
