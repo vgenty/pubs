@@ -51,7 +51,9 @@ class reg_files_to_sam( ds_project_base ):
         self._in_dir = ''
         self._meta_dir = ''
         self._infile_format = ''
-        self._parent_project = ''
+        self._parent_project = []
+        self._project_list = [ self._project, ]
+        self._project_requirement = [ 0, ]
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -62,8 +64,18 @@ class reg_files_to_sam( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
-        self._parent_project = resource['PARENT_PROJECT']
         self._experts = resource['EXPERTS']
+
+        try:
+            self._parent_project = resource['PARENT_PROJECT'].split(':')
+
+        except Exception:
+            self.error('Failed to load parent projects...')
+            return False
+
+        for x in xrange( len(self._parent_project) ):
+            self._project_list.append( self._parent_project[x] )
+            self._project_requirement.append( 0 )
 
     ## @brief declare a file to SAM
     def declare_to_sam( self ):
@@ -78,11 +90,12 @@ class reg_files_to_sam( ds_project_base ):
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        self._project_requirement[0] = 1
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs([self._project,self._parent_project],
-                                      [1,0]):
+        for x in self.get_xtable_runs(self._project_list,
+                                      self._project_requirement):
 
             # Counter decreases by 1
             ctr -= 1
@@ -173,11 +186,12 @@ File %s failed to be declared to SAM!
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns) )
+        self._project_requirement[0] = 2
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs([self._project,self._parent_project],
-                                      [2,0]):
+        for x in self.get_xtable_runs(self._project_list,
+                                      self._project_requirement):
 
             # Counter decreases by 1
             ctr -= 1
