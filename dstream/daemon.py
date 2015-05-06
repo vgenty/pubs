@@ -205,8 +205,13 @@ class proc_daemon(ds_base):
     ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
+        rm_list = list(self._project_v.keys())
+
         # Load new/updated projects
         for x in self._api.list_all_projects():
+
+            if x._project in rm_list:
+                rm_list.remove(x._project)
 
             if x._server and not x._server in self._server:
                 self.debug('Skipping a project on irrelevant server: %s',x._project)
@@ -221,6 +226,10 @@ class proc_daemon(ds_base):
             if not x._project in self._exe_time_v:
                 self._exe_time_v[x._project] = None
                 self._exe_ctr_v[x._project]  = 0
+                
+        for p in rm_list:
+            if not self._project_v[p].active() is None:
+                self._project_v.pop(p)
 
     ## List projects in the priority order to be executed
     def ordered_projects(self):
