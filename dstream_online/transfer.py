@@ -105,7 +105,7 @@ class transfer( ds_project_base ):
                 try:
                     ih.cp(( in_file, out_file ))
                     ih.cp(( in_json, out_json ))
-                    status = 2
+                    status = 0
                 except:
                     status = 1
 
@@ -191,4 +191,4 @@ if __name__ == '__main__':
 
     obj.transfer_file()
 
-    obj.validate_outfile()
+    # obj.validate_outfile()

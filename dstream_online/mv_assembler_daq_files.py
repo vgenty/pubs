@@ -20,7 +20,7 @@ from dstream import ds_status
 class mv_assembler_daq_files(ds_project_base):
 
     # Define project name as class attribute
-    _project = 'mv_assembler_daq_files'
+    _project = 'mv_binary_evb'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
@@ -63,9 +63,12 @@ class mv_assembler_daq_files(ds_project_base):
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
-            subprocess.call(['rsync', in_file, 'ubdaq-prod-near1.fnal.gov:%s' % out_file])
+            filelist = glob.glob( in_file_holder )
+            in_file = filelist[0]
+            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
+            subprocess.call(cmd)
             # os.symlink(in_file, ('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
 # In the end, use the line below rather than the one above.
 #            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
@@ -115,16 +118,16 @@ class mv_assembler_daq_files(ds_project_base):
             run    = int(x[0])
             subrun = int(x[1])
             status = 0
-            if os.path.isfile('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
-# AND os.path.islink('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))):
 
-                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                
-            else:
-
+            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
+            if res:
                 self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-
                 status = 1
+            else:
+                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
+                status = 0
+                
 
             # Pretend I'm doing something
             time.sleep(1)
