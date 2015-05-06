@@ -46,6 +46,7 @@ export PUB_DAEMON_HANDLER_MODULE=""
 case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
+	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
         source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
