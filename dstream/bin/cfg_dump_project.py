@@ -46,6 +46,7 @@ for info in project_info_v:
     fout.write('NAME      %s\n' % info._project)
     fout.write('COMMAND   %s\n' % info._command)
     fout.write('CONTACT   %s\n' % info._email)
+    fout.write('SLEEP     %s\n' % info._sleep)
     fout.write('PERIOD    %s\n' % info._period)
     fout.write('SERVER    %s\n' % info._server)
     fout.write('RUNTABLE  %s\n' % info._runtable)
