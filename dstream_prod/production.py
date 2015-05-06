@@ -32,6 +32,76 @@ class production(ds_project_base):
                     kFINISHED,
                     kTOBERECOVERED ) = xrange(7)
 
+    JOBSUB_LOG = '%s/joblist.txt' % os.environ['PUB_LOGGER_FILE_LOCATION']
+
+    # Define project name as class attribute
+    _project = 'production'
+
+    ## @brief default ctor can take # runs to process for this instance
+    def __init__( self, arg = '' ):
+
+        # Call base class ctor
+        super(production,self).__init__(arg)
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
+
+        self.PROD_ACTION = { self.kDONE          : self.checkNext,
+                             self.kINITIATED     : self.submit,
+                             self.kTOBEVALIDATED : self.isRunning,
+                             self.kSUBMITTED     : self.isRunning,
+                             self.kRUNNING       : self.isRunning,
+                             self.kFINISHED      : self.check,
+                             self.kTOBERECOVERED : self.recover }
+
+        self._nruns   = None
+        self._xml_file = ''
+        self._stage_name   = []
+        self._stage_digits = []
+        self._nresubmission = 3
+        self._digit_to_name = {}
+        self._name_to_digit = {}
+        self._data = "None"
+
+        if not self.loadProjectParams():
+            self.info('Failed to load project @ %s' % self.now_str())
+
+    def loadProjectParams( self ):
+
+        # Attempt to connect DB. If failure, abort
+        if not self.connect():
+	    self.error('Cannot connect to DB! Aborting...')
+	    return False
+
+        proj_info = self._api.project_info(self._project)
+
+        self._nruns = int(proj_info._resource['NRUNS'])
+        self._xml_file = proj_info._resource['XMLFILE']
+        self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
+        self._experts = proj_info._resource['EXPERTS']
+        self._period = proj_info._period
+
+        try:
+            self._stage_names  = proj_info._resource['STAGE_NAME'].split(':')
+            self._stage_digits = [int(x) for x in proj_info._resource['STAGE_STATUS'].split(':')]
+            if not len(self._stage_names) == len(self._stage_digits):
+                raise Exception
+            for x in xrange(len(self._stage_names)):
+                name  = self._stage_names[x]
+                digit = self._stage_digits[x]
+                self._digit_to_name[digit]=name
+                self._name_to_digit[name]=digit
+
+        except Exception:
+            self.error('Failed to load project parameters...')
+            return False
+
+        self.info('Project loaded @ %s' % self.now_str())
+        return True
+
     def now_str(self):
         return time.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -44,7 +114,61 @@ class production(ds_project_base):
 
         return statusCode
 
-    # def checkNext()
+    def _jobstat_from_log(self):
+        result = (False,'')
+        if not os.path.isfile(self.JOBSUB_LOG):
+            subject = 'Failed fetching job log'
+            text  = 'Batch job log file not available... (check daemon, should not happen)'
+            text += '\n\n'
+            pub_smtp(receiver = self._experts,
+                     subject = subject,
+                     text = text)
+            return result
+
+        log_age = time.time() - os.path.getmtime(self.JOBSUB_LOG)
+        if log_age + 10 > self._period:
+            return result
+
+        contents = open(self.JOBSUB_LOG,'r').read()
+        return (self._check_jobstat_str(contents),contents)
+
+    def _jobstat_from_cmd(self,jobid=None):
+        cmd = ['jobsub_q', '--user', os.environ['USER'] ]
+        if jobid:
+            cmd.append('--jobid')
+            cmd.append('%s' % jobid)
+        try:
+            proc = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
+            jobout, joberr = proc.communicate()
+        except Exception:
+            self.error('Failed to execute a command: %s' % ' '.join(cmd))
+            self.error('Reporting Output:\n %s' % jobout)
+            return (False,jobout)
+
+        # Check if te return code is 0
+        proc_return = proc.poll()
+        if proc_return != 0:
+            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
+            self.error('Reporting Output:\n %s' % jobout)
+            return (False,jobout)
+
+        return (self._check_jobstat_str(jobout),jobout)
+
+    def _check_jobstat_str(self,stat_str):
+
+        # Check job out
+        failure_codes = ['Traceback (most recent call last):',
+                         'Failed to fetch']
+        success_codes = ['JOBSUBJOBID','JOBSUB SERVER RESPONSE CODE : 200 (Success)']
+        for code in failure_codes:
+            if stat_str.find(code) >=0:
+                print "found:",code
+                return False
+        for code in success_codes:
+            if stat_str.find(code) < 0:
+                print "not found:",code
+                return False
+        return True
 
     def submit( self, statusCode, istage ):
         current_status = statusCode + istage
@@ -69,7 +193,7 @@ class production(ds_project_base):
         # print "submit cmd: %s" % cmd
 
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
             jobout, joberr = jobinfo.communicate()
         except:
             return current_status
@@ -78,14 +202,12 @@ class production(ds_project_base):
         proc_return = jobinfo.poll()
         if proc_return != 0:
             self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
-            self.error('Reporting STDOUT:\n %s' % jobout)
-            self.error('Reporting STDERR:\n %s' % joberr)
+            self.error('Reporting Output:\n %s' % jobout)
             self.warning('Status code remains same (%d)' % current_status)
             subject = 'Failed executing: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -93,22 +215,21 @@ class production(ds_project_base):
 
         # Check job out
         findResponse = 0
-        for line in joberr.split('\n'):
+        for line in jobout.split('\n'):
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
-                    self.error('Non-successful status return from status query (STDERR below)!')
-                    self.error( joberr )
+                    self.error('Non-successful status return from status query (output below)!')
+                    self.error( jobout )
                     return current_status
 
         if ( findResponse == 0 ):
-            self.error('Unexpected format in STDERR return (show below)!')
-            self.error( joberr )
+            self.error('Unexpected format in output return (show below)!')
+            self.error( jobout )
             subject = 'Unexpected format string from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -134,8 +255,7 @@ class production(ds_project_base):
             text  = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -153,54 +273,6 @@ class production(ds_project_base):
         # Here we may need some checks
         return statusCode
 
-    # def submit()
-
-###
-###    def isSubmitted( self, statusCode, istage ):
-###
-###        self._data = str( self._data )
-###        jobid = self._data.strip().split(':')[-1]
-###
-###        # Main command
-###        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-###        # print "isSubmitted cmd: %s" % cmd
-###        try:
-###            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-###            jobout, joberr = jobinfo.communicate()
-###        except:
-###            return ( statusCode + istage )
-###
-###        # Check if te return code is 0
-###        if jobinfo.poll() != 0:
-###            self.error( jobinfo )
-###            return ( statusCode + istage )
-###
-###        # Check job error
-###        for line in joberr:
-###            if "JOBSUB SERVER RESPONSE CODE" in line:
-###                if not "Success" in line:
-###                    self.error( jobinfo )
-###                    return ( statusCode + istage )
-###
-###        for line in jobout:
-###            if ( jobid in line ):
-###                if ( line.split()[1] == os.environ['USER'] ):
-###                    statusCode = self.kSUBMITTED
-###
-###                if ( line.split()[5] == "R" ):
-###                    statusCode = self.kRUNNING
-###                    break
-###
-###
-###        statusCode += istage
-###        print "Validated job submission, jobid: %s, status: %d" % ( self._data, statusCode )
-###
-###        # Pretend I'm doing something
-###        time.sleep(5)
-###
-###        return statusCode
-###    # def isSubmitted()
-
     def isRunning( self, statusCode, istage ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
@@ -209,59 +281,31 @@ class production(ds_project_base):
         jobid = self._data.strip().split(':')[-1]
 
         # Main command
-        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-        # print "isRunning cmd: %s" % cmd
-        try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-            jobout, joberr = jobinfo.communicate()
-        except:
-            return ( statusCode + istage )
-
-        # Check if te return code is 0
-        proc_return = jobinfo.poll()
-        if proc_return != 0:
-            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
-            self.error('Reporting STDOUT:\n %s' % jobout)
-            self.error('Reporting STDERR:\n %s' % joberr)
-            self.warning('Status code remains same (%d)' % current_status )
-            subject = 'Failed executing: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
-
-        # Check job out
-        findResponse = 0
-        for line in joberr.split('\n'):
-            if "JOBSUB SERVER RESPONSE CODE" in line:
-                findResponse = 1
-                if not "Success" in line:
-                    self.error('Non-successful status return from status query (STDERR below)!')
-                    self.error( joberr )
-                    return current_status
-
-        if ( findResponse == 0 ):
-            self.error('Unexpected format in STDERR return (show below)!')
-            self.error( joberr )
-            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+        jobstat = self._jobstat_from_log()
+        if not jobstat[0]:
+            self.warning('Fetching job status from log file failed! Try running cmd...')
+            jobstat = self._jobstat_from_cmd(jobid)
+        
+        if not jobstat[0]:
+            subject = 'Failed to fetch job status!'
+            text = ''
+            if not jobstat[1]:
+                text = 'No job log found...'
+            else:
+                text = 'Job log indicates query has failed (see below).\n %s' % jobstat[1]
+            text += '\n'
+            text += 'PUBS status remains same (%d)' % current_status
+            self.error(subject)
+            self.error(text)
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
             return current_status
 
         is_running = False
-        for line in jobout.split('\n'):
+        target_jobs = [x for x in jobstat[1].split('\n') if x.startswith(jobid)]
+        for line in target_jobs:
             words = line.split()
-            if not jobid in words: continue
-            if not words[1] == os.environ['USER']: continue
             job_state = words[5]
             if job_state == 'X': continue
             is_running = True
@@ -272,46 +316,18 @@ class production(ds_project_base):
         if not is_running:
             statusCode = self.kFINISHED
 
+        msg = 'jobid: %s ... status: ' % jobid
+        if statusCode == self.kRUNNING:
+            msg += 'RUNNING'
+        elif statusCode == self.kFINISHED:
+            msg += 'FINISHED'
+        elif statusCode == self.kSUBMITTED:
+            msg += 'SUBMITTED'
         statusCode += istage
-        self.info("Checked if the job is running, jobid: %s, status: %d" % ( self._data, statusCode ) )
-        # Pretend I'm doing something
-        time.sleep(5)
+        msg += ' (%d)' % statusCode
+        self.info(msg)
 
         return statusCode
-
-    # def isRunning()
-###
-###    def isFinished( self, statusCode, istage ):
-###
-###        self._data = str( self._data )
-###        jobid = self._data.strip().split(':')[-1]
-###
-###        # Main command
-###        cmd = [ 'jobsub_q', '--jobid=%s' % jobid ]
-###        # print "isFinished cmd: %s" % cmd
-###        try:
-###            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE ).stdout
-###            # jobinfo = open( "test/query3.txt", 'r' ) # Here is temporary, for test
-###        except:
-###            return ( statusCode + istage )
-###
-###        nRunning = 0
-###        for line in jobinfo:
-###            if ( jobid in line ):
-###                if ( line.split()[1] == os.environ['USER'] ):
-###                    nRunning += 1
-###
-###        if ( nRunning == 0 ):
-###            statusCode = self.kFINISHED
-###
-###        statusCode += istage
-###        print "Checked if the job is still running, jobid: %s, status: %d" % ( self._data, statusCode )
-###        # Pretend I'm doing something
-###        time.sleep(5)
-###
-###        return statusCode
-
-    # def isFinished()
 
     def check( self, statusCode, istage ):
         self._data = str( self._data )
@@ -334,16 +350,12 @@ class production(ds_project_base):
             self.error('Failed to find numevents!')
             return False
 
-        # Report starting
-        # self.info()
-
-
         # Check the finished jobs
         stage = self._digit_to_name[istage]
         cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--check' ]
         self.info( cmd )
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
             jobout, joberr = jobinfo.communicate()
         except:
             return ( statusCode + istage )
@@ -391,9 +403,10 @@ Job IDs    : %s
 
            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
-           statusCode = self.kDONE
-           istage += 10
-           self._data = "numevents:%d" % nGoodEvents
+           #statusCode = self.kDONE
+           #istage += 10
+           #self._data = "numevents:%d" % nGoodEvents
+           statusCode += 1000
         else:
            statusCode = self.kTOBERECOVERED
 
@@ -423,7 +436,7 @@ Job IDs    : %s
         self.info( cmd )
 
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
             jobout, joberr = jobinfo.communicate()
         except:
             return current_status
@@ -432,14 +445,12 @@ Job IDs    : %s
         proc_return = jobinfo.poll()
         if proc_return != 0:
             self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
-            self.error('Reporting STDOUT:\n %s' % jobout)
-            self.error('Reporting STDERR:\n %s' % joberr)
+            self.error('Reporting Output:\n %s' % jobout)
             self.warning('Status code remains same (%d)' % current_status )
             subject = 'Failed executing: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -447,22 +458,21 @@ Job IDs    : %s
 
         # Check job out
         findResponse = 0
-        for line in joberr.split('\n'):
+        for line in jobout.split('\n'):
             if "JOBSUB SERVER RESPONSE CODE" in line:
                 findResponse = 1
                 if not "Success" in line:
-                    self.error('Non-successful status return from status query (STDERR below)!')
-                    self.error( joberr )
+                    self.error('Non-successful status return from status query (output below)!')
+                    self.error( jobout )
                     return current_status
 
         if ( findResponse == 0 ):
-            self.error('Unexpected format in STDERR return (show below)!')
-            self.error( joberr )
+            self.error('Unexpected format in output return (show below)!')
+            self.error( jobout )
             subject = 'Unexpected format string from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n\n'
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -489,8 +499,7 @@ Job IDs    : %s
             text  = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
-            text += 'STDOUT:\n%s\n\n' % jobout
-            text += 'STDERR:\n%s\n\n' % joberr
+            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
@@ -521,88 +530,32 @@ Job IDs    : %s
         return arg
     # def __decode_status__()
 
-    # Define project name as class attribute
-    _project = 'production'
-
-    ## @brief default ctor can take # runs to process for this instance
-    def __init__( self, arg = '' ):
-
-        # Call base class ctor
-        super(production,self).__init__(arg)
-
-        if not arg:
-            self.error('No project name specified!')
-            raise Exception
-
-        self._project = arg
-
-        self.PROD_ACTION = { self.kDONE          : self.checkNext,
-                             self.kINITIATED     : self.submit,
-                             self.kTOBEVALIDATED : self.isRunning,
-                             self.kSUBMITTED     : self.isRunning,
-                             self.kRUNNING       : self.isRunning,
-                             self.kFINISHED      : self.check,
-                             self.kTOBERECOVERED : self.recover }
-
-        self._nruns   = None
-        self._xml_file = ''
-        self._stage_name   = []
-        self._stage_digits = []
-        self._nresubmission = 3
-        self._digit_to_name = {}
-        self._name_to_digit = {}
-        self._data = "None"
-
-    def loadProjectParams( self ):
-
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-	    self.error('Cannot connect to DB! Aborting...')
-	    return
-
-        resource = self._api.get_resource(self._project)
-
-        self._nruns = int(resource['NRUNS'])
-        self._xml_file = resource['XMLFILE']
-        self._nresubmission = int(resource['NRESUBMISSION'])
-        self._experts = resource['EXPERTS']
-
-        if self._nruns > 3:
-            self._nruns = 3
-
-        try:
-            self._stage_names  = resource['STAGE_NAME'].split(':')
-            self._stage_digits = [int(x) for x in resource['STAGE_STATUS'].split(':')]
-            if not len(self._stage_names) == len(self._stage_digits):
-                raise Exception
-            for x in xrange(len(self._stage_names)):
-                name  = self._stage_names[x]
-                digit = self._stage_digits[x]
-                self._digit_to_name[digit]=name
-                self._name_to_digit[name]=digit
-
-        except Exception:
-            self.error('Failed to load project parameters...')
-            return False
-        return True
-
     ## @brief access DB and retrieves new runs
     def process( self ):
 
-        self.loadProjectParams()
-        self.info('Project loaded @ %s' % self.now_str())
         ctr = self._nruns
         #return
         # Kazu's version of submit jobs
-        for istage in self._stage_digits:
+        stage_v  = list(self._stage_digits)
+        stage_v.reverse()
+        status_v = list(self.PROD_STATUS)
+        status_v.reverse()
+        # temporary fix: record the processed run and only process once per process function call
+        processed_run=[]
+        for istage in stage_v:
             # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
-            for istatus in self.PROD_STATUS:
+            for istatus in status_v:
                 fstatus = istage + istatus
                 self.debug('Inspecting status %s @ %s' % (istatus,self.now_str()))
                 for x in self.get_runs( self._project, fstatus ):
-                    self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (x[0],x[1],self.now_str()))
+
                     run    = int(x[0])
                     subrun = int(x[1])
+                    runid = (run,subrun)
+                    if runid in processed_run: continue
+                    processed_run.append(runid)
+
+                    self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (run,subrun,self.now_str()))
 
                     statusCode = self.__decode_status__( fstatus )
                     action = self.PROD_ACTION[statusCode]
