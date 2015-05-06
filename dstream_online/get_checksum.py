@@ -4,7 +4,7 @@
 #  @author yuntse
 
 # python include
-import time, os
+import time, os, sys
 # pub_dbi package include
 from pub_dbi import DBException
 # pub_util package include
@@ -21,15 +21,21 @@ class get_checksum( ds_project_base ):
     _project = 'get_checksum'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__( self ):
+    def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super( get_checksum, self ).__init__()
+        super( get_checksum, self ).__init__( arg )
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         self._nruns = None
         self._in_dir = ''
         self._infile_format = ''
-        # self._parent_project = ''
+        self._parent_project = ''
         self._experts = ''
         self._data = ''
 
@@ -41,7 +47,7 @@ class get_checksum( ds_project_base ):
         self._nruns = int(resource['NRUNS'])
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
-        # self._parent_project = resource['PARENT_PROJECT']
+        self._parent_project = resource['PARENT_PROJECT']
         self._experts = resource['EXPERTS']
 
 
@@ -61,7 +67,7 @@ class get_checksum( ds_project_base ):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_runs( self._project, 1 ):
+        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
 
             # Counter decreases by 1
             ctr -= 1
@@ -172,6 +178,8 @@ Checksum is not in database
 
 if __name__ == '__main__':
 
-    obj = get_checksum()
+    proj_name = sys.argv[1]
+
+    obj = get_checksum( proj_name )
 
     obj.calculate_checksum()

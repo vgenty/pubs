@@ -110,9 +110,9 @@ class reg_swizartroot_files_with_sam(ds_project_base):
                 # Thus, retrieve metadata from file; use it to declare file with SAM.
                 if not has_metadata:
                     try:
-                        print ' I feel a couple woos comin on, cus '
+                        self.info( ' I feel a couple woos comin on, cus ')
                         md = extractor_dict.getmetadata(in_file)
-                        print ' there it was '
+                        self.info( ' ... there it was.  ... (Just extracted the meta data from root file.) ')
                         status = 3
                         try:
                             samweb = samweb_cli.SAMWebClient(experiment="uboone")

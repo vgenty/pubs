@@ -55,11 +55,12 @@ class swizzle_data(ds_project_base):
         self._fcl_file = '%s' % (resource['FCLFILE'])
         self._fcl_file = os.environ["PUB_TOP_DIR"] + "/dstream_online/" + self._fcl_file
         self._fcl_file_new  = self._fcl_file.replace(".fcl","_local.fcl")
-        self._log_file =  os.environ["PUB_TOP_DIR"] + "/lar_out_"
+
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
+        self._log_file =  self._out_dir + "/lar_out_"
         self._parent_project = resource['PARENT_PROJECT']
         self._cpu_frac_limit = resource['USED_CPU_FRAC_LIMIT']
         self._available_memory = resource['AVAIL_MEMORY']
@@ -126,7 +127,7 @@ class swizzle_data(ds_project_base):
                     # print "\t basename out_file", os.path.basename(out_file)
                     # print "\t _log_file", self._log_file_local
 
-                    cmd = "lar -c "+ self._fcl_file_new + " -s " +in_file + " -o " + out_file + " -T " + os.path.basename(out_file).strip(".root") + "_hist.root "
+                    cmd = "lar -c "+ self._fcl_file_new + " -s " +in_file + " -o " + out_file + " -T " + self._out_dir +"/" + os.path.basename(out_file).strip(".root") + "_hist.root "
                     # print "cmd is ", cmd
                     self.info('Launch cmd is ' + cmd)
 
