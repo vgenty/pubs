@@ -65,6 +65,8 @@ class proc_action(object):
     ## Opens a sub-process to execute a project
     def execute(self):
         try:
+            #self._logger.info('Executing: \"%s\"' % self._info._command)
+            #self._logger.info('Executing: \"%s\"' % str(self._info._command.split()))
             self._proc = Popen(self._info._command.split(None),
                                #shell=True,
                                stdout = PIPE,
@@ -239,7 +241,8 @@ class proc_daemon(ds_base):
             ctr = self._exe_ctr_v[x]
             if not ctr in ctr_priority:
                 ctr_priority[ctr]=[]
-                ctr_priority[ctr].append(x)
+            ctr_priority[ctr].append(x)
+
         ctrs = ctr_priority.keys()
         ctrs.sort()
         projects = []
@@ -341,14 +344,14 @@ class proc_daemon(ds_base):
                 self.info('Routine RunSync Done  @ %s' % now_str)
 
             if now_ts < self._next_exec_time: continue
-                
+
             for proj in self.ordered_projects():
 
                 if self._exit_routine: break
                 
                 proj_ptr = self._project_v[proj]
                 if not proj_ptr._info._enable: continue
-                
+
                 active_ctr = 0
                 for x in self._project_v:
                     if self._project_v[x].active(): active_ctr += 1
