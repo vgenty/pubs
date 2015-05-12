@@ -4,7 +4,7 @@
 #  @author yuntse
 
 # python include
-import time, sys
+import time, sys, os
 # pub_dbi package include
 from pub_dbi import DBException
 # pub_util package include
