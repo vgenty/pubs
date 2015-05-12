@@ -24,11 +24,11 @@ class ds_clean(ds_project_base):
     _project = 'ds_clean'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self, project_name):
+    def __init__( self, project_name ):
 
         self._project = project_name
         # Call base class ctor
-        super(ds_clean,self).__init__()
+        super(ds_clean,self).__init__( project_name )
 
         # self.info('Running cleaning project %s'%self._project)
         if (self._project==''):

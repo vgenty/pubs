@@ -54,8 +54,8 @@ class check_tape( ds_project_base ):
         self._experts = resource['EXPERTS']
 
 
-    ## @brief calculate the checksum of a file
-    def check( self ):
+    ## @brief check file location
+    def check_location( self ):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -87,8 +87,9 @@ class check_tape( ds_project_base ):
 
             try:
                 loc = samweb.locateFile(filenameorid=in_file)
-                if loc[0]['location_type'] == 'tape':
-                    statusCode = 0
+                if loc:
+                    if loc[0]['location_type'] == 'tape':
+                        statusCode = 2
 
             except samweb_cli.exceptions.FileNotFound:
                 subject = 'Failed to locate file %s at SAM' % in_file
@@ -98,8 +99,69 @@ class check_tape( ds_project_base ):
 
                 statusCode = 100
 
-            
 
+            # Create a status object to be logged to DB (if necessary)
+            status = ds_status( project = self._project,
+                                run     = run,
+                                subrun  = subrun,
+                                seq     = 0,
+                                status  = statusCode,
+                                data    = self._data )
+
+            # Log status
+            self.log_status( status )
+
+            # Break from loop if counter became 0
+            if not ctr: break
+ 
+
+    ## @brief obtain checksum
+    def find_checksum( self ):
+
+        # Attempt to connect DB. If failure, abort
+        if not self.connect():
+            self.error('Cannot connect to DB! Aborting...')
+            return
+
+        # If resource info is not yet read-in, read in.
+        if self._nruns is None:
+            self.get_resource()
+
+        # Fetch runs from DB and process for # runs specified for this instance.
+        ctr = self._nruns
+        for x in self.get_xtable_runs( [self._project, self._parent_project], [2, 0] ):
+
+            # Counter decreases by 1
+            ctr -= 1
+
+            (run, subrun) = (int(x[0]), int(x[1]))
+
+            # Report starting
+            self.info('Checking tape: run=%d, subrun=%d ...' % (run,subrun))
+
+            statusCode = 2
+
+            in_file = self._infile_format % ( run, subrun )
+            samweb = samweb_cli.SAMWebClient(experiment="uboone")
+
+            meta = {}
+            try:
+                meta = samweb.getMetadata(filenameorid=in_file)
+                checksum_info = meta['checksum'][0].split(':')
+                if checksum_info[0] == 'enstore':
+                    self._data = checksum_info[1]
+                    statusCode = 0
+
+                else:
+                    statusCode = 1
+
+            except samweb_cli.exceptions.FileNotFound:
+                subject = 'Failed to locate file %s at SAM' % in_file
+                text = 'File %s is not found at SAM!' % in_file
+
+                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+
+                statusCode = 100
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -122,4 +184,6 @@ if __name__ == '__main__':
 
     obj = check_tape( proj_name )
 
-    obj.check()
+    obj.check_location()
+
+    obj.find_checksum()
