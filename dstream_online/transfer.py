@@ -103,9 +103,12 @@ class transfer( ds_project_base ):
                 self.info('Found %s' % (in_json) )
 
                 try:
-                    ih.cp(( in_file, out_file ))
-                    ih.cp(( in_json, out_json ))
-                    status = 0
+                    resi = ih.cp(( in_file, out_file ))
+                    resj = ih.cp(( in_json, out_json ))
+                    if resi == 0 and resj == 0:
+                        status = 0
+                    else:
+                        status = 101
                 except:
                     status = 1
 

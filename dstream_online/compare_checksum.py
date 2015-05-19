@@ -94,8 +94,8 @@ class compare_checksum( ds_project_base ):
 
                 text = '%s\n' % subject
                 text += 'Run %d, subrun %d\n' % ( run, subrun )
-                text += '%s checksum: %s' % ( self._ref_project, RefStatus._data )
-                text += '%s checksum: %s' % ( self._parent_project, ParentStatus._data )
+                text += '%s checksum: %s\n' % ( self._ref_project, RefStatus._data )
+                text += '%s checksum: %s\n' % ( self._parent_project, ParentStatus._data )
 
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
                 statusCode = 1000
