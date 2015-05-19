@@ -778,16 +778,24 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 DROP FUNCTION IF EXISTS ProjectRunning(TEXT);
 CREATE OR REPLACE FUNCTION ProjectRunning(project_name TEXT) RETURNS VOID AS $$
-  UPDATE ProcessTable SET Running=TRUE WHERE lower(Project) = lower(project_name);
-$$ LANGUAGE SQL;
+BEGIN
+  IF DoesTableExist('ProcessTable') THEN
+    UPDATE ProcessTable SET Running=TRUE WHERE lower(Project) = lower(project_name);
+  END IF;
+END
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 DROP FUNCTION IF EXISTS ProjectStopped(TEXT);
 CREATE OR REPLACE FUNCTION ProjectStopped(project_name TEXT) RETURNS VOID AS $$
-  UPDATE ProcessTable SET Running=FALSE WHERE lower(Project) = lower(project_name);
-$$ LANGUAGE SQL;
+BEGIN
+  IF DoesTableExist('ProcessTable') THEN
+    UPDATE ProcessTable SET Running=FALSE WHERE lower(Project) = lower(project_name);
+  END IF;
+END
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
