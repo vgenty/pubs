@@ -14,9 +14,10 @@ from pub_util import pub_smtp
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-
-# Parse xml
-import xml.etree.ElementTree as ET
+# From larbatch
+import project
+from project_modules.pubsdeadenderror import PubsDeadEndError
+from project_modules.pubsinputerror import PubsInputError
 
 ## @class production
 #  @brief A fake job submission process, only printing out the commands
@@ -105,8 +106,7 @@ class production(ds_project_base):
     def now_str(self):
         return time.strftime('%Y-%m-%d %H:%M:%S')
 
-    def checkNext( self, statusCode, istage ):
-        nEvents = None
+    def checkNext( self, statusCode, istage, run, subrun ):
 
         if istage in self._stage_digits:
             statusCode = istage + self.kINITIATED
@@ -170,7 +170,7 @@ class production(ds_project_base):
                 return False
         return True
 
-    def submit( self, statusCode, istage ):
+    def submit( self, statusCode, istage, run, subrun ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
         
@@ -178,91 +178,35 @@ class production(ds_project_base):
         # self.info()
         self._data = str( self._data )
 
-        # If there is no numevents in self._data ("data" column in the table),
-        # parse the xml file for the number of the submitted events
-        if ( "numevents" not in self._data ):
-           tree = ET.parse( self._xml_file )
-           root = tree.getroot()
-           nEvents = root.find('numevents').text
-           self._data = "numevents:%s" % nEvents
-
         # Main command
         stage = self._digit_to_name[istage]
-        cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--submit' ]
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
-        # print "submit cmd: %s" % cmd
 
+        # Get project and stage object.
         try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
-            jobout, joberr = jobinfo.communicate()
-        except:
-            return current_status
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+        except PubsDeadEndError:
+            return 100
+        except PubsInputError:
+            return statusCode
 
-        # Check if te return code is 0
-        proc_return = jobinfo.poll()
-        if proc_return != 0:
-            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
-            self.error('Reporting Output:\n %s' % jobout)
-            self.warning('Status code remains same (%d)' % current_status)
-            subject = 'Failed executing: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'Output:\n%s\n\n' % jobout
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
-
-        # Check job out
-        findResponse = 0
-        for line in jobout.split('\n'):
-            if "JOBSUB SERVER RESPONSE CODE" in line:
-                findResponse = 1
-                if not "Success" in line:
-                    self.error('Non-successful status return from status query (output below)!')
-                    self.error( jobout )
-                    return current_status
-
-        if ( findResponse == 0 ):
-            self.error('Unexpected format in output return (show below)!')
-            self.error( jobout )
-            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'Output:\n%s\n\n' % jobout
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
-
-        jobid = ''
-        # Grab the JobID
-        for line in jobout.split('\n'):
-            if "JobsubJobId" in line:
-                jobid = line.strip().split()[-1]
-                try:
-                    AtSign = jobid.index('@')
-                except ValueError:
-                    self.error('Failed to extract the @ index!')
-                    return current_status
-                jobid = jobid[:AtSign]
+        # Submit job.
+        jobid = project.dosubmit(probj, stobj)
+        self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            self.error( jobout )
             subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
-            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
             return error_status
 
         # Now grab the parent job id
-        self._data += ":%s" % jobid.split('.')[0]
+        self._data = jobid
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
@@ -273,7 +217,7 @@ class production(ds_project_base):
         # Here we may need some checks
         return statusCode
 
-    def isRunning( self, statusCode, istage ):
+    def isRunning( self, statusCode, istage, run, subrun ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
 
@@ -329,54 +273,30 @@ class production(ds_project_base):
 
         return statusCode
 
-    def check( self, statusCode, istage ):
+    def check( self, statusCode, istage, run, subrun ):
         self._data = str( self._data )
-        nEvents     = None
-        nGoodEvents = None
         nSubmit     = None
 
-        # Get the number of events
-        if "numevents" in self._data:
+        # Get the number of job submissions.
+        if self._data != None and len(self._data) > 0:
 
             holder = self._data.split(':')
-            try:
-                inum = holder.index('numevents') + 1
-            except ValueError:
-                self.error('Failed to extract the numevents index!')
-                return False
-            nEvents = int(holder[inum])
-            nSubmit = len(holder) - 2
-        else:
-            self.error('Failed to find numevents!')
-            return False
+            nSubmit = len(holder)
 
         # Check the finished jobs
         stage = self._digit_to_name[istage]
-        cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--check' ]
-        self.info( cmd )
-        try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
-            jobout, joberr = jobinfo.communicate()
-        except:
-            return ( statusCode + istage )
 
-        # Check if te return code is 0
-        if jobinfo.poll() != 0:
-            self.error( jobinfo )
-            return ( statusCode + istage )
+        # Get project and stage object.
+        probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
 
-        # Grab the good jobs and bad jobs
-        for line in jobout.split('\n'):
-            if "good events" in line:
-                nGoodEvents = int( line.split()[0] )
+        # Do check.
+        check_status = project.docheck(probj, stobj, ana=False)
 
-        self.info("nEvents: %d, nGoodEvents: %d" %( nEvents, nGoodEvents ))
-
-        # Compare the expected and the good events
-        if nGoodEvents == nEvents:
+        # Update pubs status.
+        if check_status == 0:
            statusCode = self.kDONE
            istage += 10
-           self._data = "numevents:%d" % nEvents
+           self._data = ''
 
            # If all the stages complete, send an email to experts
            if not istage in self._stage_digits:
@@ -384,8 +304,7 @@ class production(ds_project_base):
                text = """
 Sample     : %s
 Stage      : %s
-Good events: %d
-               """ % ( self._project, self._digit_to_name[istage-10], nGoodEvents )
+               """ % ( self._project, self._digit_to_name[istage-10] )
 
                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
@@ -396,16 +315,13 @@ Good events: %d
            text = """
 Sample     : %s
 Stage      : %s
-Events     : %d
-Good events: %d
 Job IDs    : %s
-           """ % ( self._project, self._digit_to_name[istage], nEvents, nGoodEvents, self._data.split(':')[2:] )
+           """ % ( self._project, self._digit_to_name[istage], self._data.split(':')[2:] )
 
            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
            #statusCode = self.kDONE
            #istage += 10
-           #self._data = "numevents:%d" % nGoodEvents
            statusCode += 1000
         else:
            statusCode = self.kTOBERECOVERED
@@ -422,7 +338,7 @@ Job IDs    : %s
     # def check()
 
 
-    def recover( self, statusCode, istage ):
+    def recover( self, statusCode, istage, run, subrun ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
                              
@@ -432,81 +348,31 @@ Job IDs    : %s
 
         # Main command
         stage = self._digit_to_name[istage]
-        cmd = [ 'project.py', '--xml', self._xml_file, '--stage', stage, '--makeup' ]
-        self.info( cmd )
 
-        try:
-            jobinfo = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT )
-            jobout, joberr = jobinfo.communicate()
-        except:
-            return current_status
+        # Get project and stage object.
+        probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
 
-        # Check if te return code is 0
-        proc_return = jobinfo.poll()
-        if proc_return != 0:
-            self.error('Non-zero return code (%s) from %s' % (proc_return,cmd))
-            self.error('Reporting Output:\n %s' % jobout)
-            self.warning('Status code remains same (%d)' % current_status )
-            subject = 'Failed executing: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'Output:\n%s\n\n' % jobout
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
-
-        # Check job out
-        findResponse = 0
-        for line in jobout.split('\n'):
-            if "JOBSUB SERVER RESPONSE CODE" in line:
-                findResponse = 1
-                if not "Success" in line:
-                    self.error('Non-successful status return from status query (output below)!')
-                    self.error( jobout )
-                    return current_status
-
-        if ( findResponse == 0 ):
-            self.error('Unexpected format in output return (show below)!')
-            self.error( jobout )
-            subject = 'Unexpected format string from: %s' % (' '.join(cmd))
-            text  = subject
-            text += '\n\n'
-            text += 'Output:\n%s\n\n' % jobout
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
-
-        # Grab the JobID
-        jobid = ''
-        for line in jobout.split('\n'):
-            if "JobsubJobId" in line:
-                jobid = line.strip().split()[-1]
-                try:
-                    AtSign = jobid.index('@')
-                except ValueError:
-                    self.error('Failed to extract the @ index!')
-                    return current_status
-
-                jobid = jobid[:AtSign]
+        # Submit job.
+        jobid = project.dosubmit(probj, stobj)
+        self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            self.error( jobout )
             subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
             text  = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
-            text += 'Output:\n%s\n\n' % jobout
             pub_smtp(receiver = self._experts,
                      subject = subject,
                      text = text)
             return error_status
 
         # Now grab the parent job id
-        self._data += ":%s" % jobid.split('.')[0]
+        if self._data == None or self._data == "None" or len(self._data) == 0:
+            self._data = jobid
+        else:
+            self._data += ":%s" % jobid
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
@@ -546,7 +412,7 @@ Job IDs    : %s
             # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
                 fstatus = istage + istatus
-                self.debug('Inspecting status %s @ %s' % (istatus,self.now_str()))
+                self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
                 for x in self.get_runs( self._project, fstatus ):
 
                     run    = int(x[0])
@@ -564,7 +430,7 @@ Job IDs    : %s
                     status = self._api.get_status(ds_status(self._project,
                                                             x[0],x[1],x[2]))
                     self._data = status._data
-                    statusCode = action( statusCode, istage )
+                    statusCode = action( statusCode, istage, run, subrun )
 
                     self.info('Finished executing an action: %s @ %s' % (action.__name__,self.now_str()))
 
