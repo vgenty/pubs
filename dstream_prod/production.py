@@ -6,6 +6,7 @@
 # python include
 import time,os,sys,time
 import subprocess
+import StringIO
 # pub_dbi package include
 from pub_dbi import DBException
 # pub_util package include
@@ -313,7 +314,19 @@ class production(ds_project_base):
 
         # Do check.
         try:
+            real_stdout = sys.stdout
+            real_stderr = sys.stderr
+            sys.stdout = StringIO.StringIO()
+            sys.stderr = StringIO.StringIO()
             check_status = project.docheck(probj, stobj, ana=False)
+            strout = sys.stdout.getvalue()
+            strerr = sys.stderr.getvalue()
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            if strout:
+                self.info(strout)
+            if strerr:
+                self.warning(strerr)
         except:
             self.error('Exception raied by project.docheck:')
             e = sys.exc_info()
