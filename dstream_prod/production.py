@@ -187,17 +187,32 @@ class production(ds_project_base):
         except PubsDeadEndError:
             return 100
         except PubsInputError:
-            return statusCode
+            return current_status
+        except:
+            self.error('Exception raied by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return current_status
 
         # Submit job.
-        jobid = project.dosubmit(probj, stobj)
+        jobid=''
+        try:
+            jobid = project.dosubmit(probj, stobj)
+        except:
+            self.error('Exception raied by project.dosubmit:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return current_status
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
-            text  = subject
+            subject = 'Failed to fetch job log id while submitting project %s stage %s.' % (
+                probj.name, stobj.name)
+            text = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
             pub_smtp(receiver = self._experts,
@@ -287,10 +302,24 @@ class production(ds_project_base):
         stage = self._digit_to_name[istage]
 
         # Get project and stage object.
-        probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+        try:
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+        except:
+            self.error('Exception raied by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return statusCode + istage 
 
         # Do check.
-        check_status = project.docheck(probj, stobj, ana=False)
+        try:
+            check_status = project.docheck(probj, stobj, ana=False)
+        except:
+            self.error('Exception raied by project.docheck:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return statusCode + istage
 
         # Update pubs status.
         if check_status == 0:
@@ -350,17 +379,33 @@ Job IDs    : %s
         stage = self._digit_to_name[istage]
 
         # Get project and stage object.
-        probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+        try:
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+        except:
+            self.error('Exception raied by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return current_status
 
         # Submit job.
-        jobid = project.dosubmit(probj, stobj)
+        jobid=''
+        try:
+            jobid = project.dosubmit(probj, stobj)
+        except:
+            self.error('Exception raied by project.dosubmit:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            return current_status
         self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
             self.error('Failed to fetch job log id...')
-            subject = 'Failed to fetch job log id from: %s' % (' '.join(cmd))
-            text  = subject
+            subject = 'Failed to fetch job log id while submitting project %s stage %s.' % (
+                probj.name, stobj.name)
+            text = subject
             text += '\n'
             text += 'Status code is set to %d!\n\n' % error_status
             pub_smtp(receiver = self._experts,
