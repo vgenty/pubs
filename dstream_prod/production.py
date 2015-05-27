@@ -186,8 +186,10 @@ class production(ds_project_base):
         try:
             probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
         except PubsDeadEndError:
+            self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
         except PubsInputError:
+            self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
             self.error('Exception raied by project.get_pubs_stage:')
