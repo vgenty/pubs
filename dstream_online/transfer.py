@@ -103,9 +103,12 @@ class transfer( ds_project_base ):
                 self.info('Found %s' % (in_json) )
 
                 try:
-                    ih.cp(( in_file, out_file ))
-                    ih.cp(( in_json, out_json ))
-                    status = 2
+                    resi = ih.cp(( in_file, out_file ))
+                    resj = ih.cp(( in_json, out_json ))
+                    if resi == 0 and resj == 0:
+                        status = 0
+                    else:
+                        status = 101
                 except:
                     status = 1
 
@@ -191,4 +194,4 @@ if __name__ == '__main__':
 
     obj.transfer_file()
 
-    obj.validate_outfile()
+    # obj.validate_outfile()

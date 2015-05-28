@@ -5,6 +5,8 @@
 
 PROJECT_BEGIN
 NAME     dummy_daq
+SERVER   CURRENT_SERVER
+RUNTABLE AhoRun
 COMMAND  python dummy_dstream/dummy_daq.py
 CONTACT  echurch@fnal.gov
 PERIOD   120
@@ -18,6 +20,8 @@ PROJECT_END
 
 PROJECT_BEGIN
 NAME     dummy_nubin_xfer
+SERVER   CURRENT_SERVER
+RUNTABLE AhoRun
 COMMAND  python dummy_dstream/dummy_nubin_xfer.py
 CONTACT  echurch@fnal.gov
 PERIOD   30
