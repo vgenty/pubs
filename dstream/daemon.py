@@ -271,13 +271,26 @@ class proc_daemon(ds_base):
             time.sleep(1)
             ctr -= 1
 
+        # string containing message to report
+        message = ''
         if ctr:
-            self.info('All programs finished gracefully.')
+            message = 'All programs finished gracefully.'
+            self.info(message)
         else:
-            self.warning('There are still un-finished projects... killing them now.')
+            message = 'There are still un-finished projects... killing them now.'
+            self.warning(message)
             for x in self._project_v:
                 self.warning('killing %s' % x)
                 self._project_v[x].kill()
+
+        try:
+            pub_smtp(receiver = self._info._email,
+                     subject  = 'Daemon for project %s has ended' % self.name(),
+                     text     = 'Daemon has eneded. The following message was produced:\n%s'%message)
+        except BaseException as be:
+            self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
+            for line in be.v.split('\n'):
+                self._logger.error(line)
 
     ## Initiate an indefinite loop of projects' info-loading & execution 
     def routine(self):
