@@ -60,6 +60,6 @@ def getDISKusage(dirpath):
     statHome = os.statvfs(dirpath)
     freeBytes = statHome.f_bfree
     totlBytes = statHome.f_blocks
-    diskUsage = float(freeBytes)/float(totlBytes)    
+    diskUsage = 1.-float(freeBytes)/float(totlBytes)    
 
     return diskUsage
