@@ -61,7 +61,8 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
         raise BaseException('SMTP sender auth. failure! Email cannot be sent...')
     except smtplib.SMTP as e:
         raise BaseException('SMTP UNKNOWN ERROR! Email cannot be sent...')
-    
+    return True
+
 if __name__=="__main__":
 
     if not len(sys.argv)==4:
