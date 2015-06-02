@@ -18,7 +18,7 @@ from ds_data      import ds_project, ds_daemon, ds_daemon_log
 from pub_dbi      import pubdb_conn_info, DBException
 # pub_util package include
 from pub_util     import pub_logger, pub_smtp, BaseException
-
+from ds_messenger import daemon_messenger as d_msg
 ## @class proc_action
 #  @brief A single process executor for a project
 #  @details
@@ -170,6 +170,8 @@ class proc_daemon(ds_base):
                                       self._config._max_proj_ctr,
                                       self._config._lifetime)
 
+        d_msg.set_address(self.__class__.__name__,self._config._email)
+
     ## Log daemon status
     def log_daemon(self):
         uptime   = int(time.time() - self._creation_ts)
@@ -192,16 +194,15 @@ class proc_daemon(ds_base):
         if self._server_handler:
             status,msg = self._server_handler()
 
-            if msg and self._config._email:
+            if msg:
                 if not status:
-                    pub_smtp(receiver = self._config._email,
-                             subject  = '[DAEMON SHUT DOWN] Message from Server Handler',
-                             text     = msg)
+                    d_msg.email( self.__class__.__name__,
+                                 subject  = '[DAEMON SHUT DOWN] Message from Server Handler',
+                                 text     = msg)
                 else:
-                    pub_smtp(receiver = self._config._email,
-                             subject  = '[NOTICE] Message from Server Handler',
-                             text     = msg)
-
+                    d_msg.email( self.__class__.__name__,
+                                 subject  = '[NOTICE] Message from Server Handler',
+                                 text     = msg)
             self._exit_routine = not status
 
     ## Access DB and load projects for execution + update pre-loaded project information
@@ -274,7 +275,7 @@ class proc_daemon(ds_base):
         # string containing message to report
         message = ''
         if ctr:
-            message = 'All programs finished gracefully.'
+            message = 'All projects finished gracefully.'
             self.info(message)
         else:
             message = 'There are still un-finished projects... killing them now.'
@@ -284,9 +285,9 @@ class proc_daemon(ds_base):
                 self._project_v[x].kill()
 
         try:
-            pub_smtp(receiver = self._info._email,
-                     subject  = 'Daemon for project %s has ended' % self.name(),
-                     text     = 'Daemon has eneded. The following message was produced:\n%s'%message)
+            d_msg.email( self.__class__.__name__,
+                         subject  = 'Daemon ended!',
+                         text     = 'Daemon has eneded. The following message was produced:\n%s' % message)
         except BaseException as be:
             self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
             for line in be.v.split('\n'):
@@ -317,10 +318,9 @@ class proc_daemon(ds_base):
             except DBException as e:
                 self.error('Failed connection to DB @ %s ... Retry in 1 minute' % now_str)
                 routine_sleep = 60
-                if self._config and self._config._email:
-                    pub_smtp(receiver = self._config._email,
-                             subject  = 'Daemon Error',
-                             text = 'Failed to establish DB connection @ %s' % now_str)
+                d_msg.email(self.__class__.__name__,
+                            subject  = 'Daemon Error',
+                            text = 'Failed to establish DB connection @ %s' % now_str)
                 continue
             
             # Exit if time exceeds the daemon lifetime
@@ -336,10 +336,9 @@ class proc_daemon(ds_base):
                 #else:
                 #    self._api.reconnect()
                 if not self._api.is_cursor_connected():
-                    if self._config._email:
-                        pub_smtp(receiver = self._config._email,
-                                 subject  = 'Daemon Error',
-                                 text = 'Failed to establish DB connection @ %s' % now_str)
+                    d_msg.email(self.__class__.__name__,
+                                subject  = 'Daemon Error',
+                                text = 'Failed to establish DB connection @ %s' % now_str)
                     continue
                 if (routine_ctr-1):
                     self.load_daemon()
@@ -402,14 +401,13 @@ class proc_daemon(ds_base):
                         except DSException as e:
                             self.critical('Call expert and review project %s' % proj)
 
-                            if self._config._email:
-                                try:
-                                    pub_smtp(receiver = self._config._email,
-                                             subject  = 'Daemon Error',
-                                             text = 'Failed to execute project \'%s\' @ %s' % (proj,now_str))
-
-                                except DSException as  e:
-                                    self.critical('Report to daemon experts failed!')
+                            try:
+                                d_msg.email(self.__class__.__name__,
+                                            subject  = 'Daemon Error',
+                                            text = 'Failed to execute project \'%s\' @ %s' % (proj,now_str))
+                                
+                            except DSException as  e:
+                                self.critical('Report to daemon experts failed!')
 
                         self._exe_time_v[proj] = time.time()
                         self._exe_ctr_v[proj] += 1
@@ -435,7 +433,7 @@ if __name__ == '__main__':
             cmd = 'from %s import %s as daemon_log_dict' % (modname,fname)
         try:
             exec(cmd)
-        except ImportError:
+        except ImportError as e:
             cmd=''
             k.error('Failed to import a logger module: %s' % pub_env.kDAEMON_LOG_MODULE)
             sys.exit(1)
