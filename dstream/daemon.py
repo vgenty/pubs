@@ -182,7 +182,7 @@ class proc_daemon(ds_base):
         hstore = dict()
         if self._logger_func:
             hstore = self._logger_func()
-
+        print hstore
         self._log.log( proj_ctr = proj_ctr,
                        uptime   = uptime,
                        log      = hstore,
