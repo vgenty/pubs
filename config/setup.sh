@@ -53,7 +53,7 @@ case `uname -n` in
 	setup uboonecode v04_06_02 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
-	export PUB_DAEMON_LOG_MODULE=ds_server_log.gpvm_logger
+	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
@@ -83,12 +83,27 @@ case `uname -n` in
 	unsetup uboonedaq_datatypes
 	setup uboonedaq_datatypes v5_00_01 -qe7:prof
         export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
-	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
-	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
+
+	case `uname -n` in
+	    (ubdaq-prod-smc)
+		export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
+		export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
+		;;
+	    (ubdaq-prod-evb)
+		export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
+		export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
+		;;
+	    (ubdaq-prod-near1)
+		export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger
+		export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler		
+		;;
+	esac
 	;;
     (*)
+	export PUB_DAEMON_LOG_MODULE=ds_server_dummy.dummy_logger
+	export PUB_DAEMON_HANDLER_MODULE=ds_server_dummy.dummy_handler
 	echo No special setup done for the server `uname -n`
 	;;
 esac

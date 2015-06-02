@@ -26,12 +26,9 @@ export PUB_PSQL_ADMIN_CONN_NTRY=10
 export PUB_PSQL_ADMIN_CONN_SLEEP=10
 
 # SMTP account for sending an email report
-export PUB_SMTP_ACCT=uboonepro
+export PUB_SMTP_ACCT=drinkingkazu.pubs
 export PUB_SMTP_SRVR=smtp.gmail.com:587
-export PUB_SMTP_PASS=herbgreenlee
+export PUB_SMTP_PASS=donkeyspubs
 
 export PUB_INDIR=""
 export PUB_OUTDIR=""
-#export PUB_SMTP_ACCT=drinkingkazu.pubs@aho.com
-#export PUB_SMTP_SRVR=smtp.gmail.com:tako
-#export PUB_SMTP_PASS=pubs.drinkingkazuak
