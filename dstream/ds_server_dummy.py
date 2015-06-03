@@ -29,7 +29,8 @@ def dummy_logger():
         result['DISK_USAGE_HOME'] = diskUsage
         if (diskUsage > 0.9):
             # send email...
-            print "disk usage in /home above 90-percent..."
+            msg = "disk usage in %s above 90-percent..."%homedir
+            d_msg.email('proc_daemon','dummy_logger',msg)
     else:
         # log the fact that /home is not recognized as dir
         print "/home not recognized as directory..."
@@ -39,7 +40,9 @@ def dummy_logger():
         result['DISK_USAGE_DATA'] = diskUsage
         if (diskUsage > 0.9):
             # send email...
-            print "disk usage in /data above 90-percent..."
+            msg = "disk usage in %s above 90-percent..."%datadir
+            d_msg.email('proc_daemon','dummy_logger',msg)
+
     else:
         # log the fact that /data is not recognized as dir
         print "/data not recognized as directory..."
@@ -62,7 +65,6 @@ def dummy_logger():
         print "cannot access /proc/stat file..."
 
 
-    print "\n\n\n\nsending email...\n\n\n\n"
     #d_msg.email('proc_daemon','hello world','executed dummy_logger! dt=%g' % dt)
     pub_watch.start('dummy_logger')
 
