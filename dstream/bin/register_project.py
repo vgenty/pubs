@@ -89,10 +89,11 @@ def parse(contents):
             project_v[-1]._command = value
 
         elif keyword == 'CONTACT':
-            value = value.replace(',',' ')
-            while value.find('  ') >= 0:
-                value = value.replace('  ',' ')
-            project_v[-1]._email += '%s ' % value
+            value = value.replace(' ','')
+            if project_v[-1]._email:
+                project_v[-1]._email += ',%s' % value
+            else:
+                project_v[-1]._email = value
 
         elif keyword == 'PERIOD':
             if project_v[-1]._period:

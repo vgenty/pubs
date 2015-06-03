@@ -88,10 +88,11 @@ def parse(contents):
             daemon_v[-1]._server = value
 
         elif keyword == 'CONTACT':
-            value = value.replace(',',' ')
-            while value.find('  ') >= 0:
-                value = value.replace('  ',' ')
-            daemon_v[-1]._email += '%s ' % value
+            value = value.replace(' ','')
+            if daemon_v[-1]._email:
+                daemon_v[-1]._email += ',%s' % value
+            else:
+                daemon_v[-1]._email = value
             
         elif keyword == 'MAX_CTR':
             if daemon_v[-1]._max_proj_ctr:
