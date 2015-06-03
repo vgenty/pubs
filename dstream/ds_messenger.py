@@ -15,8 +15,10 @@ class daemon_messenger:
         if not owner in cls._address:
             return False
         try:
+            if cls._sub_prefix[owner]:
+                subject  = '<<%s>> %s' % (cls._sub_prefix[owner],subject)
             res = pub_smtp(receiver = cls._address[owner],
-                           subject  = '<<%s>> %s' % (cls._sub_prefix[owner],subject),
+                           subject = subject,
                            text = text)
             if not res: res=False
             return res
