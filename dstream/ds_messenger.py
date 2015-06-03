@@ -4,17 +4,19 @@ from ds_exception import DSException
 class daemon_messenger:
 
     _address = {}
+    _sub_prefix = {}
     @classmethod
-    def set_address(cls,owner,addr):
+    def set_address(cls,owner,addr,subject_prefix=''):
         cls._address[str(owner)] = str(addr)
-            
+        cls._sub_prefix[str(owner)] = str(subject_prefix)
+
     @classmethod
     def email(cls,owner,subject,text):
         if not owner in cls._address:
             return False
         try:
             res = pub_smtp(receiver = cls._address[owner],
-                           subject  = subject,
+                           subject  = '<<%s>> %s' % (cls._sub_prefix[owner],subject),
                            text = text)
             if not res: res=False
             return res
