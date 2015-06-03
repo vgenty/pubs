@@ -170,7 +170,9 @@ class proc_daemon(ds_base):
                                       self._config._max_proj_ctr,
                                       self._config._lifetime)
 
-        d_msg.set_address(self.__class__.__name__,self._config._email)
+        d_msg.set_address(self.__class__.__name__,
+                          self._config._email,
+                          self._config._server)
 
     ## Log daemon status
     def log_daemon(self):
