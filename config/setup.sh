@@ -57,7 +57,7 @@ case `uname -n` in
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
-        source /uboone/setup_online.sh
+        source /uboonenew/setup_online.sh
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
 	setup git
 	setup psycopg2 v2_5_4
