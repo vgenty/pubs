@@ -11,6 +11,8 @@ from pub_dbi  import pubdb_conn_info
 try:
     import matplotlib.pyplot as plt
     import matplotlib.dates as dts
+    from mpl_toolkits.axes_grid1 import host_subplot
+    import mpl_toolkits.axisartist as AA
 except ImportError:
     print 'Matplotlib not available... aborting!'
     sys.exit(1)
@@ -56,21 +58,43 @@ for x in projects:
 
 dates = dts.date2num(times)
 
-fig, ax1 = plt.subplots()
-ax1.plot_date(dates,DISK,fmt='o--',color='b')
-ax1.set_ylabel('DISK usage Frac.',fontsize=16,color='b')
-ax1.set_xlabel('Time',fontsize=16)
-ax1.set_ylim([0,1])
 
-ax2 = ax1.twinx()
-ax2.plot_date(dates,RAM,fmt='o--',color='k',label='RAM')
-ax2.plot_date(dates,CPU,fmt='^--',color='k',label='CPU')
-ax2.legend()
-ax2.set_ylabel('Resource Usage %',fontsize=16,color='k')
-#ax2.set_ylim()
+# example for multi-axes (i.e. >= 3) plot here:
+# http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
+
+host = host_subplot(111,axes_class=AA.Axes)
+#plt.subplots_adjust(0.75)
+
+pltRAM = host.twinx()
+pltCPU = host.twinx()
+
+offset = 60
+new_fixed_axis = pltCPU.get_grid_helper().new_fixed_axis
+pltCPU.axis['right'] = new_fixed_axis(loc='right',
+                                      axes=pltCPU,
+                                      offset=(offset,0))
+
+pltCPU.axis['right'].toggle(all=True)
+
+host.set_xlabel('Time', fontsize=16)
+host.set_ylabel('DISK usage Frac.', fontsize=16, color='r')
+host.set_ylim([0,1])
+
+pltRAM.set_ylabel('RAM Usage %', fontsize=16, color='b')
+pltCPU.set_ylabel('CPU Usage %', fontsize=16, color='k')
+
+host.plot_date(dates,DISK, fmt='o--', color='r')
+pltRAM.plot_date(dates,RAM, fmt='o--', color='b', label='RAM')
+pltCPU.plot_date(dates,CPU, fmt='o--', color='k', label='CPU')
+
+host.axis["left"].label.set_color('r')
+pltRAM.axis["right"].label.set_color('b')
+pltCPU.axis["right"].label.set_color('k')
+
+plt.draw()
 
 plt.grid()
-plt.title('Computer Resource Monitoring',fontsize=16)
+plt.title('Computer Resource Monitoring', fontsize=16)
 plt.show()
 
 print
