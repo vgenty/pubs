@@ -76,12 +76,12 @@ pltCPU.axis['right'] = new_fixed_axis(loc='right',
 
 pltCPU.axis['right'].toggle(all=True)
 
-host.set_xlabel('Time', fontsize=16)
-host.set_ylabel('DISK usage Frac.', fontsize=16, color='r')
+host.set_xlabel('Time', fontsize=20)
+host.set_ylabel('DISK usage Frac.', fontsize=18, color='r')
 host.set_ylim([0,1])
 
-pltRAM.set_ylabel('RAM Usage %', fontsize=16, color='b')
-pltCPU.set_ylabel('CPU Usage %', fontsize=16, color='k')
+pltRAM.set_ylabel('RAM Usage %', fontsize=18, color='b')
+pltCPU.set_ylabel('CPU Usage %', fontsize=18, color='k')
 
 host.plot_date(dates,DISK, fmt='o--', color='r')
 pltRAM.plot_date(dates,RAM, fmt='o--', color='b', label='RAM')
@@ -94,7 +94,7 @@ pltCPU.axis["right"].label.set_color('k')
 plt.draw()
 
 plt.grid()
-plt.title('Computer Resource Monitoring', fontsize=16)
+plt.title('Computer Resource Monitoring', fontsize=18)
 plt.show()
 
 print
