@@ -838,6 +838,8 @@ DECLARE
   query_field  TEXT;
   query_values TEXT;
   query        TEXT;
+  running_state BOOLEAN;
+  runtable_ref  TEXT;
 BEGIN
 
   -- Make sure project exists in ProcessTable
@@ -885,9 +887,14 @@ BEGIN
     SELECT StartSubRun FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO new_subrun;
   END IF;
 
+  SELECT Running FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO running_state;
+
+  SELECT RefName FROM ProcessTable WHERE lower(Project) = lower(project_name) AND ProjectVer = current_ver INTO runtable_ref;
+
   current_ver := current_ver + 1;
 
   query := format('INSERT INTO ProcessTable ( Project,
+  	   		       		      RefName,
   	   		       		      Command,
 					      ProjectVer,
 					      Frequency,
@@ -899,9 +906,10 @@ BEGIN
 					      Resource,
 					      Enabled,
 					      Running) 
-			       VALUES ( ''%s'', ''%s'', %s, %s, %s,
-			       	      	%s, %s, ''%s'', ''%s''::HSTORE, %s, FALSE)',
+			       VALUES ( ''%s'', ''%s'', ''%s'', %s, %s, %s,
+			       	      	%s, %s, ''%s'', ''%s'', ''%s''::HSTORE, %s, %s)',
 			       project_name,
+			       runtable_ref,
 			       new_cmd,
 			       current_ver,
 			       new_freq,
@@ -911,7 +919,8 @@ BEGIN
 			       new_email,
 			       new_nodename,
 			       new_src::TEXT,
-			       new_en::TEXT);
+			       new_en::TEXT,
+			       running_state::TEXT);
  
   EXECUTE query;
 
@@ -1146,13 +1155,13 @@ BEGIN
   END IF;
 
   query := format( 'SELECT %s.RunNumber AS Run, %s.SubRunNumber AS SubRun, 0, %s, 1 
-  	   	    FROM %s LEFT JOIN %s ON %s.Run=%s.RunNumber AND %s.SubRun=%s.SubRunNumber
-		    WHERE %s.Run IS NULL AND %s.SubRun IS NULL AND
+  	   	    FROM %s LEFT JOIN %s ON %s.Run=%s.RunNumber AND %s.SubRun=%s.SubRunNumber AND %s.ProjectVer=%s
+		    WHERE (%s.Run IS NULL AND %s.SubRun IS NULL)  AND
 		    (%s.RunNumber>%s OR (%s.RunNumber=%s AND %s.SubRunNumber>=%s))
 		    ORDER BY %s.RunNumber, %s.SubRunNumber',
   	   	   runtable, runtable, project_ver,
-		   runtable, project_name, project_name, runtable, project_name, runtable,
-		   project_name, project_name,
+		   runtable, project_name, project_name, runtable, project_name, runtable, project_name, project_ver,
+		   project_name, project_name, 
 		   runtable, start_run, runtable, start_run, runtable, start_subrun,
 		   runtable, runtable );
 
