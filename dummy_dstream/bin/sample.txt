@@ -35,7 +35,3 @@ RESOURCE OUTDIR => /data
 RESOURCE INFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_assembler.bin
 RESOURCE OUTFILE_FORMAT => Run%05d_SubRun%03d_TPC_RAW_near1.bin
 PROJECT_END
-
-
-
-
