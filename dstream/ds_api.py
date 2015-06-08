@@ -751,6 +751,17 @@ class ds_master(ds_writer,ds_reader):
 
         return self.commit(query)
 
+    ## @brief Method to upgrade project version
+    def project_version_update(self,project):
+        if not self.project_exist(project):
+            self._logger.error('Project %s not found!' % project)
+            return False
+
+        query = " SELECT ProjectVersionUpdate('%s');" % project
+
+        return self.commit(query)
+
+
     ## @brief Method to synchronize all project tables with MainRun table
     def runsynch(self):
 
