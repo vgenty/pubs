@@ -5,12 +5,16 @@
 
 # python include
 import time
+import os
 # pub_dbi package include
-from pub_dbi import DBException
+from pub_dbi import DBException, pubdb_conn_info
+# pub_util package include
+from pub_util import pub_logger
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from dstream import ds_api
 
 ## @class register_new_run
 #  @brief register a new run number in the DB
@@ -35,24 +39,20 @@ class register_new_run(ds_project_base):
         # Call base class ctor
         super(register_new_run,self).__init__()
 
-        if not arg:
-            self.error('No project name specified!')
-            raise Exception
-            
-        self._project = arg
-
-        self._nruns = None
         self._data_dir = ''
         self._experts = ''
+        self._runtable = ''
+        
+        self.get_resource()
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
         resource = self._api.get_resource( self._project )
 
-        self._nruns = int(resource['NRUNS'])
         self._data_dir = '%s' % (resource['DATADIR'])
         self._experts = resource['EXPERTS']
+        self._runtable = resource['RUNTABLE']
 
         
     ## @brief access DB and retrieves new runs
@@ -63,13 +63,8 @@ class register_new_run(ds_project_base):
 	    self.error('Cannot connect to DB! Aborting...')
 	    return
 
-        # I Think this is not necessary for this project
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
         # get ALL closed data files in DATADIR
-        if (os.path.isdir(self._data_dir) == false):
+        if (os.path.isdir(self._data_dir) == False):
             self.error('DATA DIR %s does not exist'%self._data_dir)
             return
 
@@ -90,7 +85,7 @@ class register_new_run(ds_project_base):
             filepath = self._data_dir+'/'+f
 
             # check that this is a file
-            if (os.path.isfile(filepath) == false):
+            if (os.path.isfile(filepath) == False):
                 continue
             
             try:
@@ -117,11 +112,29 @@ class register_new_run(ds_project_base):
         # this will prevent us from potentially logging info
         # for a file that has not yet been closed
         sorted_file_info = sorted(file_info)
-        max_file_info = max(sorted_file_info.iterkeys())
+        # get tuple with largest run/subrun info found in files
+        max_file_info = sorted_file_info[-1]
 
         # fetch from database the last run/subrun number recorded
-        last_recorded_info = (100,100) # get_last_run
-        
+        last_recorded_info = (0,0) # get_last_run
+
+        # if we made it this far the file info needs to be
+        # recorded to the database
+        # DANGER *** DANGER *** DANGER *** DANGER
+        # we will now invoke the death_start
+        # this API will access the RUN table end edit
+        # informaton, which is exactly what we need to do
+        # however, this is dangerous and you should not
+        # copy this code and re-use it somewhere
+        # if you do, the Granduca's wrath will be upon you
+        # lucikly for you, the Granduca was the first to
+        # abolish the death penalty on November 30th 1786
+        # http://en.wikipedia.org/wiki/Grand_Duchy_of_Tuscany#Reform
+        # However, the imperial army may be less mercyful.
+        # DANGER *** DANGER *** DANGER *** DANGER
+        logger = pub_logger.get_logger('death_star')
+        rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
+
         # loop through dictionary keys and write to DB info
         # for runs/subruns not yet stored
         for info in sorted_file_info:
@@ -133,16 +146,28 @@ class register_new_run(ds_project_base):
             if (info <= last_recorded_info):
                 continue;
 
-            # if we made it this far the file info needs to be
-            # recorded to the database DO THAT!!!
-
+            # info is key (run,subrun)
+            # dictionary value @ key is array
+            # [file name, time_crate, time_modify]
+            run           = info[0]
+            subrun        = info[1]
+            run_info      = file_info[info]
+            file_creation = time.gmtime(int(run_info[1]))
+            file_closing  = time.gmtime(int(run_info[2]))
+            file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
+            file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+            # insert into the death start
+            rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],
+                                               file_creation, file_closing)
             # Report starting
-            self.info('recording info for new run: run=%d, subrun=%d ...' % (int(x[0]),int(x[1])))
+            self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
 
 
 
 # A unit test section
 if __name__ == '__main__':
+
+    test_obj = register_new_run()
 
     test_obj.process_newruns()
 
