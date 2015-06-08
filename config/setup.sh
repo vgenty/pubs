@@ -46,11 +46,16 @@ export PUB_DAEMON_HANDLER_MODULE=""
 case `uname -n` in
     (*uboonegpvm*)
 	echo Setting up for uboonegpvm...
+	if [ -z $HOME/.sqlaccess/prod_access.sh ]; then
+	    echo 'Configuration @ gpvm requires \$HOME/.sqlaccess/prod_access.sh!'
+	    echo 'Exiting...'
+	    echo 
+	    return;
+	fi
 	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
-        source $PUB_TOP_DIR/config/prod_conf.sh
 	setup psycopg2 v2_5_4
-	setup uboonecode v04_06_02 -q e7:prof
+	setup uboonecode v04_08_01 -q e7:prof
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
