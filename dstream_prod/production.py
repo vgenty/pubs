@@ -85,6 +85,7 @@ class production(ds_project_base):
         self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
         self._experts = proj_info._resource['EXPERTS']
         self._period = proj_info._period
+        self._version = proj_info._ver
 
         try:
             self._stage_names  = proj_info._resource['STAGE_NAME'].split(':')
@@ -184,7 +185,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -306,7 +307,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
         except:
             self.error('Exception raied by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -395,7 +396,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
         except:
             self.error('Exception raied by project.get_pubs_stage:')
             e = sys.exc_info()
