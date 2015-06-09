@@ -73,7 +73,7 @@ class ds_clean(ds_project_base):
         self.info("%i%% of disk used. Removing files to get down to %i%%."%(disk_frac_used, self._disk_frac_limit))
         if (disk_frac_used < self._disk_frac_limit):
             self.info('Only %i%% of disk space used (%s), skip cleaning until %i%% is reached.'%(disk_frac_used, self._in_dir, self._disk_frac_limit))
-            # return
+            return
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
