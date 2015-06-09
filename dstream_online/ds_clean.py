@@ -6,6 +6,7 @@
 # python include
 import sys
 import time, os, shutil
+import glob
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -72,7 +73,7 @@ class ds_clean(ds_project_base):
         self.info("%i%% of disk used. Removing files to get down to %i%%."%(disk_frac_used, self._disk_frac_limit))
         if (disk_frac_used < self._disk_frac_limit):
             self.info('Only %i%% of disk space used (%s), skip cleaning until %i%% is reached.'%(disk_frac_used, self._in_dir, self._disk_frac_limit))
-            # return
+            return
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -97,8 +98,11 @@ class ds_clean(ds_project_base):
                     os.system('ssh -x %s "rm %s"' % tuple(in_file.split(":")))
                     status=2
             else:
-                if os.path.isfile(in_file):
-                    os.system('rm %s' % in_file)
+                self.info('Looks like the file is local on this node')
+                list_of_files = glob.glob(in_file)
+                if os.path.isfile(list_of_files[0]):
+                    self.info('Going to remove the file with rm...')
+                    os.system('rm %s' % list_of_files[0])
                     status=2
 
             # Create a status object to be logged to DB (if necessary)
