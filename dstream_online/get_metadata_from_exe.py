@@ -280,7 +280,7 @@ class get_metadata( ds_project_base ):
                         self._jeevt = int(line.split('=')[-1])
                     if "Localhost Time: (sec,usec)" in line:
                         self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-                    if "daq_version_label==" in line:
+                    if "daq_version_label=" in line:
                         self._jver = line.split('=')[-1]
             else:
                 status = 4
