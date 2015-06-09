@@ -18,7 +18,6 @@ import samweb_client.utility
 import extractor_dict
 import subprocess
 
-gSystem.Load("libudata_types.so")
 
 ## @Class dstream_online.get_metadata
 #  @brief Get metadata from a binary or a swizzled file
@@ -60,6 +59,7 @@ class get_metadata( ds_project_base ):
         self._jeevt = -12
         self._jsevt = -12
         self._jver = -12
+        self._pubsver = "untagged" # once PUBS is ups-ified, grab its version and shove that here?
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -322,7 +322,7 @@ class get_metadata( ds_project_base ):
         # run number and subrun number in the metadata seem to be funny,
         # and currently we are using the values in the file name.
         # Also add ub_project.name/stage/version, and data_tier by hand
-        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": self._jver }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": "v6_00_00" }
+        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": self._jver }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": self._pubsver }
         # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
@@ -333,7 +333,6 @@ class get_metadata( ds_project_base ):
 
 # A unit test section
 if __name__ == '__main__':
-    gSystem.Load("libudata_types.so")
 
     proj_name = sys.argv[1]
 
