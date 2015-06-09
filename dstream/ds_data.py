@@ -201,6 +201,17 @@ class ds_daemon_log(object):
             msg += '| %s : %s ' % (key,self._log[key])
         return msg
 
+    ## @brief get log timestamp
+    def get_log_time(self):
+        if not self._logtime: return ''
+        return '%s'%self._logtime
+
+    ## @brief get log dictionary
+    def get_log_dict(self):
+        
+        if not self._log: return dict()
+        return self._log
+
     ## @brief initializer from ds_daemon
     def init(self, conf):
 

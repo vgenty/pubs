@@ -106,6 +106,7 @@ class pubdb_conn(object):
             if conn_info._role:
                 cursor = conn.cursor()
                 try:
+                    cls.info('Setting ROLE = %s' % conn_info._role)
                     cursor.execute('SET ROLE %s;' % conn_info._role)
                     cursor.close()
                     del cursor
