@@ -16,6 +16,7 @@ import datetime, json
 import samweb_cli
 import samweb_client.utility
 import extractor_dict
+import subprocess
 
 gSystem.Load("libudata_types.so")
 
@@ -260,34 +261,45 @@ class get_metadata( ds_project_base ):
 
         try:
             ''' 
-            Replace  all the former code that used pythonized C++ objects with a call to a uboonedaq_datatypes binary
-            and pull the needed values from stdout.
+            Replace  all the former code that used pythonized C++ objects with a call to uboonedaq_datatypes binary
+            dumpEventHeaders and pull the needed values from stdout.
             '''
 
             # print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
             cmd = "dumpEventHeaders " + in_file + " 1000000 "
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            for line in proc.stdout:
-                if "run_number=" in line and "subrun" not in line :
-                    self._jrun = line.split('=')[-1]
-                if "subrun_number=" in line:
-                    self._jsubrun = line.split('=')[-1]
-                if "event_number=" in line:
-                    self._jeevt = line.split('=')[-1]
-                if "Localhost Time: (sec,usec)" in line:
-                    self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-
+            proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            (out,err) = proc.communicate() # blocks till done.
+            if not proc.returncode:
+                for line in out:
+                    if "run_number=" in line and "subrun" not in line :
+                        self._jrun = line.split('=')[-1]
+                    if "subrun_number=" in line:
+                        self._jsubrun = line.split('=')[-1]
+                    if "event_number=" in line:
+                        self._jeevt = line.split('=')[-1]
+                    if "Localhost Time: (sec,usec)" in line:
+                        self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+            else:
+                status = 4
+                self.error('Return status from dumpEventHeaders for last event is not successful.')
 
             # print "Load first event in file."
             cmd = "dumpEventHeaders " + in_file + " 1 "
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            for line in proc.stdout:
-                if "event_number=" in line:
-                    self._jsevt = line.split('=')[-1]
-                if "Localhost Time: (sec,usec)" in line:
-                    self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-            status = 3
-            self.info('Successfully extract metadata from the ubdaq file.')
+            (out,err) = proc.communicate() # blocks till done.
+            if not proc.returncode:
+                for line in out:
+                    if "event_number=" in line:
+                        self._jsevt = line.split('=')[-1]
+                    if "Localhost Time: (sec,usec)" in line:
+                        self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+            else:
+                status = 4
+                self.error('Return status from dumpEventHeaders for first event is not successful.')
+
+            if not status == 4:
+                status = 3
+                self.info('Successfully extract metadata from the ubdaq file.')
 
         except:
             print "Unexpected error:", sys.exc_info()[0]
