@@ -59,6 +59,7 @@ class get_metadata( ds_project_base ):
         self._jensec = 0
         self._jeevt = -12
         self._jsevt = -12
+        self._jver = -12
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -270,32 +271,34 @@ class get_metadata( ds_project_base ):
             proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             (out,err) = proc.communicate() # blocks till done.
             if not proc.returncode:
-                for line in out:
+                for line in out.split('\n'):
                     if "run_number=" in line and "subrun" not in line :
-                        self._jrun = line.split('=')[-1]
+                        self._jrun = int(line.split('=')[-1])
                     if "subrun_number=" in line:
-                        self._jsubrun = line.split('=')[-1]
+                        self._jsubrun = int(line.split('=')[-1])
                     if "event_number=" in line:
-                        self._jeevt = line.split('=')[-1]
+                        self._jeevt = int(line.split('=')[-1])
                     if "Localhost Time: (sec,usec)" in line:
                         self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+                    if "daq_version_label==" in line:
+                        self._jver = line.split('=')[-1]
             else:
                 status = 4
-                self.error('Return status from dumpEventHeaders for last event is not successful.')
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is  ' + proc.returncode + '.')
 
             # print "Load first event in file."
             cmd = "dumpEventHeaders " + in_file + " 1 "
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             (out,err) = proc.communicate() # blocks till done.
             if not proc.returncode:
-                for line in out:
+                for line in out.split('\n'):
                     if "event_number=" in line:
-                        self._jsevt = line.split('=')[-1]
+                        self._jsevt = int(line.split('=')[-1])
                     if "Localhost Time: (sec,usec)" in line:
                         self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
             else:
                 status = 4
-                self.error('Return status from dumpEventHeaders for first event is not successful.')
+                self.error('Return status from dumpEventHeaders for first event is not successful. It is  ' + proc.returncode + '.')
 
             if not status == 4:
                 status = 3
@@ -319,7 +322,7 @@ class get_metadata( ds_project_base ):
         # run number and subrun number in the metadata seem to be funny,
         # and currently we are using the values in the file name.
         # Also add ub_project.name/stage/version, and data_tier by hand
-        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": "v6_00_00" }
+        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": self._jver }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": "v6_00_00" }
         # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
