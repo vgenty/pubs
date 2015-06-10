@@ -120,8 +120,6 @@ class check_noise(ds_project_base):
             # Report starting
             self.info('preparing noisy channel list: run=%d, subrun=%d ...' % (run,subrun))
             
-
-
             # create text file containing path to binary files to be analyzed
             binfilepath = self._in_dir
             # get the file that matches the infile format and has
@@ -132,10 +130,8 @@ class check_noise(ds_project_base):
             
             if (len(filelist) > 1):
                 self.error('More than one files match the condition for this run, subrun (%i,%i) which should be unique'%(run,subrun))
-                statusCode = 666                
             elif (len(filelist) == 0):
                 self.error('No files match the condition for this run, subrun (%i,%i)'%(run,subrun))
-                statusCode = 666                
             
             else:
 
@@ -150,24 +146,9 @@ class check_noise(ds_project_base):
 
                 except:
                     self.error('Could not write file path to file')
-                    statuscode = 666
-
-    
                     
                 # Report finishing
                 self.info('done preparing noisy channel list: run=%d, subrun=%d ...' % (run,subrun) )
-
-                # Create a status object to be logged to DB (if necessary)
-                # Let's say we set the status to be 10
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,#int(x[2]),
-                                    status  = statusCode )
-            
-
-            # Log status
-            #self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break
@@ -184,6 +165,9 @@ class check_noise(ds_project_base):
             statusCode = 666
 
 
+        # go over runs again and assign to all of
+        # them the status code received by running
+        # the bash script
         runs_to_do = self.get_runs(self._project,1)
         ctr = self._nruns
         for x in xrange(ctr):
