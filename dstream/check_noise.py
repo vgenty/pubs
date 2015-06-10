@@ -65,6 +65,14 @@ class check_noise(ds_project_base):
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
 
+        # status code for this project will be the same for all runs/subruns executed
+        # that's because currently this project runs a script that checks the noise
+        # levels for multiple subruns at a time
+        # a single failure in the bash script needs to be counted as a failure
+        # for all noise_chekcs
+        # set status code
+        statusCode = 1
+
         self.info('starting! here we go...')
 
         # Attempt to connect DB. If failure, abort
@@ -100,9 +108,8 @@ class check_noise(ds_project_base):
         ctr = self._nruns
         #for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
         runs_to_do = self.get_runs(self._project,1)
-        print "Runs to do: %i"%len(runs_to_do)
-        #for x in runs_to_do:
-        for x in xrange(10):
+        self.info('Runs to go through: %i'%ctr)
+        for x in xrange(ctr):
 
             # Counter decreases by 1
             ctr -=1
@@ -113,8 +120,7 @@ class check_noise(ds_project_base):
             # Report starting
             self.info('preparing noisy channel list: run=%d, subrun=%d ...' % (run,subrun))
             
-            # set status code
-            statusCode = 1
+
 
             # create text file containing path to binary files to be analyzed
             binfilepath = self._in_dir
@@ -169,11 +175,29 @@ class check_noise(ds_project_base):
         ffiles.close()
 
         # run bash script!
-
         try:
-            subprocess.Popen(['sh',script_info,script_input,script_output,script_log])
+            subprocess.Popen(['sh',script_info,script_input,script_output,'>',script_log])
+            # success! assign status-code of 0
+            statusCode = 0
         except:
             self.error('could not run bash script!')
+            statusCode = 666
+
+
+        runs_to_do = self.get_runs(self._project,1)
+        ctr = self._nruns
+        for x in xrange(ctr):
+
+            #(run, subrun) = (int(x[0]), int(x[1]))
+            (run, subrun) = ( 305, ctr)
+            status = ds_status( project = self._project,
+                                run     = run,
+                                subrun  = subrun,
+                                seq     = 0,#int(x[2]),
+                                status  = statusCode )
+            #self.log_status(status)
+
+            
 
 # A unit test section
 if __name__ == '__main__':
