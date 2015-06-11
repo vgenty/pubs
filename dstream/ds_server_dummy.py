@@ -36,7 +36,7 @@ def dummy_logger():
             d_msg.email('proc_daemon','dummy_logger',msg)
     else:
         # log the fact that /home is not recognized as dir
-        #print "/home not recognized as directory..."
+        print "/home not recognized as directory..."
 
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
@@ -48,7 +48,7 @@ def dummy_logger():
 
     else:
         # log the fact that /data is not recognized as dir
-        #print "/data not recognized as directory..."
+        print "/data not recognized as directory..."
         
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
@@ -56,7 +56,7 @@ def dummy_logger():
         result['RAM_PERCENT'] = RAMused
     else:
         # log the fact that we cannot access /proc/meminfo...
-        #print "cannot access /proc/meminfo file..."
+        print "cannot access /proc/meminfo file..."
     
 
     statpath = '/proc/stat'
@@ -65,7 +65,7 @@ def dummy_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        #print "cannot access /proc/stat file..."
+        print "cannot access /proc/stat file..."
 
 
     #d_msg.email('proc_daemon','hello world','executed dummy_logger! dt=%g' % dt)

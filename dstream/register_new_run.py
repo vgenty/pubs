@@ -120,6 +120,7 @@ class register_new_run(ds_project_base):
 
         # fetch from database the last run/subrun number recorded
         last_recorded_info = (0,0) # get_last_run
+        # KAZU YOUR CODE GOES HERE TO FETCH LAST ENTRY IN DB
 
         # if we made it this far the file info needs to be
         # recorded to the database
@@ -137,13 +138,7 @@ class register_new_run(ds_project_base):
         # DANGER *** DANGER *** DANGER *** DANGER
         logger = pub_logger.get_logger('death_star')
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
-        '''
-        # destroy and recreate death start
-        self.info('destroying death star...')
-        rundbWriter.end_of_galaxy(self._runtable)
-        self.info('recreating death star...')
-        rundbWriter.create_death_star(self._runtable)
-        '''
+
         # loop through dictionary keys and write to DB info
         # for runs/subruns not yet stored
         for info in sorted_file_info:
