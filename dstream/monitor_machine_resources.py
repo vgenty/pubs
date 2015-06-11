@@ -30,60 +30,69 @@ def plot_resource_usage(proj,outpath):
     CPU   = []
     RAM   = []
     DISK  = []
+
+    servername = proj[0]._server
     
-    log_time = proj.get_log_time()
-    log_dict = proj.get_log_dict()
+    for x in proj:
 
-    if ( (log_time != '') and (log_dict) ):
-        # get time in python datetime format
-        time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
-        times.append(time)
-        for key in log_dict:
-            if (str(key) == 'DISK_USAGE_HOME'):
-                DISK.append(float(log_dict[key]))
-            if (str(key) == 'RAM_PERCENT'):
-                RAM.append(float(log_dict[key]))
-            if (str(key) == 'CPU_PERCENT'):
-                CPU.append(float(log_dict[key]))
+        log_time = x.get_log_time()
+        log_dict = x.get_log_dict()
 
-        dates = dts.date2num(times)
+        if ( (log_time != '') and (log_dict) ):
+            # get time in python datetime format
+            time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+            times.append(time)
+            for key in log_dict:
+                if (str(key) == 'DISK_USAGE_HOME'):
+                    DISK.append(float(log_dict[key]))
+                if (str(key) == 'RAM_PERCENT'):
+                    RAM.append(float(log_dict[key]))
+                if (str(key) == 'CPU_PERCENT'):
+                    CPU.append(float(log_dict[key]))
 
+            dates = dts.date2num(times)
 
-        # example for multi-axes (i.e. >= 3) plot here:
-        # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
-
-        host = host_subplot(111,axes_class=AA.Axes)
+            
+            # example for multi-axes (i.e. >= 3) plot here:
+            # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
         
-        pltRAM = host.twinx()
-        pltCPU = host.twinx()
-        
-        offset = 60
-        new_fixed_axis = pltCPU.get_grid_helper().new_fixed_axis
-        pltCPU.axis['right'] = new_fixed_axis(loc='right',
-                                              axes=pltCPU,
-                                              offset=(offset,0))
-
-        pltCPU.axis['right'].toggle(all=True)
-        
-        host.set_xlabel('Time', fontsize=20)
-        host.set_ylabel('DISK usage Frac.', fontsize=18, color='r')
-        host.set_ylim([0,1])
-        
-        pltRAM.set_ylabel('RAM Usage %', fontsize=18, color='b')
-        pltCPU.set_ylabel('CPU Usage %', fontsize=18, color='k')
-        
+    host = host_subplot(111,axes_class=AA.Axes)
+    #plt.set_size_inches(10,7)
+    plt.subplots_adjust(right=0.75)
+    pltRAM = host.twinx()
+    pltCPU = host.twinx()
+    
+    offset = 60
+    new_fixed_axis = pltCPU.get_grid_helper().new_fixed_axis
+    pltCPU.axis['right'] = new_fixed_axis(loc='right',
+                                          axes=pltCPU,
+                                          offset=(offset,0))
+    
+    pltCPU.axis['right'].toggle(all=True)
+    
+    #host.set_xticks(4)
+    host.set_xlabel('Time', fontsize=20)
+    host.set_ylabel('DISK usage Frac.', fontsize=18, color='r')
+    host.set_ylim([0,1])
+    
+    pltRAM.set_ylabel('RAM Usage %', fontsize=18, color='b')
+    pltCPU.set_ylabel('CPU Usage %', fontsize=18, color='k')
+    
+    if (len(dates) == len(DISK)):
         host.plot_date(dates,DISK, fmt='o--', color='r')
+    if (len(dates) == len(RAM)):
         pltRAM.plot_date(dates,RAM, fmt='o--', color='b', label='RAM')
+    if (len(dates) == len(CPU)):
         pltCPU.plot_date(dates,CPU, fmt='o--', color='k', label='CPU')
-        
-        host.axis["left"].label.set_color('r')
-        pltRAM.axis["right"].label.set_color('b')
-        pltCPU.axis["right"].label.set_color('k')
-        
-        plt.grid()
-        plt.title('Computer Resource Monitoring', fontsize=18)
-        plt.savefig(outpath)
-
+            
+    host.axis["left"].label.set_color('r')
+    pltRAM.axis["right"].label.set_color('b')
+    pltCPU.axis["right"].label.set_color('k')
+    
+    plt.grid()
+    plt.title('Machine Resource Monitoring on %s'%(servername), fontsize=16)
+    plt.savefig(outpath)
+    
 ## @class monitor_machine_resources
 #  @brief this project produces monitoring plots
 #  @details
@@ -127,13 +136,13 @@ class monitor_machine_resources(ds_project_base):
             logger = pub_logger.get_logger('list_log')
             k = ds_api.ds_reader(pubdb_conn_info.reader_info(),logger)
             k.connect()
-            projects = k.list_daemon_log()
+            project = k.list_daemon_log()
         except:
             self.error('could not get logger')
             return
 
         # if no projects found
-        if not projects:
+        if not project:
             self.info('no projects found...exiting')
             return
             
@@ -141,14 +150,13 @@ class monitor_machine_resources(ds_project_base):
         pubstop = str(os.environ.get('PUB_TOP_DIR'))
 
         ctr = 0
-        for x in projects:
-            #try:
-            plotpath = pubstop+'/'+self._data_dir+'/'+'monitoring_%i.png'%ctr
-            self.info('saving plot to path: %s'%plotpath)
-            plot_resource_usage(x,plotpath)
-            ctr += 1
-            #except:
-            #   self.info('could not produce plot') 
+        #try:
+        plotpath = pubstop+'/'+self._data_dir+'/'+'monitoring_%i.png'%ctr
+        self.info('saving plot to path: %s'%plotpath)
+        plot_resource_usage(project,plotpath)
+        ctr += 1
+        #except:
+        #    self.info('could not produce plot') 
 
         
 
