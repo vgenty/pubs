@@ -68,6 +68,8 @@ class register_new_run(ds_project_base):
             self.error('DATA DIR %s does not exist'%self._data_dir)
             return
 
+        self.info('Looking for data files in: %s'%self._data_dir)
+
         dircontents = os.listdir(self._data_dir)
 
         # create a dictionary to keep track of
@@ -97,6 +99,7 @@ class register_new_run(ds_project_base):
                 # NoiseRun-YYYY_M_DD_HH_MM_SS-RUN-SUBRUN.ubdaq
                 run    = int(f.replace('.ubdaq','').split('-')[-2])
                 subrun = int(f.replace('.ubdaq','').split('-')[-1])
+                self.info('found for run (%i, %i)'%(run,subrun))
 
                 file_info[tuple((run,subrun))] = [f,time_create,time_modify]
 
@@ -117,6 +120,7 @@ class register_new_run(ds_project_base):
 
         # fetch from database the last run/subrun number recorded
         last_recorded_info = (0,0) # get_last_run
+        # KAZU YOUR CODE GOES HERE TO FETCH LAST ENTRY IN DB
 
         # if we made it this far the file info needs to be
         # recorded to the database
@@ -156,6 +160,8 @@ class register_new_run(ds_project_base):
             file_closing  = time.gmtime(int(run_info[2]))
             file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
             file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+
+            self.info('filling death star...')
             # insert into the death start
             rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],
                                                file_creation, file_closing)

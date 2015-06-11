@@ -139,7 +139,7 @@ def evb_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        print "cannot access /proc/stat file..."
+        #print "cannot access /proc/stat file..."
 
 
     return result
