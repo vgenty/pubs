@@ -58,18 +58,39 @@ esac
 case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up PUBS for ubdaq-prod machines...
+#	export KRB5CCNAME=/home/uboonepro/uboonepro_kca_evb_file
+	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
 	setup sam_web_client
 	setup ifdhc v1_8_2 -q e7:p279:prof
         setup postgresql v9_3_6 -q p279
-	setup uboonedaq_datatypes v6_09_02 -q e7:prof
-#        export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
+	setup uboonedaq_datatypes v6_10_03 -q e7:debug
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
+
+	case `uname -n` in
+            (ubdaq-prod-smc*)
+                export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
+                ;;
+            (ubdaq-prod-evb*)
+                export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
+                ;;
+            (ubdaq-prod-near1*)
+                #
+	            # This is not guaranteed to work (Kazu June-02-2015)
+                #
+
+                export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler
+		;;
+	esac
 	;;
+
     (*)
         echo This script should not be used except by uboonepro account on the ubdaq-prod machines!
 	echo Seriously, stop it.
