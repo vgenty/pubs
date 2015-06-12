@@ -1,7 +1,7 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
 
-class PieChartItem(pg.GraphicsObject):
+class PieChartItem(QtGui.QGraphicsObject):
     """
     Class written by kaleko that makes a pie chart item, which inherits from pyqtgraph.GraphicsObject
     so it can be created and plotted. It takes in the x, y coordinates of the center, and the radius.
@@ -11,7 +11,7 @@ class PieChartItem(pg.GraphicsObject):
     """
 
     def __init__(self,data):
-        pg.GraphicsObject.__init__(self)
+        QtGui.QGraphicsObject.__init__(self)
         #Data is in the form of: xcenter, ycenter, radius, [ (slice1frac, slice1 color), (slice2frac, slice2color) ...] 
         self.data = data
         self.generatePicture()
