@@ -61,10 +61,6 @@ case `uname -n` in
 	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
-	setup sam_web_client
-	setup ifdhc v1_8_2 -q e7:p279:prof
-        setup postgresql v9_3_6 -q p279
-	setup uboonedaq_datatypes v6_10_03 -q e7:debug
 	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
 	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
@@ -72,10 +68,13 @@ case `uname -n` in
 
 	case `uname -n` in
             (ubdaq-prod-smc*)
+		setup postgresql v9_3_6 -q p279
                 export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
                 ;;
             (ubdaq-prod-evb*)
+	        setup sam_web_client
+		setup postgresql v9_3_6 -q p279
                 export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
 		export KRB5CCNAME=FILE:/tmp/krb5cc_uboonepro_evb
@@ -84,7 +83,10 @@ case `uname -n` in
                 #
 	            # This is not guaranteed to work (Kazu June-02-2015)
                 #
-
+	        setup sam_web_client
+		setup ifdhc v1_8_2 -q e7:p279:prof
+		setup uboonedaq_datatypes v6_10_03 -q e7:debug
+		setup uboonecode v04_08_00 -q debug:e7
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler
 		;;

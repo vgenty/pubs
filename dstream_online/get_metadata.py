@@ -284,8 +284,8 @@ class get_metadata( ds_project_base ):
                     if "daq_version_label=" in line:
                         self._jver = line.split('=')[-1]
             else:
-                status = 4
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is  ' + proc.returncode + '.')
+                status = 100
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
 
             # print "Load first event in file."
             cmd = "dumpEventHeaders " + in_file + " 1 "
@@ -299,10 +299,10 @@ class get_metadata( ds_project_base ):
                         self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
             
             else:
-                status = 4
-                self.error('Return status from dumpEventHeaders for first event is not successful. It is  ' + proc.returncode + '.')
+                status = 100
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
 
-            if status != 4:
+            if status != 100:
                 status = 3
                 self.info('Successfully extract metadata from the ubdaq file.')
 
@@ -342,7 +342,7 @@ if __name__ == '__main__':
 
     test_obj.process_newruns()
 
-    test_obj.error_handle()
+#    test_obj.error_handle()
 
     test_obj.validate()
 
