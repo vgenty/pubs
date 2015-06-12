@@ -42,3 +42,5 @@ class PieChartItem(pg.GraphicsObject):
         toplefty = self.data[1]-radius
         return QtCore.QRectF(topleftx,toplefty,2*radius,2*radius)
 
+    def getCenterPoint(self):
+        return (self.data[0],self.data[1])
