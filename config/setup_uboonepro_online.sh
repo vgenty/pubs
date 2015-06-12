@@ -58,7 +58,6 @@ esac
 case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up PUBS for ubdaq-prod machines...
-#	export KRB5CCNAME=/home/uboonepro/uboonepro_kca_evb_file
 	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
@@ -79,6 +78,7 @@ case `uname -n` in
             (ubdaq-prod-evb*)
                 export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
+		export KRB5CCNAME=FILE:/tmp/krb5cc_uboonepro_evb
                 ;;
             (ubdaq-prod-near1*)
                 #
