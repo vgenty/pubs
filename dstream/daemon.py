@@ -141,7 +141,7 @@ class proc_daemon(ds_base):
             log = self._logger_func()
             if not type(log) == type(dict()):
                 raise ValueError
-        except Exception as e:
+        except ValueError as e:
             self.error('Attached logger function is incompatible!')
             return False
         return True
