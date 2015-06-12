@@ -127,7 +127,6 @@ def update_gui():
                 idata = (ix, iy, computePieChartRadius(tot_n), [ (1., 'r') ])
 
         #Make the replacement piechart
-        print "making piechart with radius = %f"%idata[2]
         ichart = PieChartItem(idata)
 
         #Remove the old item from the scene
@@ -150,16 +149,12 @@ def update_gui():
         scene.addItem(mytext)
 
 def computePieChartRadius(n_total_runsubruns):
-    print "n input is %d" % n_total_runsubruns
     max_radius = cell_halfwidth if cell_halfwidth < cell_halfheight else cell_halfheight
     max_runsubruns = 8000
     #Right now use radius = max_radius(1-exp(nruns/constant))
-    #where constant is max_runsbruns/25 (25 chosen arbitrarily)
-    radius = float(max_radius) * ( 1 - math.exp(-float(n_total_runsubruns)/float(max_runsubruns/25)) )
+    #where constant is max_runsbruns/5 (5 chosen arbitrarily)
+    radius = float(max_radius) * ( 1 - math.exp(-float(n_total_runsubruns)/float(max_runsubruns/5)) )
     #Double check the radius isn't bigger than the max allowed
-    print "computed radius is"
-    print radius if radius <= max_radius else max_radius
-    print "max radius is %f" % max_radius
     return radius if radius <= max_radius else max_radius
 
 #Initial drawing of GUI with real values
