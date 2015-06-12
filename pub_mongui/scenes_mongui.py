@@ -121,9 +121,9 @@ def update_gui():
             #Set the new data that will be used to make a new pie chart
             #If the project is disabled, make a filled-in red circle
             if iproj._enable == True:
-                idata = (ix, iy, cell_halfwidth, [ (frac_1, 'b'), (frac_2, 'g') ] )
+                idata = (ix, iy, computePieChartRadius(tot_n), [ (frac_1, 'b'), (frac_2, 'g') ] )
             else:
-                idata = (ix, iy, cell_halfwidth, [ (1., 'r') ])
+                idata = (ix, iy, computePieChartRadius(tot_n), [ (1., 'r') ])
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
@@ -139,7 +139,7 @@ def update_gui():
 
         #Re-draw the text on top of the pie chart with the project name
         mytext = QtGui.QGraphicsTextItem()
-        mytext.setPos(ix-cell_halfwidth,iy-0.5*cell_halfheight)
+        mytext.setPos(ix-cell_halfwidth,iy-cell_halfheight)
         mytext.setPlainText(iproj._project)
         mytext.setTextWidth(cell_width)
         myfont = QtGui.QFont()
@@ -153,6 +153,11 @@ timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
 timer.start(1000) #once per second, update the plots
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+def computePieChartRadius(n_total_runsubruns):
+    max_radius = cell_halfwidth if cell_halfwidth < cell_halfheight else cell_halfheight
+    radius = (float(n_total_runsubruns)/200.)*cell_halfwidth
+    return radius if radius <= max_radius else max_radius
 
 if __name__ == '__main__':
     import sys
