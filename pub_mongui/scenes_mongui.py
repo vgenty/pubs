@@ -38,7 +38,7 @@ QtCore.qInstallMsgHandler(lambda *args: None)
 #Maybe make custom piechart return QGraphicsView (which is a widget)
 
 #I think these are positions on the screen in which the window appears
-scene_xmin, scene_ymin, scene_xmax, scene_ymax = 100, 100, 1000, 1000
+scene_xmin, scene_ymin, scene_xmax, scene_ymax = 100, 100, 800, 800
 #Assume 5x5 grid of projects
 cell_width, cell_height = float(scene_xmax-scene_xmin)/float(5),float(scene_ymax-scene_ymin)/float(5)
 cell_halfwidth, cell_halfheight = float(cell_width/2), float(cell_height/2)
@@ -49,6 +49,7 @@ app = QtGui.QApplication([])
 scene = QtGui.QGraphicsScene(scene_xmin,scene_ymin,scene_xmax-scene_xmin,scene_ymax-scene_ymin)
 #print "scene xmin, ymin, width, height = (%f,%f,%f,%f)"%(scene_xmin,scene_ymin,scene_xmax-scene_xmin,scene_ymax-scene_ymin)
 view = QtGui.QGraphicsView(scene)
+view.resize(scene_xmax-scene_xmin,scene_ymax-scene_ymin)
 view.show()
 
 #Get a list of all projects from the DBI
@@ -76,9 +77,9 @@ for iproj in projects:
     #Store the piechart in a dictionary to modify it later, based on project name
     proj_dict[iproj._project] = ichart
 
-    #Add a legend to the bottom right
+    #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(scene_xmin+0.75*(scene_xmax-scene_xmin),scene_ymin+0.75*(scene_ymax-scene_ymin))
+    mytext.setPos(scene_xmin+0.80*(scene_xmax-scene_xmin),scene_ymax-cell_halfheight)
     mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2\nRed: Project Disabled')
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
