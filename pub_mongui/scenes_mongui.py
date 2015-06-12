@@ -1,4 +1,8 @@
-from pyqtgraph.Qt import QtGui, QtCore
+try:
+    from pyqtgraph.Qt import QtGui, QtCore
+except ImportError:
+    raise ImportError('Ruh roh. You need to set up pyqtgraph before you can use this GUI.')
+
 import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 # catch ctrl+C to terminate the program
@@ -66,10 +70,19 @@ for iproj in projects:
 
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
-
+  
     #Store the piechart in a dictionary to modify it later, based on project name
     proj_dict[iproj._project] = ichart
 
+    #Add a legend to the bottom right
+    mytext = QtGui.QGraphicsTextItem()
+    mytext.setPos(scene_xmin+0.75*(scene_xmax-scene_xmin),scene_ymin+0.75*(scene_ymax-scene_ymin))
+    mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2')
+    myfont = QtGui.QFont()
+    myfont.setPointSize(10)
+    mytext.setFont(myfont)
+    scene.addItem(mytext)
+    
     colcount += 1
     if colcount == ncols: 
         colcount = 0
@@ -87,23 +100,30 @@ def update_gui():
         #First store the piechart x,y coordinate to re-draw it in the same place later
         ix, iy = proj_dict[iproj._project].getCenterPoint()
 
-        #Get the number of runs with status 0 from project through the DBI
-        n_status0 = len(dbi.get_runs(iproj._project,status=0))
-        
-        #Get the number of runs with status 1 from project through DBI
+        #Status codes: 0 is completed (don't care about these) 1 is initiated, 2 is to be validated, >2 is error?
+        #Get the number of runs with status 1 from project through the DBI
         n_status1 = len(dbi.get_runs(iproj._project,status=1))
+        
+        #Get the number of runs with status 2 from project through DBI
+        n_status2 = len(dbi.get_runs(iproj._project,status=2))
 
-        #Compute the fraction of the total runs that are complete
-        frac_0 = float(n_status0)/(float(n_status0 + n_status1))
-        frac_1 = float(n_status1)/(float(n_status0 + n_status1))
+        tot_n = n_status1+n_status2;
 
-
-        #Set the new data that will be used to make a new pie chart
-        #If the project is disabled, make a filled-in red circle
-        if iproj._enable == True:
-            idata = (ix, iy, cell_halfwidth, [ (frac_0, 'b'), (frac_1, 'g') ] )
+        #If no runs have status 1 or 2, set pie chart radius to 0 (invisible)
+        if not tot_n:
+            idata = (ix, iy, 0., [ (1., 'r') ])
         else:
-            idata = (ix, iy, cell_halfwidth, [ (1., 'r') ])
+                     
+            #Compute the fraction of the total runs that are complete
+            frac_1 = float(n_status1)/float(tot_n)
+            frac_2 = float(n_status2)/float(tot_n)
+
+            #Set the new data that will be used to make a new pie chart
+            #If the project is disabled, make a filled-in red circle
+            if iproj._enable == True:
+                idata = (ix, iy, cell_halfwidth, [ (frac_1, 'b'), (frac_2, 'g') ] )
+            else:
+                idata = (ix, iy, cell_halfwidth, [ (1., 'r') ])
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
@@ -116,6 +136,17 @@ def update_gui():
 
         #Save the new pie chart in the dictionary, overwriting the old
         proj_dict[iproj._project] = ichart
+
+        #Re-draw the text on top of the pie chart with the project name
+        mytext = QtGui.QGraphicsTextItem()
+        mytext.setPos(ix-cell_halfwidth,iy-0.5*cell_halfheight)
+        mytext.setPlainText(iproj._project)
+        mytext.setTextWidth(cell_width)
+        myfont = QtGui.QFont()
+        myfont.setPointSize(10)
+        mytext.setFont(myfont)
+        scene.addItem(mytext)
+
 
 
 timer = QtCore.QTimer()
