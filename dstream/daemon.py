@@ -102,7 +102,7 @@ class proc_daemon(ds_base):
         self._creation_ts = time.time()
 
         ## API for proc_daemon is ds_master to interact with ProcessTable
-        self._api = ds_master(pubdb_conn_info.writer_info(),logger=self._logger)
+        self._api = ds_master(pubdb_conn_info.admin_info(),logger=self._logger)
 
         ## Array of proc_action instance (one per project)
         self._project_v  = {}
