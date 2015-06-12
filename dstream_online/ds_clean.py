@@ -101,7 +101,7 @@ class ds_clean(ds_project_base):
             else:
                 self.info('Looks like the file is local on this node')
                 list_of_files = glob.glob(in_file)
-                if list_of_files.amount() > 1:
+                if len(list_of_files) > 1:
                     self.info('More than one file matched the pattern')
                     multiple_file_status=200
                 if os.path.isfile(list_of_files[0]):
