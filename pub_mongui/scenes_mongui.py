@@ -15,6 +15,8 @@ from dstream.ds_api import ds_reader
 from pub_dbi import pubdb_conn_info
 
 
+_update_period = 10#in seconds
+
 # DB interface:
 global dbi
 dbi = ds_reader(pubdb_conn_info.reader_info())
@@ -36,7 +38,7 @@ QtCore.qInstallMsgHandler(lambda *args: None)
 #Maybe make custom piechart return QGraphicsView (which is a widget)
 
 #I think these are positions on the screen in which the window appears
-scene_xmin, scene_ymin, scene_xmax, scene_ymax = 100, 100, 500, 500
+scene_xmin, scene_ymin, scene_xmax, scene_ymax = 100, 100, 1000, 1000
 #Assume 5x5 grid of projects
 cell_width, cell_height = float(scene_xmax-scene_xmin)/float(5),float(scene_ymax-scene_ymin)/float(5)
 cell_halfwidth, cell_halfheight = float(cell_width/2), float(cell_height/2)
@@ -77,7 +79,7 @@ for iproj in projects:
     #Add a legend to the bottom right
     mytext = QtGui.QGraphicsTextItem()
     mytext.setPos(scene_xmin+0.75*(scene_xmax-scene_xmin),scene_ymin+0.75*(scene_ymax-scene_ymin))
-    mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2')
+    mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2\nRed: Project Disabled')
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
     mytext.setFont(myfont)
@@ -151,7 +153,7 @@ def update_gui():
 
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
-timer.start(1000) #once per second, update the plots
+timer.start(_update_period*1000.) #Frequency with which to update plots, in milliseconds
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 def computePieChartRadius(n_total_runsubruns):
