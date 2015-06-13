@@ -58,6 +58,7 @@ esac
 case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up PUBS for ubdaq-prod machines...
+	export SSL_CERT_DIR=/etc/grid-security/certificates
 	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
