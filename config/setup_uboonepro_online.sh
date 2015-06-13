@@ -58,6 +58,10 @@ esac
 case `uname -n` in
     (*ubdaq-prod*)
 	echo Setting up PUBS for ubdaq-prod machines...
+#The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
+#mismatch between the version of python SSL authentication and sam_web_client. If the project
+#reg_binary_to_sam gives error 102 it is likely SSL problems in samweb.declareFile and may
+#require an update to this setting.
 	export SSL_CERT_DIR=/etc/grid-security/certificates
 	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
