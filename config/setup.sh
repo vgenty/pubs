@@ -63,6 +63,7 @@ case `uname -n` in
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
+	export SSL_CERT_DIR=/etc/grid-security/certificates
         source /uboonenew/setup_online.sh
 	source $PUB_TOP_DIR/config/ubdaq_conf.sh
 	setup git
