@@ -57,6 +57,9 @@ view = QtGui.QGraphicsView(scene)
 view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
 
+#For now, zoom out a little bit so it can fit on my screen ...
+view.scale(0.8,0.8)
+
 #Get a list of all projects from the DBI
 projects = dbi.list_all_projects() # [project, command, server, sleepafter .... , enabled, resource]
 
@@ -75,6 +78,7 @@ for iproj in projects:
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
     xloc, yloc, maxradius = template_params[iproj._project]
+    xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
     ichart = PieChartItem((scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
 
     #Add the piecharts to the scene (piechart location is stored in piechart object)
@@ -85,18 +89,14 @@ for iproj in projects:
 
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(scene_xmin+0.80*scene_width,scene_height)
+    mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
     mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2\nRed: Project Disabled')
+    mytext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
     mytext.setFont(myfont)
     scene.addItem(mytext)
     
-    colcount += 1
-    if colcount == ncols: 
-        colcount = 0
-        rowcount += 1
-
 def update_gui():
 
     #Get a list of all projects from the DBI
@@ -105,6 +105,12 @@ def update_gui():
     projects = dbi.list_all_projects() # [project, command, server, sleepafter .... , enabled, resource]
 
     for iproj in projects:
+
+        #If this project isn't in the dictionary (I.E. it wasn't ever drawn on the GUI),
+        #then skip it. This can be fixed by adding the project to the GUI params
+        if iproj._project not in proj_dict.keys():
+            continue
+
         #First store the piechart x,y coordinate to re-draw it in the same place later
         ix, iy = proj_dict[iproj._project].getCenterPoint()
 
@@ -145,18 +151,21 @@ def update_gui():
         #Save the new pie chart in the dictionary, overwriting the old
         proj_dict[iproj._project] = ichart
 
+        #On top of the pie chart, write the number of run/subruns
         #Re-draw the text on top of the pie chart with the project name
         mytext = QtGui.QGraphicsTextItem()
-        mytext.setPos(ix-cell_halfwidth,iy-cell_halfheight)
-        mytext.setPlainText(iproj._project)
-        mytext.setTextWidth(cell_width)
+        mytext.setPos(ix,iy)
+        mytext.setPlainText(str(tot_n)+'\nRun/Subruns')
+        mytext.setDefaultTextColor(QtGui.QColor('white'))
+        #mytext.setTextWidth(50)
         myfont = QtGui.QFont()
+        myfont.setBold(True)
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
 
 def computePieChartRadius(n_total_runsubruns):
-    max_radius = cell_halfwidth if cell_halfwidth < cell_halfheight else cell_halfheight
+    max_radius = float(template_params[iproj._project][2])
     max_runsubruns = 8000
     #Right now use radius = max_radius(1-exp(nruns/constant))
     #where constant is max_runsbruns/5 (5 chosen arbitrarily)
