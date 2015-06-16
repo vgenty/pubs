@@ -12,8 +12,9 @@ class PieChartItem(QtGui.QGraphicsObject):
 
     def __init__(self,data):
         QtGui.QGraphicsObject.__init__(self)
-        #Data is in the form of: xcenter, ycenter, radius, [ (slice1frac, slice1 color), (slice2frac, slice2color) ...] 
+        #Data is in the form of: xcenter, ycenter, radius, [ (slice1frac, slice1 color), (slice2frac, slice2color) ...]
         self.data = data
+        self.descript = ''
         self.generatePicture()
 
     def generatePicture(self):
@@ -29,7 +30,9 @@ class PieChartItem(QtGui.QGraphicsObject):
             p.setBrush(pg.mkBrush(mycolor))
             p.drawPie(self.boundingRect(),start_angle,int(myfrac*360*16))
             start_angle += int(myfrac*360*16)
+
         p.end()    
+
     def paint(self, p, *args):
         p.drawPicture(0,0,self.picture)
     
@@ -44,3 +47,12 @@ class PieChartItem(QtGui.QGraphicsObject):
 
     def getCenterPoint(self):
         return (self.data[0],self.data[1])
+
+    def mousePressEvent(self, event):
+        pass
+        
+    def setDescript(self, descript):
+        self.descript = descript
+
+    def getDescript(self):
+        return self.descript
