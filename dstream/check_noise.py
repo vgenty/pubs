@@ -27,10 +27,14 @@ class check_noise(ds_project_base):
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self,nruns=None):
 
-
-        print "called constructor"
         # Call base class ctor
         super(check_noise,self).__init__()
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         self._nruns = None
         self._in_dir = ''   # where to find the data! data! data! me wants data!
@@ -106,16 +110,16 @@ class check_noise(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        #for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
-        runs_to_do = self.get_runs(self._project,1)
-        self.info('Runs to go through: %i'%ctr)
-        for x in xrange(ctr):
+        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
+            #runs_to_do = self.get_runs(self._project,1)
+            #self.info('Runs to go through: %i'%ctr)
+            #for x in xrange(ctr):
 
             # Counter decreases by 1
             ctr -=1
 
-            #(run, subrun) = (int(x[0]), int(x[1]))
-            (run, subrun) = ( 305, ctr)
+            (run, subrun) = (int(x[0]), int(x[1]))
+            #(run, subrun) = ( 305, ctr)
 
             # Report starting
             self.info('preparing noisy channel list: run=%d, subrun=%d ...' % (run,subrun))
@@ -168,18 +172,19 @@ class check_noise(ds_project_base):
         # go over runs again and assign to all of
         # them the status code received by running
         # the bash script
-        runs_to_do = self.get_runs(self._project,1)
-        ctr = self._nruns
-        for x in xrange(ctr):
+        #runs_to_do = self.get_runs(self._project,1)
+        #ctr = self._nruns
+        #for x in xrange(ctr):
+        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
 
-            #(run, subrun) = (int(x[0]), int(x[1]))
-            (run, subrun) = ( 305, ctr)
+            (run, subrun) = (int(x[0]), int(x[1]))
+            #(run, subrun) = ( 305, ctr)
             status = ds_status( project = self._project,
                                 run     = run,
                                 subrun  = subrun,
-                                seq     = 0,#int(x[2]),
+                                seq     = int(x[2]),
                                 status  = statusCode )
-            #self.log_status(status)
+            self.log_status(status)
 
             
 

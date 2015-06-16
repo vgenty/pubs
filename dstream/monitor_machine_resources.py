@@ -18,6 +18,8 @@ from dstream import ds_api
 def plot_resource_usage(proj,outpath):
 
     try:
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         import matplotlib.dates as dts
         from mpl_toolkits.axes_grid1 import host_subplot
