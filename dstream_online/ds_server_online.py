@@ -83,6 +83,8 @@ def near1_logger():
     result['RAM_PERCENT'] = RAMpercent
     '''
 
+    print "**** RESULT IS %i in LENGTH ****"%len(result)
+
     return result
 
 def evb_handler():
@@ -189,7 +191,7 @@ def smc_logger():
     
 
     statpath = '/proc/stat'
-    if (os.isfile(statpath)):
+    if (os.path.isfile(statpath)):
         CPUpercent = getCPUusage(statpath)
         result['CPU_PERCENT'] = CPUpercent
     else:
