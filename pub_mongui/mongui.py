@@ -166,10 +166,10 @@ def update_gui():
 
 def computePieChartRadius(n_total_runsubruns):
     max_radius = float(template_params[iproj._project][2])
-    max_runsubruns = 8000
-    #Right now use radius = max_radius(1-exp(nruns/constant))
-    #where constant is max_runsbruns/5 (5 chosen arbitrarily)
-    radius = float(max_radius) * ( 1 - math.exp(-float(n_total_runsubruns)/float(max_runsubruns/5)) )
+    #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
+    #unless radius > Rmax, in which case use radius = Rmax
+    #This function has r = 0.5*Rmax when n = 5
+    radius = (float(max_radius)/(2*math.log(5.))) * log(float(n_total_runsubruns))
     #Double check the radius isn't bigger than the max allowed
     return radius if radius <= max_radius else max_radius
 
