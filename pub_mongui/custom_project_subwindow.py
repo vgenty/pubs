@@ -28,3 +28,6 @@ class CustomProjectSubwindow():
         self.p1.setLabel('top','Sample plot (TBD): Project %s'%project_name)
         self.data1 = np.random.normal(size=300)
         self.curve1 = self.p1.plot(self.data1)
+
+    def __del__(self):
+        pass

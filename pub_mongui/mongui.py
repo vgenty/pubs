@@ -73,20 +73,22 @@ template_params = getParams(my_template)
 
 for iproj in projects:
 
-    if iproj._project not in template_params:
-        print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iproj._project
+    iprojname = iproj._project
+
+    if iprojname not in template_params:
+        print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
         continue    
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
-    xloc, yloc, maxradius = template_params[iproj._project]
+    xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
-    ichart = PieChartItem((iproj._project,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
+    ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
 
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
   
     #Store the piechart in a dictionary to modify it later, based on project name
-    proj_dict[iproj._project] = ichart
+    proj_dict[iprojname] = ichart
 
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
@@ -107,26 +109,28 @@ def update_gui():
 
     for iproj in projects:
 
+        iprojname = iproj._project
+
         #If this project isn't in the dictionary (I.E. it wasn't ever drawn on the GUI),
         #then skip it. This can be fixed by adding the project to the GUI params
-        if iproj._project not in proj_dict.keys():
+        if iprojname not in proj_dict.keys():
             continue
 
         #First store the piechart x,y coordinate to re-draw it in the same place later
-        ix, iy = proj_dict[iproj._project].getCenterPoint()
+        ix, iy = proj_dict[iprojname].getCenterPoint()
 
         #Status codes: 0 is completed (don't care about these) 1 is initiated, 2 is to be validated, >2 is error?
         #Get the number of runs with status 1 from project through the DBI
-        n_status1 = len(dbi.get_runs(iproj._project,status=1))
+        n_status1 = len(dbi.get_runs(iprojname,status=1))
         
         #Get the number of runs with status 2 from project through DBI
-        n_status2 = len(dbi.get_runs(iproj._project,status=2))
+        n_status2 = len(dbi.get_runs(iprojname,status=2))
 
         tot_n = n_status1+n_status2;
 
         #If no runs have status 1 or 2, set pie chart radius to 0 (invisible)
         if not tot_n:
-            idata = (ix, iy, 0., [ (1., 'r') ])
+            idata = (iprojname, ix, iy, 0., [ (1., 'r') ])
         else:
                      
             #Compute the fraction of the total runs that are complete
@@ -136,21 +140,21 @@ def update_gui():
             #Set the new data that will be used to make a new pie chart
             #If the project is disabled, make a filled-in red circle
             if iproj._enable == True:
-                idata = (ix, iy, computePieChartRadius(tot_n), [ (frac_1, 'b'), (frac_2, 'g') ] )
+                idata = (iprojname, ix, iy, computePieChartRadius(iprojname, tot_n), [ (frac_1, 'b'), (frac_2, 'g') ] )
             else:
-                idata = (ix, iy, computePieChartRadius(tot_n), [ (1., 'r') ])
+                idata = (iprojname, ix, iy, computePieChartRadius(iprojname, tot_n), [ (1., 'r') ])
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
 
         #Remove the old item from the scene
-        scene.removeItem(proj_dict[iproj._project])
+        scene.removeItem(proj_dict[iprojname])
 
         #Draw the new piechart in the place of the old one
         scene.addItem(ichart)
 
         #Save the new pie chart in the dictionary, overwriting the old
-        proj_dict[iproj._project] = ichart
+        proj_dict[iprojname] = ichart
 
         #On top of the pie chart, write the number of run/subruns
         #Re-draw the text on top of the pie chart with the project name
@@ -165,12 +169,12 @@ def update_gui():
         mytext.setFont(myfont)
         scene.addItem(mytext)
 
-def computePieChartRadius(n_total_runsubruns):
-    max_radius = float(template_params[iproj._project][2])
+def computePieChartRadius(proj_name, n_total_runsubruns):
+    max_radius = float(template_params[proj_name][2])
     #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
     #unless radius > Rmax, in which case use radius = Rmax
     #This function has r = 0.5*Rmax when n = 5
-    radius = (float(max_radius)/(2*math.log(5.))) * log(float(n_total_runsubruns))
+    radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(n_total_runsubruns))
     #Double check the radius isn't bigger than the max allowed
     return radius if radius <= max_radius else max_radius
 
@@ -181,9 +185,6 @@ update_gui()
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
 timer.start(_update_period*1000.) #Frequency with which to update plots, in milliseconds
-
-#This calls my custom implementation of mousePressEvent
-scene.mousePressEvent(QtGui.QGraphicsSceneMouseEvent())
 
 #Catch ctrl+C to close things
 signal.signal(signal.SIGINT, signal.SIG_DFL)
