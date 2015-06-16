@@ -5,6 +5,7 @@ except ImportError:
 
 import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
+from custom_qgraphicsscene import CustomQGraphicsScene
 # catch ctrl+C to terminate the program
 import signal
 # exponential in piechart radius calculation
@@ -45,7 +46,7 @@ pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+my_temp
 scene_xmin, scene_ymin, scene_width, scene_height = 0, 0, pm.width(), pm.height()
 
 #Make the scene the correct size
-scene = QtGui.QGraphicsScene(scene_xmin,scene_ymin,scene_width,scene_height)
+scene = CustomQGraphicsScene(scene_xmin,scene_ymin,scene_width,scene_height)
 #Add the background pixmap to the scene
 mypm = scene.addPixmap(pm)
 #Set the background so it's upper-left corner matches upper-left corner of scene
@@ -79,7 +80,7 @@ for iproj in projects:
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
     xloc, yloc, maxradius = template_params[iproj._project]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
-    ichart = PieChartItem((scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
+    ichart = PieChartItem((iproj._project,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
 
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
@@ -180,6 +181,11 @@ update_gui()
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
 timer.start(_update_period*1000.) #Frequency with which to update plots, in milliseconds
+
+#This calls my custom implementation of mousePressEvent
+scene.mousePressEvent(QtGui.QGraphicsSceneMouseEvent())
+
+#Catch ctrl+C to close things
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
