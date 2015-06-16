@@ -32,9 +32,6 @@ view = QtGui.QGraphicsView(scene)
 view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
 
-#This calls my custom implementation of mousePressEvent
-scene.mousePressEvent(QtGui.QGraphicsSceneMouseEvent())
-
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
