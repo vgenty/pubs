@@ -66,8 +66,6 @@ case `uname -n` in
 	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
 	source /uboone_offline/setup
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
-	export PUB_DAEMON_LOG_MODULE=ds_server_log.ubdaq_logger_smc
-	export PUB_DAEMON_HANDLER_MODULE=ds_server_log.ubdaq_handler_smc
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 
