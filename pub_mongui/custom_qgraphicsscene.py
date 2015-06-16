@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
+from custom_project_subwindow import CustomProjectSubwindow
 
 class CustomQGraphicsScene(QtGui.QGraphicsScene):
     """
@@ -18,5 +19,5 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
         item_clicked = self.itemAt(event.scenePos())
         if item_clicked is not None:
             if item_clicked.__module__ == 'custom_piechart_class':
-                print "piechart descript = %s"%self.itemAt(event.scenePos()).getDescript()
+                win = CustomProjectSubwindow(project_name=item_clicked.getName(),project_description=item_clicked.getDescript())
 
