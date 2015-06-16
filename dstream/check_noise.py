@@ -14,6 +14,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+import sys
 
 ## @class check_noise
 #  @brief check noise on newly created binary file
@@ -25,10 +26,10 @@ class check_noise(ds_project_base):
     _project = 'check_noise'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self,nruns=None):
+    def __init__( self, arg = ''):
 
         # Call base class ctor
-        super(check_noise,self).__init__()
+        super(check_noise,self).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -182,7 +183,7 @@ class check_noise(ds_project_base):
             status = ds_status( project = self._project,
                                 run     = run,
                                 subrun  = subrun,
-                                seq     = int(x[2]),
+                                seq     = 0,
                                 status  = statusCode )
             self.log_status(status)
 
@@ -191,7 +192,9 @@ class check_noise(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = check_noise()
+    proj_name = sys.argv[1]
+
+    test_obj = check_noise( proj_name )
 
     test_obj.process_newruns()
 
