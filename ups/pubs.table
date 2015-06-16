@@ -1,0 +1,12 @@
+File       = Table
+Product    = pubs
+#
+#---------------------
+Flavor     = ANY
+Qualifiers = ""
+
+Action = setup
+  prodDir()
+  setupEnv()
+  envSet(PUB_TOP_DIR, ${UPS_PROD_DIR})
+  sourceRequired(${PUB_TOP_DIR}/config/setup.${UPS_SHELL}, NO_UPS_ENV)

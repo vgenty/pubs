@@ -5,7 +5,10 @@ from get_machine_info import getRAMusage, getCPUusage, getDISKusage
 import os
 
 def dummy_logger():
+
     result = {}
+
+    '''
     dt = pub_watch.time('dummy_logger')
     if not dt:
         pub_watch.start('dummy_logger')
@@ -18,7 +21,7 @@ def dummy_logger():
     for l in lines:
         words=l.split(None)
         result[words[-1]] = float(words[1])/float(words[0])
-
+    '''
     # check disk usage:
     
     homedir = '/home'

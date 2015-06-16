@@ -144,8 +144,8 @@ If this does not throw an error message, you're good. One further test you can d
   >>> host = 'localhost'
   >>> user = os.environ['USER']
   >>> db   = 'procdb'
-  >>> pass = ''
-  >>> psycopg2.connect(host=host,user=user,database=db,password=pass)
+  >>> passwd = ''
+  >>> psycopg2.connect(host=host,user=user,database=db,password=passwd)
 \end{lstlisting}
 If this does not throw an error message, you're beautiful. This means your local {\psycopg}
 library is correctly linked against your {\psql}.

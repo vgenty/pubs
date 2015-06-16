@@ -85,8 +85,9 @@ class ds_clean(ds_project_base):
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
-            status = 1
-            
+            tmp_status = 1
+            multiple_file_status=0
+
             # Check input file exists. Otherwise report error
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Removing %s'%in_file)
@@ -95,22 +96,30 @@ class ds_clean(ds_project_base):
                 #check that out_file is a file before trying to remove 
                 #(hopefully should avoid unintentional rm with bad out_dir/name_pattern combo)
                 if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                    os.system('ssh -x %s "rm %s"' % tuple(in_file.split(":")))
-                    status=2
+                    rm_status=os.system('ssh -x %s "rm %s"' % tuple(in_file.split(":")))
+                    tmp_status=2
             else:
                 self.info('Looks like the file is local on this node')
                 list_of_files = glob.glob(in_file)
+                if len(list_of_files) > 1:
+                    self.info('More than one file matched the pattern')
+                    multiple_file_status=200
                 if os.path.isfile(list_of_files[0]):
                     self.info('Going to remove the file with rm...')
-                    os.system('rm %s' % list_of_files[0])
-                    status=2
+                    rm_status=os.system('rm %s' % list_of_files[0])
+                    tmp_status=2
 
+            if rm_status==0:
+                tmp_status=tmp_status + multiple_file_status
+            else:
+                self.info('Failed to remove the file %s' % list_of_files[0])
+                tmp_status=4
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
                                 seq     = 0,
-                                status  = status )
+                                status  = tmp_status )
             
             # Log status
             self.log_status( status )
@@ -142,15 +151,15 @@ class ds_clean(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Check if file %s was deleted.' % in_file)
 
-            status=0
+            tmp_status=0
             if ":" in in_file:
                 if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                    status=100
+                    tmp_status=100
             else:
                 if os.path.isfile(in_file):
-                    status=100
+                    tmp_status=100
 
-            if (status==100):
+            if (tmp_status==100):
                 self.error('Failed to remove %s'%in_file)
 
             # Create a status object to be logged to DB (if necessary)
@@ -158,7 +167,7 @@ class ds_clean(ds_project_base):
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
                                 seq     = int(x[2]),
-                                status  = status )
+                                status  = tmp_status )
             
             # Log status
             self.log_status( status )
@@ -191,14 +200,14 @@ class ds_clean(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Will try removing %s again later.' % (in_file))
 
-            status = 1
+            tmp_status = 1
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
                                 seq     = 0,
-                                status  = status )
+                                status  = tmp_status )
             
             # Log status
             self.log_status( status )

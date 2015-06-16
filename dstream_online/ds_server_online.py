@@ -1,6 +1,6 @@
 import commands,os
 #import psutil
-from get_machine_info import getRAMusage, getCPUusage
+from get_machine_info import getRAMusage, getCPUusage, getDISKusage
 
 def ubdaq_logger_smc():
     lines = [x for x in commands.getoutput('df').split('\n') if len(x.split())==5]
@@ -60,7 +60,7 @@ def near1_logger():
     
 
     statpath = '/proc/stat'
-    if (os.isfile(statpath)):
+    if (os.path.isfile(statpath)):
         CPUpercent = getCPUusage(statpath)
         result['CPU_PERCENT'] = CPUpercent
     else:
@@ -134,16 +134,15 @@ def evb_logger():
     
 
     statpath = '/proc/stat'
-    if (os.isfile(statpath)):
+    if (os.path.isfile(statpath)):
         CPUpercent = getCPUusage(statpath)
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
         print "cannot access /proc/stat file..."
 
-
+    print result
     return result
-
 
 def smc_handler():
     return (True,'')

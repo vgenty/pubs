@@ -16,8 +16,8 @@ import datetime, json
 import samweb_cli
 import samweb_client.utility
 import extractor_dict
-import subprocess
 
+gSystem.Load("libudata_types.so")
 
 ## @Class dstream_online.get_metadata
 #  @brief Get metadata from a binary or a swizzled file
@@ -58,8 +58,6 @@ class get_metadata( ds_project_base ):
         self._jensec = 0
         self._jeevt = -12
         self._jsevt = -12
-        self._jver = -12
-        self._pubsver = "untagged" # once PUBS is ups-ified, grab its version and shove that here?
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -257,54 +255,42 @@ class get_metadata( ds_project_base ):
             # Break from loop if counter became 0
             if not ctr: break
 
+# Any effort to read a 2nd evt brings a system error, without all garbage collecting below and re-instantiating DaqFile(). 
+# Further, any effort -- sometimes -- to construct a second Integral object and/or run integrate() a 2nd time does the same. 
     ## @brief Get the metadata from a .ubdaq file
     def get_ubdaq_metadata( self, in_file, run, subrun ):
 
         try:
-            ''' 
-            Replace  all the former code that used pythonized C++ objects with a call to uboonedaq_datatypes binary
-            dumpEventHeaders and pull the needed values from stdout.
-            '''
-
-            status = 1
-            #print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
-            cmd = "dumpEventHeaders " + in_file + " 1000000 "
-            proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            (out,err) = proc.communicate() # blocks till done.
-            if not proc.returncode:
-                for line in out.split('\n'):
-                    if "run_number=" in line and "subrun" not in line :
-                        self._jrun = int(line.split('=')[-1])
-                    if "subrun_number=" in line:
-                        self._jsubrun = int(line.split('=')[-1])
-                    if "event_number=" in line:
-                        self._jeevt = int(line.split('=')[-1])
-                    if "Localhost Time: (sec,usec)" in line:
-                        self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-                    if "daq_version_label=" in line:
-                        self._jver = line.split('=')[-1]
-            else:
-                status = 100
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
-
+            d = DaqFile(in_file)
+            e = d.GetEventObj(d.NumEvents()-1)
+            integ = Integral()
+            # print "Load last event in file."
+            integ.integrate(e)
+            # print "Loaded."
+            self._jrun = integ.m_run
+            self._jsubrun = integ.m_subrun
+            self._jetime = datetime.datetime.fromtimestamp(integ.m_time_of_cur_event).replace(microsecond=0).isoformat()
+            self._jensec = integ.m_time_of_cur_event.GetNanoSec()
+            self._jeevt = integ.m_event
+            del integ
+            del e
+            del d
+            gc.collect()
+            d = DaqFile(in_file)
+            e2 = d.GetEventObj(0)
+            integ = Integral()
             # print "Load first event in file."
-            cmd = "dumpEventHeaders " + in_file + " 1 "
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            (out,err) = proc.communicate() # blocks till done.
-            if not proc.returncode:
-                for line in out.split('\n'):
-                    if "event_number=" in line:
-                        self._jsevt = int(line.split('=')[-1])
-                    if "Localhost Time: (sec,usec)" in line:
-                        self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-            
-            else:
-                status = 100
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
-
-            if status != 100:
-                status = 3
-                self.info('Successfully extract metadata from the ubdaq file.')
+            integ.integrate(e2)
+            # print "Loaded"
+            self._jstime = datetime.datetime.fromtimestamp(integ.m_time_of_first_event).replace(microsecond=0).isoformat()
+            self._jsnsec = integ.m_time_of_first_event.GetNanoSec()
+            self._jsevt = integ.m_event
+            del integ
+            del e2
+            del d
+            gc.collect()
+            status = 3
+            self.info('Successfully extract metadata from the ubdaq file.')
 
         except:
             print "Unexpected error:", sys.exc_info()[0]
@@ -324,7 +310,7 @@ class get_metadata( ds_project_base ):
         # run number and subrun number in the metadata seem to be funny,
         # and currently we are using the values in the file name.
         # Also add ub_project.name/stage/version, and data_tier by hand
-        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": self._jver }, "data_tier": "raw", "event_count": self._jeevt - self._jsevt + 1 ,"ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": self._pubsver }
+        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" }, "data_tier": "raw", "ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": "v6_00_00" }
         # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData
@@ -335,6 +321,7 @@ class get_metadata( ds_project_base ):
 
 # A unit test section
 if __name__ == '__main__':
+    gSystem.Load("libudata_types.so")
 
     proj_name = sys.argv[1]
 
@@ -342,7 +329,7 @@ if __name__ == '__main__':
 
     test_obj.process_newruns()
 
-#    test_obj.error_handle()
+    test_obj.error_handle()
 
     test_obj.validate()
 
