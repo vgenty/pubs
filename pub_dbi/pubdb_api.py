@@ -115,11 +115,6 @@ class pubdb_reader(object):
 class pubdb_writer(pubdb_reader):
 
     _conn_info = pubdb_conn_info.writer_info()
-#    def __init__(self,
-#                 conn_info = pubdb_conn_info.writer_info(),
-#                 logger    = None):##
-#
-#        super(self.__class__,self).__init__()
     
     def commit(self,query,throw=False):
         if not self.connect():
