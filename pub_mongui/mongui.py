@@ -91,7 +91,7 @@ for iproj in projects:
     ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
     if iprojname in proj_descripts.keys():
         ichart.setDescript(proj_descripts[iprojname])
-
+        
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
   
@@ -154,6 +154,8 @@ def update_gui():
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
+        if iprojname in proj_descripts.keys():
+            ichart.setDescript(proj_descripts[iprojname])
 
         #Remove the old item from the scene
         scene.removeItem(proj_dict[iprojname])

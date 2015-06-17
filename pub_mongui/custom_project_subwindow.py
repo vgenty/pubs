@@ -7,14 +7,14 @@ import numpy as np
 class CustomProjectSubwindow():
 
     def __init__(self, project_name, project_description=''):
-        
+
         #Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
         #Window title
         self.win.setWindowTitle(project_name+': Additional Information')
         #Make a text item that is the project description
         self.mytext = pg.TextItem(text=project_description)
-        self.mytext.setTextWidth(500)
+        self.mytext.setTextWidth(450)
         #Make a viewbox in the window to hold the text
         #For some reason, if invertY is false, the text appears below
         #the bottom of the graphics window. Set it to true and text will
