@@ -71,6 +71,24 @@ class ds_reader(pubdb_reader):
 
         return resource
 
+    ## Function to get RunTable's largest (run,subrun) combo
+    def get_last_run_subrun(self,table):
+
+        ret = (-1,-1)
+        
+        query = 'SELECT GetLastRunSubRun(\'%s\');' % str(table)
+
+        if not self.execute(query):
+            return ret
+        if not self.nrows() or self.nrows()<0:
+            return ret
+
+        res = self.fetchone()
+
+        ret = tuple(res[0])
+
+        return ret
+
     ## @brief Fetch project information from run/sub-run/seq IDs.
     #  @details
     #  For a specified project, run, sub-run, seq numbers, return ds_status data product\n

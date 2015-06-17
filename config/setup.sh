@@ -63,49 +63,41 @@ case `uname -n` in
 	;;
     (*ubdaq-prod*)
 	echo Setting up for ubdaq-prod machines...
-        source /uboonenew/setup_online.sh
-	source $PUB_TOP_DIR/config/ubdaq_conf.sh
-	setup git
-	setup psycopg2 v2_5_4
-        setup postgresql v9_3_6 -q p278
-        export PYTHONPATH=${POSTGRESQL_LIBRARIES}/python2.7/site-packages:${PYTHONPATH}
-	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
-	mkdir -p $PUB_LOGGER_FILE_LOCATION;
+#The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
+#mismatch between the version of python SSL authentication and sam_web_client. If the project
+#reg_binary_to_sam gives error 102 it is likely SSL problems in samweb.declareFile and may
+#require an update to this setting.
+#The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
+#mismatch between the version of python SSL authentication and sam_web_client. If the project
+#reg_binary_to_sam gives error 102 it is likely SSL problems in samweb.declareFile and may
+#require an update to this setting.                                                                                          export SSL_CERT_DIR=/etc/grid-security/certificates
+	export SSL_CERT_DIR=/etc/grid-security/certificates
+        source /uboone_offline/setup
+        export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`/$USER
+        mkdir -p $PUB_LOGGER_FILE_LOCATION;
 
 	case `uname -n` in
-	    (ubdaq-prod-smc)
-		export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
-		export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
+	    (ubdaq-prod-smc*)
+		setup postgresql v9_3_6 -q p279
+		export PUB_DAEMON_LOG_MODULE=dstream_online.smc_logger
+		export PUB_DAEMON_HANDLER_MODULE=dstream_online.smc_handler
 		;;
-	    (ubdaq-prod-evb)
+	    (ubdaq-prod-evb*)
+		setup postgresql v9_3_6 -q p279
+	        setup sam_web_client
 		export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
 		export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
 		;;
-	    (ubdaq-prod-near1)
+	    (ubdaq-prod-near1*)
 	        #
                 # This is not guaranteed to work (Kazu June-02-2015)
                 #
-
-		export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger
-		export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler
-
-		export UBOONEDAQ_HOME_DIR=${HOME}/development
-		cd $UBOONEDAQ_HOME_DIR/build
-	        # Install will go to version specified in ../uboonedaq/projects/ups/product_deps
-		export CET_PRIVATE_UPS_DIR=${HOME}/install/privateups
-		export PRIVATE_UPS_DIR=${HOME}/development/install
-		source ../uboonedaq/projects/ups/setup_for_development -d;
-		
-		source /uboone/larsoft/setup
-		source $PUB_TOP_DIR/config/ubdaq_conf.sh
-		export PRODUCTS=/home/echurch/larclient/prof.slf6.v04_05_00/localProducts_larsoft_v04_05_00_e7_prof:${PRODUCTS}
- 		setup uboonecode v04_05_00 -q e7:prof
-		source /home/$USER/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh
-		setup sam_web_client
-		setup ifdhc
-		unsetup uboonedaq_datatypes
-		setup uboonedaq_datatypes v5_00_01 -qe7:prof
-
+	        setup sam_web_client
+		setup ifdhc v1_8_2 -q e7:p279:prof
+		setup uboonedaq_datatypes v6_10_03 -q e7:debug
+		setup uboonecode v04_08_00 -q debug:e7
+                export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler
 		;;
 	esac
 	;;
