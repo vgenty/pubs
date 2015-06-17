@@ -6,7 +6,14 @@ from pubdb_data import pubdb_conn_info
 
 class pubdb_reader(object):
 
-    def __init__(self,conn_info,logger=None):
+    _conn_info = pubdb_conn_info.reader_info()
+
+    def __init__(self,
+                 conn_info = None,
+                 logger    = None):
+
+        if not conn_info :
+            conn_info = self.__class__._conn_info
 
         self._cursor    = None
         self._conn_info = conn_info
@@ -15,7 +22,7 @@ class pubdb_reader(object):
         self._sleep     = 10
 
         if not self._logger:
-            self._logger = pub_logger.get_logger('pubdb')
+            self._logger = pub_logger.get_logger(self.__class__.__name__)
             
         elif not isinstance(logger,logging.Logger):
             pub_logger.get_logger('pubdb').critical('Invalid logger!')
@@ -107,6 +114,13 @@ class pubdb_reader(object):
 
 class pubdb_writer(pubdb_reader):
 
+    _conn_info = pubdb_conn_info.writer_info()
+#    def __init__(self,
+#                 conn_info = pubdb_conn_info.writer_info(),
+#                 logger    = None):##
+#
+#        super(self.__class__,self).__init__()
+    
     def commit(self,query,throw=False):
         if not self.connect():
             self.error("Failed to connect the DB...")
