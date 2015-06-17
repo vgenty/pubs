@@ -53,6 +53,7 @@ case `uname -n` in
 	    return;
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
+	source /grid/fermiapp/products/uboone/setup_uboone.sh
 	setup postgresql v9_3_6 -q p279
 	setup larbatch v01_10_00
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
