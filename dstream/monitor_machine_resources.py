@@ -8,7 +8,7 @@ import time, os
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util import
-from pub_util import pub_logger
+from pub_util import pub_logger, pub_env
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
@@ -39,7 +39,7 @@ def plot_resource_usage(proj,outpath):
     lastRAM  = -100
     lastCPU  = -100
 
-    servername = proj[0]._server
+    servername = pub_env.kSERVER_NAME#proj[0]._server
 
     # number of entries scanned
     cntr = 0
