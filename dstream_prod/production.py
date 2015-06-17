@@ -116,7 +116,7 @@ class production(ds_project_base):
 
         return statusCode
 
-    def _jobstat_from_log(self):
+    def _jobstat_from_log(self, submit_time):
         result = (False,'')
         if not os.path.isfile(self.JOBSUB_LOG):
             subject = 'Failed fetching job log'
@@ -127,7 +127,15 @@ class production(ds_project_base):
                      text = text)
             return result
 
-        log_age = time.time() - os.path.getmtime(self.JOBSUB_LOG)
+        # Make sure log has been updated more recently than most recent submit.
+
+        mod_time = os.path.getmtime(self.JOBSUB_LOG)
+        self.info('Job log modification time: %s' % time.ctime(mod_time))
+        self.info('Submit time: %s' % time.ctime(submit_time))
+        if mod_time < submit_time + 60:
+            return result
+
+        log_age = time.time() - mod_time
         if log_age + 10 > self._period:
             return result
 
@@ -224,8 +232,8 @@ class production(ds_project_base):
                      text = text)
             return error_status
 
-        # Now grab the parent job id
-        self._data = jobid
+        # Now grab the parent job id and submit time.
+        self._data = '%s+%f' % (jobid, time.time())
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
@@ -241,10 +249,16 @@ class production(ds_project_base):
         error_status   = current_status + 1000
 
         self._data = str( self._data )
-        jobid = self._data.strip().split(':')[-1]
+        last_job_data = self._data.strip().split(':')[-1]
+        job_data_list = last_job_data.split('+')
+        jobid = job_data_list[0]
+        if len(job_data_list) > 1:
+            submit_time = float(job_data_list[1])
+        else:
+            submit_time = float(0)
 
         # Main command
-        jobstat = self._jobstat_from_log()
+        jobstat = self._jobstat_from_log(submit_time)
         if not jobstat[0]:
             self.warning('Fetching job status from log file failed! Try running cmd...')
             jobstat = self._jobstat_from_cmd(jobid)
@@ -429,11 +443,11 @@ Job IDs    : %s
                      text = text)
             return error_status
 
-        # Now grab the parent job id
+        # Now grab the parent job id and submit time
         if self._data == None or self._data == "None" or len(self._data) == 0:
-            self._data = jobid
+            self._data = '%s+%f' % (jobid, time.time())
         else:
-            self._data += ":%s" % jobid
+            self._data += ':%s+%f' % (jobid, time.time())
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
