@@ -75,14 +75,16 @@ case `uname -n` in
         source /uboone_offline/setup
         export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`/$USER
         mkdir -p $PUB_LOGGER_FILE_LOCATION;
-
+	source $PUB_TOP_DIR/config/ubdaq_personal_conf.sh
 	case `uname -n` in
 	    (ubdaq-prod-smc*)
+	        setup git
 		setup postgresql v9_3_6 -q p279
 		export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
 		export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
 		;;
 	    (ubdaq-prod-evb*)
+	        setup git
 		setup postgresql v9_3_6 -q p279
 	        setup sam_web_client
 		export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
@@ -92,6 +94,7 @@ case `uname -n` in
 	        #
                 # This is not guaranteed to work (Kazu June-02-2015)
                 #
+	        setup git
 	        setup sam_web_client
 		setup ifdhc v1_8_2 -q e7:p279:prof
 		setup uboonedaq_datatypes v6_10_03 -q e7:debug
