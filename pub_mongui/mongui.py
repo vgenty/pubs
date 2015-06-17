@@ -6,6 +6,7 @@ except ImportError:
 import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
+from custom_qgraphicsview  import CustomQGraphicsView
 
 # catch ctrl+C to terminate the program
 import signal
@@ -55,8 +56,8 @@ mypm = scene.addPixmap(pm)
 #Set the background so it's upper-left corner matches upper-left corner of scene
 mypm.setPos(scene_xmin,scene_ymin)
 
-#Make view from the scene and show it
-view = QtGui.QGraphicsView(scene)
+#Make custom (zoomable) view from the scene and show it
+view = CustomQGraphicsView(scene)
 #Enforce the view to align with upper-left corner
 view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
