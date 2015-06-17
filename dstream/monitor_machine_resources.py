@@ -8,7 +8,7 @@ import time, os
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util import
-from pub_util import pub_logger
+from pub_util import pub_logger, pub_env
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
@@ -26,14 +26,25 @@ def plot_resource_usage(proj,outpath):
         import mpl_toolkits.axisartist as AA
         import datetime
     except ImportError:
-        return
+        return 'failed import'
 
-    times = []
+    tCPU  = []
     CPU   = []
+    tRAM  = []
     RAM   = []
+    tDISK = []
     DISK  = []
 
-    servername = proj[0]._server
+    lastDISK = -100
+    lastRAM  = -100
+    lastCPU  = -100
+
+    servername = pub_env.kSERVER_NAME#proj[0]._server
+
+    # number of entries scanned
+    cntr = 0
+    # number of total entries in DB
+    totentries = float(len(proj))
     
     for x in proj:
 
@@ -43,23 +54,42 @@ def plot_resource_usage(proj,outpath):
         if ( (log_time != '') and (log_dict) ):
             # get time in python datetime format
             time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
-            times.append(time)
+            # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_HOME'):
-                    DISK.append(float(log_dict[key]))
+                    if ( cntr%100 == 0 ):
+                    #if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) ):
+                        lastDISK = float(log_dict[key])*100
+                        tDISK.append(time)
+                        DISK.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
-                    RAM.append(float(log_dict[key]))
+                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) ):
+                        lastRAM = float(log_dict[key])
+                        tRAM.append(time)
+                        RAM.append(float(log_dict[key]))
                 if (str(key) == 'CPU_PERCENT'):
-                    CPU.append(float(log_dict[key]))
+                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) ):
+                        lastCPU = float(log_dict[key])
+                        tCPU.append(time)
+                        CPU.append(float(log_dict[key]))
 
-            dates = dts.date2num(times)
+        cntr += 1
+
+    datesCPU  = dts.date2num(tCPU)
+    datesRAM  = dts.date2num(tRAM)
+    datesDISK = dts.date2num(tDISK)
 
             
-            # example for multi-axes (i.e. >= 3) plot here:
-            # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
-        
+    # example for multi-axes (i.e. >= 3) plot here:
+    # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
+
+    fig, ax = plt.subplots(1,figsize=(12,8))
+
+
+    
+    '''
     host = host_subplot(111,axes_class=AA.Axes)
-    #plt.set_size_inches(10,7)
+
     plt.subplots_adjust(right=0.75)
     pltRAM = host.twinx()
     pltCPU = host.twinx()
@@ -72,28 +102,55 @@ def plot_resource_usage(proj,outpath):
     
     pltCPU.axis['right'].toggle(all=True)
     
-    #host.set_xticks(4)
     host.set_xlabel('Time', fontsize=20)
     host.set_ylabel('DISK usage Frac.', fontsize=18, color='r')
     host.set_ylim([0,1])
     
     pltRAM.set_ylabel('RAM Usage %', fontsize=18, color='b')
+    pltRAM.set_ylim([0,100])
     pltCPU.set_ylabel('CPU Usage %', fontsize=18, color='k')
-    
-    if (len(dates) == len(DISK)):
-        host.plot_date(dates,DISK, fmt='o--', color='r')
-    if (len(dates) == len(RAM)):
-        pltRAM.plot_date(dates,RAM, fmt='o--', color='b', label='RAM')
-    if (len(dates) == len(CPU)):
-        pltCPU.plot_date(dates,CPU, fmt='o--', color='k', label='CPU')
+    pltCPU.set_ylim([0,100])
+    '''
+
+    ax.set_xlabel('Time',fontsize=20)
+    ax.set_ylabel('Usage %',fontsize=20)
+    ax.set_ylim([0,100])
+
+    if (len(datesCPU) == len(CPU)):
+        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o--', color='k', label='CPU usage', markersize=7)    
+    if (len(datesDISK) == len(DISK)):
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage', markersize=7)
+    if (len(datesRAM) == len(RAM)):
+        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o--', color='b', label='RAM usage', markersize=7)
+
+
+
+    years    = dts.YearLocator()   # every year
+    months   = dts.MonthLocator()  # every month
+    days     = dts.DayLocator()
+    hours    = dts.HourLocator()
+    daysFmt  = dts.DateFormatter('%m-%d %H:%M')
+
+    # format the ticks
+    ax.xaxis.set_major_locator(days)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.xaxis.set_minor_locator(hours)
+
+
+    ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
+    fig.autofmt_xdate()
             
-    host.axis["left"].label.set_color('r')
-    pltRAM.axis["right"].label.set_color('b')
-    pltCPU.axis["right"].label.set_color('k')
-    
+    #host.axis["left"].label.set_color('r')
+    #pltRAM.axis["right"].label.set_color('b')
+    #pltCPU.axis["right"].label.set_color('k')
+
+    #plt.figure.autofmt_xdate()    
     plt.grid()
-    plt.title('Machine Resource Monitoring on %s'%(servername), fontsize=16)
+    plt.title('Resource Usage on %s'%(servername), fontsize=20)
+    plt.legend(fontsize=20)
+
     plt.savefig(outpath)
+    return outpath
     
 ## @class monitor_machine_resources
 #  @brief this project produces monitoring plots
@@ -155,7 +212,11 @@ class monitor_machine_resources(ds_project_base):
         #try:
         plotpath = pubstop+'/'+self._data_dir+'/'+'monitoring_%i.png'%ctr
         self.info('saving plot to path: %s'%plotpath)
-        plot_resource_usage(project,plotpath)
+        outpath = plot_resource_usage(project,plotpath)
+        if (outpath == 'failed import'):
+            self.error('could not complete import...plot not produced...')
+        if (outpath == None):
+            self.error('No plot produced...')
         ctr += 1
         #except:
         #    self.info('could not produce plot') 

@@ -5,7 +5,7 @@
 
 # python include
 import time
-import os
+import os, sys
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util package include
@@ -37,7 +37,13 @@ class register_new_run(ds_project_base):
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super(register_new_run,self).__init__()
+        super(register_new_run,self).__init__( arg )
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         self._data_dir = ''
         self._experts = ''
@@ -119,8 +125,9 @@ class register_new_run(ds_project_base):
         max_file_info = sorted_file_info[-1]
 
         # fetch from database the last run/subrun number recorded
-        last_recorded_info = (0,0) # get_last_run
-        # KAZU YOUR CODE GOES HERE TO FETCH LAST ENTRY IN DB
+        logger = pub_logger.get_logger('register_new_run')
+        reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
+        last_recorded_info = reader.get_last_run_subrun('AhoRun')
 
         # if we made it this far the file info needs to be
         # recorded to the database
@@ -173,7 +180,9 @@ class register_new_run(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = register_new_run()
+    proj_name = sys.argv[1]
+
+    test_obj = register_new_run( proj_name )
 
     test_obj.process_newruns()
 

@@ -6,6 +6,8 @@ except ImportError:
 import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
+from custom_qgraphicsview  import CustomQGraphicsView
+
 # catch ctrl+C to terminate the program
 import signal
 # exponential in piechart radius calculation
@@ -14,6 +16,8 @@ import math
 import os
 # GUI parameter reader
 from load_params import getParams
+# Project description text-file parser
+from load_proj_descriptions import getProjectDescriptions
 # dstream import
 from dstream.ds_api import ds_reader
 # pub_dbi import
@@ -52,8 +56,8 @@ mypm = scene.addPixmap(pm)
 #Set the background so it's upper-left corner matches upper-left corner of scene
 mypm.setPos(scene_xmin,scene_ymin)
 
-#Make view from the scene and show it
-view = QtGui.QGraphicsView(scene)
+#Make custom (zoomable) view from the scene and show it
+view = CustomQGraphicsView(scene)
 #Enforce the view to align with upper-left corner
 view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
@@ -71,6 +75,9 @@ proj_dict = {}
 #These dictate, based on project name, where to draw on GUI
 template_params = getParams(my_template)
 
+#Read in the project descriptions stored in a separate text file
+proj_descripts = getProjectDescriptions()
+
 for iproj in projects:
 
     iprojname = iproj._project
@@ -83,7 +90,9 @@ for iproj in projects:
     xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
     ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
-
+    if iprojname in proj_descripts.keys():
+        ichart.setDescript(proj_descripts[iprojname])
+        
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
   
@@ -146,6 +155,8 @@ def update_gui():
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
+        if iprojname in proj_descripts.keys():
+            ichart.setDescript(proj_descripts[iprojname])
 
         #Remove the old item from the scene
         scene.removeItem(proj_dict[iprojname])

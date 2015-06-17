@@ -1,0 +1,49 @@
+#The format of this file is : project_name, followed by a space, followed by the description with NO line breaks in it. You're allowed to have empty lines.
+
+swizzle_data This is a description of the swizzle_data project, which is designed to do xxx.
+
+get_root_metadata This is a description of the get_root_metadata project, which is designed to do xxx.
+
+monitor_machine_resources This is a description of the monitor_machine_resources project, which is designed to do xxx.
+
+get_binary_metadata This is a description of the get_binary_metadata project, which is designed to do xxx.
+
+kazu2 This is a project that clearly has nothing to do with production PUBS running, but was created presumably by kazu, or kazu's twin brother, kazu2.
+
+transfer_binary_to_dropbox This is a description of the xxx project, which is designed to do xxx.
+
+compare_binary_checksum_near1 This is a description of the xxx project, which is designed to do xxx.
+
+get_root_checksum_near1 This is a description of the xxx project, which is designed to do xxx.
+
+compare_binary_checksum_tape This is a description of the xxx project, which is designed to do xxx.
+
+transfer_root_to_dropbox This is a description of the xxx project, which is designed to do xxx.
+
+get_binary_checksum_near1 This is a description of the xxx project, which is designed to do xxx.
+
+reg_binary_to_sam This is a description of the xxx project, which is designed to do xxx.
+
+check_binary_on_tape This is a description of the xxx project, which is designed to do xxx.
+
+check_noise_near1 This is a description of the xxx project, which is designed to do xxx.
+
+clean_binary_evb This is a description of the xxx project, which is designed to do xxx.
+
+check_root_on_tape This is a description of the xxx project, which is designed to do xxx.
+
+mv_binary_evb This is a description of the xxx project, which is designed to do xxx.
+
+get_binary_checksum_evb This is a description of the xxx project, which is designed to do xxx.
+
+clean_binary_near1 This is a description of the xxx project, which is designed to do xxx.
+
+clean_root_near1 This is a description of the xxx project, which is designed to do xxx.
+
+clean_root_json_near1 This is a description of the xxx project, which is designed to do xxx.
+
+clean_binary_json_near1 This is a description of the xxx project, which is designed to do xxx.
+
+reg_root_to_sam This is a description of the xxx project, which is designed to do xxx.
+
+compare_root_checksum_tape This is a description of the xxx project, which is designed to do xxx.

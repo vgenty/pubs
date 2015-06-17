@@ -80,8 +80,8 @@ case `uname -n` in
 	    (ubdaq-prod-smc*)
 	        setup git
 		setup postgresql v9_3_6 -q p279
-		export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
-		export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
+		export PUB_DAEMON_LOG_MODULE=dstream_online.smc_logger
+		export PUB_DAEMON_HANDLER_MODULE=dstream_online.smc_handler
 		;;
 	    (ubdaq-prod-evb*)
 	        setup git
