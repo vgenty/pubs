@@ -206,14 +206,6 @@ def parse(conn,logger,contents):
             logger.info('Project %s already exist in DB!' % v._project)
             orig_info = conn.project_info(v._project)
 
-            if not orig_info._run == v._run:
-                logger.error('Your configuration has different run number (%d) than what is in DB (%d) (not allowed)!' % (v._run,orig_info._run))
-                logger.critical('Aborting...')
-                sys.exit(1)
-            if not orig_info._subrun == v._subrun:
-                logger.error('Your configuration has different sub-run number (not allowed)!')
-                logger.critical('Aborting...')
-                sys.exit(1)
             if not orig_info._runtable == v._runtable:
                 logger.error('Your configuration has different run-table name (not allowed)!')
                 logger.critical('Aborting...')
@@ -232,6 +224,23 @@ def register(conn,logger,projects):
     
     logger.warning('Below is a summary of project update/registration.')
     # Make sure these projects can be registered
+    projects_to_register=[]
+    for p in projects:
+
+        if not conn.project_exist(p._project): continue
+        orig_info = conn.project_info(p._project)
+        diff = orig_info.diff(p)
+
+        if not orig_info._run == p._run:
+            logger.error('Your configuration has different run number (%d) than what is in DB (%d) (not allowed)!' % (p._run,orig_info._run))
+            logger.critical('Aborting...')
+            sys.exit(1)
+        if not orig_info._subrun == p._subrun:
+            logger.error('Your configuration has different sub-run number (not allowed)!')
+            logger.critical('Aborting...')
+            sys.exit(1)
+
+    # Pick ones relevant
     projects_to_register=[]
     for p in projects:
 
