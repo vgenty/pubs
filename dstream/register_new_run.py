@@ -5,7 +5,7 @@
 
 # python include
 import time
-import os
+import os, sys
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util package include
@@ -37,7 +37,13 @@ class register_new_run(ds_project_base):
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super(register_new_run,self).__init__()
+        super(register_new_run,self).__init__( arg )
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         self._data_dir = ''
         self._experts = ''
@@ -68,6 +74,8 @@ class register_new_run(ds_project_base):
             self.error('DATA DIR %s does not exist'%self._data_dir)
             return
 
+        self.info('Looking for data files in: %s'%self._data_dir)
+
         dircontents = os.listdir(self._data_dir)
 
         # create a dictionary to keep track of
@@ -97,6 +105,7 @@ class register_new_run(ds_project_base):
                 # NoiseRun-YYYY_M_DD_HH_MM_SS-RUN-SUBRUN.ubdaq
                 run    = int(f.replace('.ubdaq','').split('-')[-2])
                 subrun = int(f.replace('.ubdaq','').split('-')[-1])
+                self.info('found for run (%i, %i)'%(run,subrun))
 
                 file_info[tuple((run,subrun))] = [f,time_create,time_modify]
 
@@ -116,7 +125,9 @@ class register_new_run(ds_project_base):
         max_file_info = sorted_file_info[-1]
 
         # fetch from database the last run/subrun number recorded
-        last_recorded_info = (0,0) # get_last_run
+        logger = pub_logger.get_logger('register_new_run')
+        reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
+        last_recorded_info = reader.get_last_run_subrun('AhoRun')
 
         # if we made it this far the file info needs to be
         # recorded to the database
@@ -156,6 +167,8 @@ class register_new_run(ds_project_base):
             file_closing  = time.gmtime(int(run_info[2]))
             file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
             file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+
+            self.info('filling death star...')
             # insert into the death start
             rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],
                                                file_creation, file_closing)
@@ -167,7 +180,9 @@ class register_new_run(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = register_new_run()
+    proj_name = sys.argv[1]
+
+    test_obj = register_new_run( proj_name )
 
     test_obj.process_newruns()
 

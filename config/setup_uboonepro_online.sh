@@ -43,52 +43,48 @@ export PUB_DAEMON_HANDLER_MODULE=""
 #
 # Server-specific configuration
 #
-case `uname -n` in
-    (*uboonegpvm*)
-	echo Setting up for uboonegpvm...
-	if [ -z $HOME/.sqlaccess/prod_access.sh ]; then
-	    echo 'Configuration @ gpvm requires \$HOME/.sqlaccess/prod_access.sh!'
-	    echo 'Exiting...'
-	    echo 
-	    return;
-	fi
-	source $HOME/.sqlaccess/prod_access.sh
-	setup postgresql v9_3_6 -q p279
-	setup larbatch v01_10_00
-	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
-	mkdir -p $PUB_LOGGER_FILE_LOCATION;
-	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
+
+case `whoami` in
+    (uboonepro)
+        echo Setting up PUBS for uboonepro account...
 	;;
+    (*)
+        echo This should only be used for uboonepro account!!!
+	echo Exiting with exterme prejudice.
+	return 1
+	;;
+esac
+	
+case `uname -n` in
     (*ubdaq-prod*)
-	echo Setting up for ubdaq-prod machines...
+	echo Setting up PUBS for ubdaq-prod machines...
 #The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
 #mismatch between the version of python SSL authentication and sam_web_client. If the project
 #reg_binary_to_sam gives error 102 it is likely SSL problems in samweb.declareFile and may
 #require an update to this setting.
-#The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
-#mismatch between the version of python SSL authentication and sam_web_client. If the project
-#reg_binary_to_sam gives error 102 it is likely SSL problems in samweb.declareFile and may
-#require an update to this setting.                                                                                          export SSL_CERT_DIR=/etc/grid-security/certificates
 	export SSL_CERT_DIR=/etc/grid-security/certificates
-        source /uboone_offline/setup
-        export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`/$USER
-        mkdir -p $PUB_LOGGER_FILE_LOCATION;
+	export X509_USER_PROXY=/home/uboonepro/uboonepro_production_near1_proxy_file
+	source /uboone_offline/setup
+	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh
+	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
+	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 
 	case `uname -n` in
-	    (ubdaq-prod-smc*)
+            (ubdaq-prod-smc*)
 		setup postgresql v9_3_6 -q p279
-		export PUB_DAEMON_LOG_MODULE=dstream_online.smc_logger
-		export PUB_DAEMON_HANDLER_MODULE=dstream_online.smc_handler
-		;;
-	    (ubdaq-prod-evb*)
-		setup postgresql v9_3_6 -q p279
+                export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc
+                ;;
+            (ubdaq-prod-evb*)
 	        setup sam_web_client
-		export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
-		export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
-		;;
-	    (ubdaq-prod-near1*)
-	        #
-                # This is not guaranteed to work (Kazu June-02-2015)
+		setup postgresql v9_3_6 -q p279
+                export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.evb_handler
+		export KRB5CCNAME=FILE:/tmp/krb5cc_uboonepro_evb
+                ;;
+            (ubdaq-prod-near1*)
+                #
+	            # This is not guaranteed to work (Kazu June-02-2015)
                 #
 	        setup sam_web_client
 		setup ifdhc v1_8_2 -q e7:p279:prof
@@ -99,10 +95,10 @@ case `uname -n` in
 		;;
 	esac
 	;;
+
     (*)
-	export PUB_DAEMON_LOG_MODULE=ds_server_dummy.dummy_logger
-	export PUB_DAEMON_HANDLER_MODULE=ds_server_dummy.dummy_handler
-	echo No special setup done for the server `uname -n`
+        echo This script should not be used except by uboonepro account on the ubdaq-prod machines!
+	echo Seriously, stop it.
 	;;
 esac
 

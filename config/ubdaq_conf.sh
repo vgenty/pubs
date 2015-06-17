@@ -20,7 +20,7 @@ export PUB_PSQL_WRITER_PASS="${USER}argon!"
 export PUB_PSQL_WRITER_CONN_NTRY=10
 export PUB_PSQL_WRITER_CONN_SLEEP=10
 
-# SQL writer account config
+# SQL admin account config
 export PUB_PSQL_ADMIN_HOST=192.168.144.189
 export PUB_PSQL_ADMIN_PORT=""
 export PUB_PSQL_ADMIN_USER=$USER

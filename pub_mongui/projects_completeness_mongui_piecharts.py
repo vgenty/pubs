@@ -6,6 +6,8 @@ import time
 from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
+# catch ctrl+C to terminate the program
+import signal
 
 # DB interface:
 global dbi
@@ -25,11 +27,12 @@ QtCore.qInstallMsgHandler(lambda *args: None)
 #Initialize Qt (only once per application)
 qapp = QtGui.QApplication([])
 view = pg.GraphicsView()
-l = pg.GraphicsLayout(border=(100,100,100))
+#l is a GraphicsLayoutWidget
+l = pg.GraphicsLayout()#border=(100,100,100))
 view.setCentralItem(l)
-view.show()
 view.setWindowTitle('PUBS Monitoring GUI')
-view.resize(800,600)
+view.resize(600,600)
+view.show()
 
 #Get a list of all projects from the DBI
 projects = dbi.list_all_projects() # [project, command, server, sleepafter .... , enabled, resource]
@@ -43,6 +46,7 @@ proj_dict = {}
 nrows, ncols = 5, 5
 rowcount, colcount = 0, 0
 for iproj in projects:
+    #Initialize all piecharts as filled-in yellow circles
     init_data = (10, 20, 5, [ (1., 'y') ])
     ichart = PieChartItem(init_data)
     iplot = l.addPlot(row=rowcount, col=colcount, title=iproj._project)
@@ -86,9 +90,9 @@ def update_gui():
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
 timer.start(1000) #once per second, update the plots
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 if __name__ == '__main__':
     import sys
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
         QtGui.QApplication.instance().exec_()
-   

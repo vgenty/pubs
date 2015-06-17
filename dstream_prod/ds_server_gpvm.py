@@ -1,4 +1,4 @@
-import commands,os
+import os, subprocess
 
 def gpvm_logger():
     result = {}
@@ -6,12 +6,21 @@ def gpvm_logger():
     log_dir = os.environ['PUB_LOGGER_FILE_LOCATION']
     if not os.path.isdir(log_dir): return result
 
+    cmd = ['jobsub_q', '--user', os.environ['USER']]
+    try:
+        proc = subprocess.Popen( cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+        out, err = proc.communicate()
+    except Exception:
+        return result
+    proc_return = proc.poll()
+    if proc_return != 0:
+        return result
     try:
         fout = open('%s/joblist.txt' % log_dir,'w')
     except Exception:
         return result
-    out = commands.getoutput('jobsub_q --user %s' % os.environ['USER'])
     fout.write(out)
+    fout.write(err)
     fout.close()
 
     jobids = []
