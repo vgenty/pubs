@@ -53,10 +53,8 @@ case `uname -n` in
 	    return;
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
-	source /grid/fermiapp/products/uboone/setup_uboone.sh
-	setup psycopg2 v2_5_4
-	setup uboonecode v04_08_01 -q e7:prof
-	setup larbatch v01_09_00 
+	setup postgresql v9_3_6 -q p279
+	setup larbatch v01_10_00
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
