@@ -96,7 +96,7 @@ class production(ds_project_base):
                 digit = self._stage_digits[x]
                 self._digit_to_name[digit]=name
                 self._name_to_digit[name]=digit
-            self._max_runid = (proj_info._resource['MAX_RUN'],proj_info._resource['MAX_SUBRUN'])
+            self._max_runid = (int(proj_info._resource['MAX_RUN']),int(proj_info._resource['MAX_SUBRUN']))
         except Exception:
             self.error('Failed to load project parameters...')
             return False
