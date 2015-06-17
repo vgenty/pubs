@@ -6,6 +6,7 @@ except ImportError:
 import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
+
 # catch ctrl+C to terminate the program
 import signal
 # exponential in piechart radius calculation
@@ -14,6 +15,8 @@ import math
 import os
 # GUI parameter reader
 from load_params import getParams
+# Project description text-file parser
+from load_proj_descriptions import getProjectDescriptions
 # dstream import
 from dstream.ds_api import ds_reader
 # pub_dbi import
@@ -71,6 +74,9 @@ proj_dict = {}
 #These dictate, based on project name, where to draw on GUI
 template_params = getParams(my_template)
 
+#Read in the project descriptions stored in a separate text file
+proj_descripts = getProjectDescriptions()
+
 for iproj in projects:
 
     iprojname = iproj._project
@@ -83,6 +89,8 @@ for iproj in projects:
     xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
     ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
+    if iprojname in proj_descripts.keys():
+        ichart.setDescript(proj_descripts[iprojname])
 
     #Add the piecharts to the scene (piechart location is stored in piechart object)
     scene.addItem(ichart)
