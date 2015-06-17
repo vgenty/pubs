@@ -58,11 +58,11 @@ class production(ds_project_base):
                              self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
                              self.kTOBERECOVERED : self.recover }
-
-        self._nruns   = None
-        self._xml_file = ''
-        self._stage_name   = []
-        self._stage_digits = []
+        self._max_runid = None
+        self._nruns     = None
+        self._xml_file  = ''
+        self._stage_name    = []
+        self._stage_digits  = []
         self._nresubmission = 3
         self._digit_to_name = {}
         self._name_to_digit = {}
@@ -79,15 +79,14 @@ class production(ds_project_base):
 	    return False
 
         proj_info = self._api.project_info(self._project)
-
-        self._nruns = int(proj_info._resource['NRUNS'])
-        self._xml_file = proj_info._resource['XMLFILE']
-        self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
-        self._experts = proj_info._resource['EXPERTS']
-        self._period = proj_info._period
-        self._version = proj_info._ver
-
+        
         try:
+            self._nruns = int(proj_info._resource['NRUNS'])
+            self._xml_file = proj_info._resource['XMLFILE']
+            self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
+            self._experts = proj_info._resource['EXPERTS']
+            self._period = proj_info._period
+            self._version = proj_info._ver
             self._stage_names  = proj_info._resource['STAGE_NAME'].split(':')
             self._stage_digits = [int(x) for x in proj_info._resource['STAGE_STATUS'].split(':')]
             if not len(self._stage_names) == len(self._stage_digits):
@@ -97,7 +96,7 @@ class production(ds_project_base):
                 digit = self._stage_digits[x]
                 self._digit_to_name[digit]=name
                 self._name_to_digit[name]=digit
-
+            self._max_runid = (proj_info._resource['MAX_RUN'],proj_info._resource['MAX_SUBRUN'])
         except Exception:
             self.error('Failed to load project parameters...')
             return False
@@ -489,10 +488,12 @@ Job IDs    : %s
                 fstatus = istage + istatus
                 self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
                 for x in self.get_runs( self._project, fstatus ):
-
+                    
                     run    = int(x[0])
                     subrun = int(x[1])
                     runid = (run,subrun)
+                    if self._max_runid and runid > self._max_runid:
+                        continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
