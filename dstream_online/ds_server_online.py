@@ -20,6 +20,9 @@ def near1_logger():
 
     result = {}
 
+    # keep track of status (if something goes wrong)
+    status = 0
+
     log_dir = os.environ['PUB_LOGGER_FILE_LOCATION']
     if not os.path.isdir(log_dir): return result
 
@@ -37,7 +40,8 @@ def near1_logger():
             d_msg.email('proc_daemon','near1_logger',msg)
     else:
         # log the fact that /home is not recognized as dir
-        print "/home not recognized as directory..."
+        #print "/home not recognized as directory..."
+        status = -1
 
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
@@ -48,7 +52,8 @@ def near1_logger():
             d_msg.email('proc_daemon','near1_logger',msg)
     else:
         # log the fact that /data is not recognized as dir
-        print "/data not recognized as directory..."
+        #print "/data not recognized as directory..."
+        status = -1
         
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
@@ -56,7 +61,8 @@ def near1_logger():
         result['RAM_PERCENT'] = RAMused
     else:
         # log the fact that we cannot access /proc/meminfo...
-        print "cannot access /proc/meminfo file..."
+        #print "cannot access /proc/meminfo file..." 
+        status = -1
     
 
     statpath = '/proc/stat'
@@ -65,7 +71,8 @@ def near1_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        print "cannot access /proc/stat file..."
+        #print "cannot access /proc/stat file..."
+        status = -1
         
         
     '''
@@ -92,6 +99,9 @@ def evb_handler():
 
 def evb_logger():
 
+    # keep track of status
+    status = 0
+
     result = {}
 
     log_dir = os.environ['PUB_LOGGER_FILE_LOCATION']
@@ -112,7 +122,8 @@ def evb_logger():
 
     else:
         # log the fact that /home is not recognized as dir
-        print "/home not recognized as directory..."
+        #print "/home not recognized as directory..."
+        status = -1
 
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
@@ -124,7 +135,8 @@ def evb_logger():
 
     else:
         # log the fact that /data is not recognized as dir
-        print "/data not recognized as directory..."
+        #print "/data not recognized as directory..."
+        status = -1
         
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
@@ -132,7 +144,8 @@ def evb_logger():
         result['RAM_PERCENT'] = RAMused
     else:
         # log the fact that we cannot access /proc/meminfo...
-        print "cannot access /proc/meminfo file..."
+        #print "cannot access /proc/meminfo file..."
+        status = -1
     
 
     statpath = '/proc/stat'
@@ -141,7 +154,8 @@ def evb_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        print "cannot access /proc/stat file..."
+        #print "cannot access /proc/stat file..."
+        status = -1
 
     print result
     return result
@@ -150,6 +164,9 @@ def smc_handler():
     return (True,'')
 
 def smc_logger():
+
+    # keep track of status
+    status = 0
 
     result = {}
 
@@ -169,7 +186,8 @@ def smc_logger():
             print "disk usage in /home above 90-percent..."
     else:
         # log the fact that /home is not recognized as dir
-        print "/home not recognized as directory..."
+        #print "/home not recognized as directory..."
+        status = -1
 
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
@@ -179,7 +197,8 @@ def smc_logger():
             print "disk usage in /data above 90-percent..."
     else:
         # log the fact that /data is not recognized as dir
-        print "/data not recognized as directory..."
+        #print "/data not recognized as directory..."
+        status = -1
         
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
@@ -187,7 +206,8 @@ def smc_logger():
         result['RAM_PERCENT'] = RAMused
     else:
         # log the fact that we cannot access /proc/meminfo...
-        print "cannot access /proc/meminfo file..."
+        #print "cannot access /proc/meminfo file..."
+        status = -1
     
 
     statpath = '/proc/stat'
@@ -196,7 +216,8 @@ def smc_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        print "cannot access /proc/stat file..."
+        #print "cannot access /proc/stat file..."
+        status =-1
         
         
     '''

@@ -8,6 +8,9 @@ def dummy_logger():
 
     result = {}
 
+    # keep track of status (if anything went wrong)
+    status = 0
+
     '''
     dt = pub_watch.time('dummy_logger')
     if not dt:
@@ -36,7 +39,8 @@ def dummy_logger():
             d_msg.email('proc_daemon','dummy_logger',msg)
     else:
         # log the fact that /home is not recognized as dir
-        print "/home not recognized as directory..."
+        #print "/home not recognized as directory..."
+        status = -1
 
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
@@ -48,7 +52,8 @@ def dummy_logger():
 
     else:
         # log the fact that /data is not recognized as dir
-        print "/data not recognized as directory..."
+        #print "/data not recognized as directory..."
+        status = -1
         
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
@@ -56,7 +61,8 @@ def dummy_logger():
         result['RAM_PERCENT'] = RAMused
     else:
         # log the fact that we cannot access /proc/meminfo...
-        print "cannot access /proc/meminfo file..."
+        #print "cannot access /proc/meminfo file..."
+        status = -1
     
 
     statpath = '/proc/stat'
@@ -65,7 +71,8 @@ def dummy_logger():
         result['CPU_PERCENT'] = CPUpercent
     else:
         # log the fact that we cannot access /proc/stat
-        print "cannot access /proc/stat file..."
+        #print "cannot access /proc/stat file..."
+        status = -1
 
 
     #d_msg.email('proc_daemon','hello world','executed dummy_logger! dt=%g' % dt)
