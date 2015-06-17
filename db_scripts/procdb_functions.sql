@@ -91,6 +91,106 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+--Retrieve largest Run entry in a table
+--Returns largest Run number stored in table
+DROP FUNCTION IF EXISTS GetLastRun(TEXT);
+
+CREATE OR REPLACE FUNCTION GetLastRun( tname TEXT ) RETURNS INT AS $$
+DECLARE
+myQuery TEXT;
+myBool  BOOLEAN;
+maxrun  SMALLINT;
+BEGIN
+  --make sure table exists  
+  IF NOT DoesTableExist(tname) THEN
+    RAISE EXCEPTION 'Table % does not exist.', tname;
+  END IF;
+
+  myQuery := format('SELECT MAX(runnumber) FROM %s',tname);
+  EXECUTE myQuery INTO maxrun;
+  
+  RETURN maxrun;
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+--Retrieve largest SubRun entry in a table for a specific Run
+--Returns largest SubRun number stored in table for a specific Run
+DROP FUNCTION IF EXISTS GetLastSubRun(TEXT, INT);
+
+CREATE OR REPLACE FUNCTION GetLastSubRun( tname TEXT,
+       	  	  	   		  run INT )
+					  RETURNS INT AS $$
+DECLARE
+myQuery TEXT;
+myBool  BOOLEAN;
+maxsubrun  SMALLINT;
+BEGIN
+  --make sure table exists  
+  IF NOT DoesTableExist(tname) THEN
+    RAISE EXCEPTION 'Table % does not exist.', tname;
+  END IF;
+
+  --check if run exists at all in table
+  myQuery := format('(SELECT TRUE FROM %s WHERE runnumber = %s)',tname,run);
+  EXECUTE myQuery INTO myBool;
+  IF myBool IS NULL THEN
+    RAISE EXCEPTION 'Table % does not contain entries with runnumber = %s',tname,run;
+  END IF;
+
+  myQuery := format('SELECT MAX(subrunnumber) FROM %s WHERE runnumber= %s',tname,run);
+  EXECUTE myQuery INTO maxsubrun;
+  
+  RETURN maxsubrun;
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+--Retrieve largest Run/SubRun combination
+DROP FUNCTION IF EXISTS GetLastRunSubRun(TEXT);
+
+CREATE OR REPLACE FUNCTION GetLastRunSubRun( tname TEXT )
+	  	  	   		     RETURNS INT[] AS $$
+DECLARE
+myQuery    TEXT;
+myBool     BOOLEAN;
+maxrun     SMALLINT;
+maxsubrun  SMALLINT;
+maxrunsubrun SMALLINT ARRAY[2];
+BEGIN
+  --make sure table exists  
+  IF NOT DoesTableExist(tname) THEN
+    RAISE EXCEPTION 'Table % does not exist.', tname;
+  END IF;
+
+  maxrun    = GetLastRun(tname);
+  maxsubrun = GetLastSubRun(tname,maxrun);
+
+  maxrunsubrun[0] = maxrun;
+  maxrunsubrun[1] = maxsubrun;
+
+  RETURN maxrunsubrun;
+  --RETURN NEXT maxrunsubrun[0];
+  --RETURN NEXT maxrunsubrun[1];
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
