@@ -5,14 +5,7 @@ from dstream  import ds_project
 from dstream.ds_api import ds_master
 import os,sys
 
-logger = pub_logger.get_logger('register_project')
-# DB interface for altering ProcessTable
-conn=ds_master(pubdb_conn_info.admin_info(),logger)
-
-# Connect to DB
-conn.connect()
-
-def parse(contents):
+def parse(conn,logger,contents):
     new_contents=[]
     project_v=[]
     ctr = 0
@@ -204,6 +197,7 @@ def parse(contents):
         logger.critical('Aborting...')
         sys.exit(1)
 
+
     result = []
     for v in project_v:
 
@@ -225,19 +219,12 @@ def parse(contents):
                 logger.critical('Aborting...')
                 sys.exit(1)
 
-            diff = orig_info.diff(v)
-            if not diff:
-                logger.info('Configuration for project %s is identical...' % v._project)
-                continue
-            else:
-                logger.warning('Diff information below...\n%s' % diff)
-
         logger.info('Valid project info...\n%s' % v)
         result.append(v)
 
     return result
 
-def register(projects):
+def register(conn,logger,projects):
 
     if not projects:
         logger.info('No update needed.')
@@ -245,15 +232,31 @@ def register(projects):
     
     logger.warning('Below is a summary of project update/registration.')
     # Make sure these projects can be registered
+    projects_to_register=[]
     for p in projects:
-        logger.warning('Will register/update project %s...' % p._project)
 
+        diff = None
+        if conn.project_exist(p._project):
+            orig_info = conn.project_info(p._project)
+            diff = orig_info.diff(p)
+            if not diff:
+                logger.info('Configuration for project %s is identical...' % p._project)
+                continue
+            else:
+                logger.warning('Will update project %s...' % p._project)
+                logger.warning('Diff information below...\n%s' % diff)
+        else:
+            logger.warning('Will register project %s...' % p._project)
+            projects_to_register.append(p)
+        projects_to_register.append(p)
+
+    if not projects_to_register: return True
+    
     if not conn._ask_binary():
         return False
 
     status = True
-    
-    for p in projects:
+    for p in projects_to_register:
 
         if conn.project_exist(p._project):
             
@@ -267,12 +270,19 @@ def register(projects):
 
 if __name__ == '__main__':
 
+    logger = pub_logger.get_logger('register_project')
+    # DB interface for altering ProcessTable
+    conn=ds_master(pubdb_conn_info.admin_info(),logger)
+    
+    # Connect to DB
+    conn.connect()
+    
     if len(sys.argv)<2:
         print 'Usage:',sys.argv[0],'$CONFIG_FILE'
         sys.exit(1)
 
     c = open(sys.argv[1],'r').read()
 
-    projects = parse(c)
+    projects = parse(conn,logger,c)
 
-    register(projects)
+    register(conn,logger,projects)

@@ -756,7 +756,7 @@ class ds_master(ds_writer,ds_reader):
             self._logger.info('New Resource: %s' % resource )
             
             if not self._ask_binary(): return False;
-        
+
         query = ' SELECT UpdateProjectConfig(\'%s\',\'%s\',%d,%d,\'%s\',\'%s\',\'%s\',%s);'
         query = query % ( info._project,
                           info._command,
@@ -771,6 +771,41 @@ class ds_master(ds_writer,ds_reader):
 
     ## @brief Method to upgrade project version
     def project_version_update(self,project):
+
+        if type(project) == type(str()):
+            return project_version_update_by_name(project)
+
+        if not isinstance(project,ds_project):
+            self._logger.error('Input argument is not a valid ds_project type!')
+            return False
+
+        if not self.project_exist(project._project):
+            self._logger.error('Project %s not found!' % project._project)
+            return False
+
+        resource = ''
+        for x in project._resource:
+            resource += '%s=>%s,' % (x, project._resource[x])
+
+        resource = resource.rstrip(',')            
+
+        query = " SELECT ProjectVersionUpdate('%s','%s',%d,%d,'%s','%s',%d,%d,'%s',%s);"
+
+        query = query % ( project._project,
+                          project._command,
+                          project._period,
+                          project._sleep,
+                          project._email,
+                          project._server,
+                          project._run,
+                          project._subrun,
+                          resource,
+                          str(project._enable).upper() )
+
+        return self.commit(query)
+
+    ## @brief Method to upgrade project version
+    def project_version_update_by_name(self,project):
         if not self.project_exist(project):
             self._logger.error('Project %s not found!' % project)
             return False
