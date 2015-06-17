@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
+from gui_utils_api import GuiUtilsAPI
 
 # catch ctrl+C to terminate the program
 import signal
@@ -27,15 +28,8 @@ from pub_dbi import pubdb_conn_info
 _update_period = 10#in seconds
 my_template = 'pubs_diagram_061515.png'
 
-# DB interface:
-global dbi
-dbi = ds_reader(pubdb_conn_info.reader_info())
-
-#Establish a connection to the database through the DBI
-try:
-    dbi.connect()
-except:
-    print "Unable to connect to database... womp womp :("
+# GUI DB interface:
+gdbi = GuiUtilsAPI()
 
 #suppress warnings temporarily:
 QtCore.qInstallMsgHandler(lambda *args: None)
@@ -65,8 +59,8 @@ view.show()
 #For now, zoom out a little bit so it can fit on my screen ...
 view.scale(0.8,0.8)
 
-#Get a list of all projects from the DBI
-projects = dbi.list_all_projects() # [project, command, server, sleepafter .... , enabled, resource]
+#Get a list of all projects from the gui DBI
+projects = gdbi.getAllProjects() # [project, command, server, sleepafter .... , enabled, resource]
 
 # Dictionary of project name --> pie chart item
 proj_dict = {}
@@ -114,7 +108,7 @@ def update_gui():
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
-    projects = dbi.list_all_projects() # [project, command, server, sleepafter .... , enabled, resource]
+    projects = gdbi.getAllProjects()
 
     for iproj in projects:
 
@@ -127,31 +121,16 @@ def update_gui():
 
         #First store the piechart x,y coordinate to re-draw it in the same place later
         ix, iy = proj_dict[iprojname].getCenterPoint()
+        max_radius = float(template_params[proj_name][2])
+        ir = gdbi.computePieChartRadius(iprojname, tot_n, max_radius)
+        pie_slices = gdbi.computePieSlices(iprojname)
 
-        #Status codes: 0 is completed (don't care about these) 1 is initiated, 2 is to be validated, >2 is error?
-        #Get the number of runs with status 1 from project through the DBI
-        n_status1 = len(dbi.get_runs(iprojname,status=1))
-        
-        #Get the number of runs with status 2 from project through DBI
-        n_status2 = len(dbi.get_runs(iprojname,status=2))
-
-        tot_n = n_status1+n_status2;
-
-        #If no runs have status 1 or 2, set pie chart radius to 0 (invisible)
-        if not tot_n:
-            idata = (iprojname, ix, iy, 0., [ (1., 'r') ])
+        #Set the new data that will be used to make a new pie chart
+        #If the project is disabled, make a filled-in red circle
+        if iproj._enable == True:
+            idata = (iprojname, ix, iy, ir, pie_slices )
         else:
-                     
-            #Compute the fraction of the total runs that are complete
-            frac_1 = float(n_status1)/float(tot_n)
-            frac_2 = float(n_status2)/float(tot_n)
-
-            #Set the new data that will be used to make a new pie chart
-            #If the project is disabled, make a filled-in red circle
-            if iproj._enable == True:
-                idata = (iprojname, ix, iy, computePieChartRadius(iprojname, tot_n), [ (frac_1, 'b'), (frac_2, 'g') ] )
-            else:
-                idata = (iprojname, ix, iy, computePieChartRadius(iprojname, tot_n), [ (1., 'r') ])
+            idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
 
         #Make the replacement piechart
         ichart = PieChartItem(idata)
@@ -179,15 +158,6 @@ def update_gui():
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
-
-def computePieChartRadius(proj_name, n_total_runsubruns):
-    max_radius = float(template_params[proj_name][2])
-    #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
-    #unless radius > Rmax, in which case use radius = Rmax
-    #This function has r = 0.5*Rmax when n = 5
-    radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(n_total_runsubruns))
-    #Double check the radius isn't bigger than the max allowed
-    return radius if radius <= max_radius else max_radius
 
 #Initial drawing of GUI with real values
 #This is also the function that is called to update the canvas periodically

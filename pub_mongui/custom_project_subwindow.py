@@ -8,26 +8,40 @@ class CustomProjectSubwindow():
 
     def __init__(self, project_name, project_description=''):
 
-        #Open an external window
+        self.pname = project_name
+        self.pdesc = project_description
+
+        # Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
-        #Window title
-        self.win.setWindowTitle(project_name+': Additional Information')
+        # Window title
+        self.win.setWindowTitle(self.pname+': Additional Information')
+        # Portion of window that shows project description text
+        self.AddTextViewbox(self.pdesc)
+        # Portion of the window that draws a random plot
+        self.win.nextRow()
+        self.AddRandomPlot()
+
+    def AddTextViewbox(self, intext):
+
         #Make a text item that is the project description
-        self.mytext = pg.TextItem(text=project_description)
-        self.mytext.setTextWidth(450)
+        mytext = pg.TextItem(text=intext)
+        mytext.setTextWidth(450)
         #Make a viewbox in the window to hold the text
         #For some reason, if invertY is false, the text appears below
         #the bottom of the graphics window. Set it to true and text will
         #appear in the upper-left corner.
-        self.textvb = self.win.addViewBox(invertY=True,row=0,col=0)
+        textvb = self.win.addViewBox(invertY=True,row=0,col=0)
         #Add the text to the viewbox
-        self.textvb.addItem(self.mytext)
-        self.win.nextRow()
+        textvb.addItem(mytext)
+
+    def AddRandomPlot(self):
+
         #Draw a random plot to demonstrate possibilities
-        self.p1 = self.win.addPlot(row=1,col=0)
-        self.p1.setLabel('top','Sample plot (TBD): Project %s'%project_name)
-        self.data1 = np.random.normal(size=300)
-        self.curve1 = self.p1.plot(self.data1)
+        p1 = self.win.addPlot(row=1,col=0)
+        p1.setLabel('top','Sample plot (TBD): Project %s'%self.pname)
+        data = np.random.normal(size=300)
+        curve = p1.plot(data)
+
 
     def __del__(self):
         pass
