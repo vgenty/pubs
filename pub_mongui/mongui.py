@@ -121,9 +121,10 @@ def update_gui():
 
         #First store the piechart x,y coordinate to re-draw it in the same place later
         ix, iy = proj_dict[iprojname].getCenterPoint()
-        max_radius = float(template_params[proj_name][2])
-        ir = gdbi.computePieChartRadius(iprojname, tot_n, max_radius)
-        pie_slices = gdbi.computePieSlices(iprojname)
+        max_radius = float(template_params[iprojname][2])
+        tot_n = gdbi.getNRunSubruns(iprojname)
+        ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
+        pie_slices = gdbi.computePieSlices(iprojname, tot_n)
 
         #Set the new data that will be used to make a new pie chart
         #If the project is disabled, make a filled-in red circle
