@@ -143,7 +143,7 @@ class register_new_run(ds_project_base):
             # fetch from database the last run/subrun number recorded
             logger = pub_logger.get_logger('register_new_run')
             reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
-            last_recorded_info = reader.get_last_run_subrun('AhoRun')
+            last_recorded_info = reader.get_last_run_subrun(self._runtable)
             #last_recorded_info = (0,0)
 
             # if we made it this far the file info needs to be
