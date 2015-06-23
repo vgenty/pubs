@@ -6,10 +6,11 @@ import numpy as np
 
 class CustomProjectSubwindow():
 
-    def __init__(self, project_name, project_description=''):
+    def __init__(self, piechartitem):
 
-        self.pname = project_name
-        self.pdesc = project_description
+        self.piechartitem = piechartitem
+        self.pname = piechartitem.getName()
+        self.pdesc = piechartitem.getDescript()
 
         # Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
@@ -19,7 +20,8 @@ class CustomProjectSubwindow():
         self.AddTextViewbox(self.pdesc)
         # Portion of the window that draws a random plot
         self.win.nextRow()
-        self.AddRandomPlot()
+        #self.AddRandomPlot()
+        self.AddHistoryPlot()
 
     def AddTextViewbox(self, intext):
 
@@ -42,6 +44,11 @@ class CustomProjectSubwindow():
         data = np.random.normal(size=300)
         curve = p1.plot(data)
 
+    def AddHistoryPlot(self):
+        p1 = self.win.addPlot(row=1,col=0)
+        p1.setLabel('top','# Pending Run/Subruns for Project %s'%self.pname)
+        data = np.array(self.piechartitem.getHistory())
+        
 
     def __del__(self):
         pass

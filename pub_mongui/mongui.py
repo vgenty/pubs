@@ -84,6 +84,7 @@ for iproj in projects:
     xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
     ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, [ (1., 'y') ]))
+    #Initialize the piechart description from the stored text file
     if iprojname in proj_descripts.keys():
         ichart.setDescript(proj_descripts[iprojname])
         
@@ -119,13 +120,21 @@ def update_gui():
         if iprojname not in proj_dict.keys():
             continue
 
-        #First store the piechart x,y coordinate to re-draw it in the same place later
+        #First store the piechart x,y coordinate
         ix, iy = proj_dict[iprojname].getCenterPoint()
+        #Get the maximum radius of for this pie chart from the template parameters
         max_radius = float(template_params[iprojname][2])
+        #Compute the number of entries in the pie chart (denominator)
         tot_n = gdbi.getNRunSubruns(iprojname)
+        #Compute the radius if the pie chart, based on the number of entries
         ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
+        #Compute the slices of the pie chart
         pie_slices = gdbi.computePieSlices(iprojname, tot_n)
 
+        #To do:
+        #Check if the pie chart has changed since last update
+        #If it hasn't changed, don't bother re-drawing it
+        
         #Set the new data that will be used to make a new pie chart
         #If the project is disabled, make a filled-in red circle
         if iproj._enable == True:
@@ -133,10 +142,9 @@ def update_gui():
         else:
             idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
 
-        #Make the replacement piechart
-        ichart = PieChartItem(idata)
-        if iprojname in proj_descripts.keys():
-            ichart.setDescript(proj_descripts[iprojname])
+        #update the piechart item with the new data
+        ichart.updateData(idata)
+        ichart.appendHistory(tot_n)
 
         #Remove the old item from the scene
         scene.removeItem(proj_dict[iprojname])
@@ -147,6 +155,15 @@ def update_gui():
         #Save the new pie chart in the dictionary, overwriting the old
         proj_dict[iprojname] = ichart
 
+        #Save the number of pending run/subruns into the history dict
+        if iprojname not in proj_history.keys():
+            proj_history[iprojname] = []
+        else:
+            proj_history[iprojname].append(tot_n)
+        #If too many pending run/subruns are stored, trim the list
+        if len(proj_history[iprojname]) > 500:
+            proj_history[iprojname].pop(0)
+        
         #On top of the pie chart, write the number of run/subruns
         #Re-draw the text on top of the pie chart with the project name
         mytext = QtGui.QGraphicsTextItem()
