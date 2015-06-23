@@ -35,6 +35,7 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.r = data[3]
         self.slices = data[4]
         self.was_updated = True
+        self.generatePicture()
 
     def generatePicture(self):
         ## pre-computing a QPicture object allows paint() 
@@ -81,6 +82,9 @@ class PieChartItem(QtGui.QGraphicsObject):
         return self.name
 
     def appendHistory(self, toappend):
+        #If too many pending run/subruns are stored, trim the list
+        if len(self.history) > 500:
+            self.history.pop(0)
         self.history.append(toappend)
 
     def getHistory(self):

@@ -48,7 +48,7 @@ class CustomProjectSubwindow():
         p1 = self.win.addPlot(row=1,col=0)
         p1.setLabel('top','# Pending Run/Subruns for Project %s'%self.pname)
         data = np.array(self.piechartitem.getHistory())
-        
+        curve = p1.plot(data)
 
     def __del__(self):
         pass

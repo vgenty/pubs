@@ -24,6 +24,8 @@ from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
 
+#to-do: it takes like 5 seconds to loop through projects and do all the necessary queries to build their pie charts...
+#this definitely should be faster.
 
 _update_period = 10#in seconds
 my_template = 'pubs_diagram_061515.png'
@@ -142,28 +144,19 @@ def update_gui():
         else:
             idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
 
-        #update the piechart item with the new data
-        ichart.updateData(idata)
-        ichart.appendHistory(tot_n)
+        #To-do: play around with what is being done (removing+adding)
+        #to try to speed up this code
 
         #Remove the old item from the scene
         scene.removeItem(proj_dict[iprojname])
 
+        #update the piechart item with the new data
+        proj_dict[iprojname].updateData(idata)
+        proj_dict[iprojname].appendHistory(tot_n)
+
         #Draw the new piechart in the place of the old one
-        scene.addItem(ichart)
+        scene.addItem(proj_dict[iprojname])
 
-        #Save the new pie chart in the dictionary, overwriting the old
-        proj_dict[iprojname] = ichart
-
-        #Save the number of pending run/subruns into the history dict
-        if iprojname not in proj_history.keys():
-            proj_history[iprojname] = []
-        else:
-            proj_history[iprojname].append(tot_n)
-        #If too many pending run/subruns are stored, trim the list
-        if len(proj_history[iprojname]) > 500:
-            proj_history[iprojname].pop(0)
-        
         #On top of the pie chart, write the number of run/subruns
         #Re-draw the text on top of the pie chart with the project name
         mytext = QtGui.QGraphicsTextItem()
