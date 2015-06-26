@@ -150,6 +150,7 @@ def plot_resource_usage(proj,outpath):
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
     plt.legend(loc=2,fontsize=20)
 
+    outpath += "resource_monitoring_%s.png"%(servername)
     plt.savefig(outpath)
     return outpath
     
@@ -211,9 +212,10 @@ class monitor_machine_resources(ds_project_base):
 
         ctr = 0
         #try:
-        plotpath = pubstop+'/'+self._data_dir+'/'+'monitoring_%i.png'%ctr
+        plotpath = pubstop+'/'+self._data_dir+'/'
         self.info('saving plot to path: %s'%plotpath)
         outpath = plot_resource_usage(project,plotpath)
+        self.info('saving plot to path: %s'%outpath)
         if (outpath == 'failed import'):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):
