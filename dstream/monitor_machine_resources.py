@@ -57,18 +57,18 @@ def plot_resource_usage(proj,outpath):
             # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_HOME'):
-                    if ( cntr%100 == 0 ):
-                    #if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) ):
+                    #if ( cntr%100 == 0 ):
+                    if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastDISK = float(log_dict[key])*100
                         tDISK.append(time)
                         DISK.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) ):
+                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastRAM = float(log_dict[key])
                         tRAM.append(time)
                         RAM.append(float(log_dict[key]))
                 if (str(key) == 'CPU_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) ):
+                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastCPU = float(log_dict[key])
                         tCPU.append(time)
                         CPU.append(float(log_dict[key]))
@@ -117,11 +117,11 @@ def plot_resource_usage(proj,outpath):
     ax.set_ylim([0,100])
 
     if (len(datesCPU) == len(CPU)):
-        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o--', color='k', label='CPU usage', markersize=7)    
+        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK)):
-        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage', markersize=7)
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o', color='r',label='DISK usage', markersize=7)
     if (len(datesRAM) == len(RAM)):
-        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o--', color='b', label='RAM usage', markersize=7)
+        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
 
 
 
@@ -136,6 +136,7 @@ def plot_resource_usage(proj,outpath):
     ax.xaxis.set_major_formatter(daysFmt)
     ax.xaxis.set_minor_locator(hours)
 
+    ax.set_xlim([datetime.date.today()-datetime.timedelta(days=1), datetime.date.today()])
 
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
