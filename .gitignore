@@ -16,3 +16,4 @@
 *~
 *.pcm
 /GNUmakefile
+/data/*

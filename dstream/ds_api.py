@@ -137,7 +137,7 @@ class ds_reader(pubdb_reader):
             self._logger.critical('Project %s does not exist!' % tname)
             return []
 
-        query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d);' % (tname,status)
+        query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d) ORDER BY Run, SubRun, Seq ASC;' % (tname,status)
 
         runs =[]
         if not self.execute(query): return runs
@@ -145,6 +145,8 @@ class ds_reader(pubdb_reader):
         if self.nrows():
             for x in self:
                 runs.append(x)
+
+        runs.reverse()
         return runs
 
     ## @brief Fetch a list of enabled daemons for execution. Return is an array of ds_daemon.
@@ -214,6 +216,7 @@ class ds_reader(pubdb_reader):
         if self.nrows():
             for x in self:
                 runs.append(x)
+        runs.reverse()
         return runs
 
     ## @brief Fetch a daemon configuration for the specified server. Returns ds_daemon if found. Else None.

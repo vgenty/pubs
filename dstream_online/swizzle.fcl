@@ -1,40 +1,43 @@
-
-process_name: Swizzler
-
+#include "geometry_microboone.fcl"
+#include "timeservice_microboone.fcl"
+#include "pmtconfig_microboone.fcl"
+#include "databaseutil_microboone.fcl"
+process_name: RawConvert
 services:
 {
-  # Load the service that manages root files for histograms.
   TFileService: { fileName: "daq_hist.root" }
   Timing:       {}
-  RandomNumberGenerator: {} #ART native random number generator
-  user:         { }
-  FileCatalogMetadata: { applicationFamily: "art"
-                         applicationVersion: "vxx_yy_zz"
-                         fileType: "data"
-                         group: "uboone"
-                         runType: "physics"
-                         service_type: "FileCatalogMetadata"
-                        }
-  FileCatalogMetadataMicroBooNE: { FCLName: "prodcosmics_uboone.fcl"
-                                   FCLVersion: "vswizzle"
-                                   ProjectName: "Swizzler"
-                                   ProjectStage: "swizzle"
-                                   ProjectVersion: "vxx_yy_zz"
-                                   service_type: "FileCatalogMetadataMicroBooNE"
-            			 }
+  RandomNumberGenerator: {} 
+  user: {
+          ExptGeoHelperInterface: @local::microboone_geometry_helper
+          Geometry:               @local::microboone_geo
+	  UBOpReadoutMap:           @local::microboone_opreadoutmap
+          TimeService:            @local::microboone_timeservice
+          DatabaseUtil:           @local::microboone_database
+          }
 }
 
-#Start each new event with an empty event.
+# Database settings
+services.user.DatabaseUtil.DBHostName:    "fnalpgsdev.fnal.gov"
+services.user.DatabaseUtil.DBName:        "uboonedaq_dev"
+services.user.DatabaseUtil.DBUser:        "uboonedaq_web"
+services.user.DatabaseUtil.Port:          5436
+services.user.DatabaseUtil.PassFileName:  "crap.log"  # name of password file. searched for using env var FW_SEARCH_PATH
+services.user.DatabaseUtil.ToughErrorTreatment: true
+services.user.DatabaseUtil.ShouldConnect: true
+services.user.DatabaseUtil.TableName: "main_run"
+
+
 source:
 {
-  fileNames:                [BINARY_INPUT]
-  module_type:		    LArRawInputSourceUBooNE
-  maxEvents:                -1       # Number of events to create
-  huffmanDecode:            false
-  beam_histograms:          [ "E:TOR101, 100, 0, 50", # output histograms for listed variables 
-	                      "E:TORTGT, 100, 0, 50", # "device, NBINS, LOW, HIGH" 
-	                      "E:TOR860, 100, 0, 5",
-	                      "E:TOR875, 100, 0, 5" ]
+  fileNames:       []
+  module_type:	   LArRawInputSourceUBooNE
+  maxEvents:       -1
+  huffmanDecode:   true
+  beam_histograms: [ "E:TOR101, 100, 0, 50",
+                     "E:TORTGT, 100, 0, 50",
+                     "E:TOR860, 100, 0, 5",
+                     "E:TOR875, 100, 0, 5" ]
 }	
 
 outputs:
@@ -42,20 +45,15 @@ outputs:
  out1:
   {
    module_type: RootOutput
-   fileName:    LARSOFT_OUTPUT #default file name, can override from command line with -o or --output
-   compressionLevel: 1			    
-   dataTier: "raw"
+   fileName:    "larsoft.root" 
+   compressionLevel: 3
   }
 }
 
-# Define and configure some modules to do work on each event.
-# First modules are defined; they are scheduled later.
-# Modules are grouped by type.
 physics:
 {
-
- stream1:   [ out1 ] #could have multiple paths
-
- end_paths: [ stream1 ]  #end_path are things that do not modify art::Event, includes analyzers and output modules. all items here can be run simultaneously
+ stream1:   [ out1 ]
+ end_paths: [ stream1 ]
 }
+
 
