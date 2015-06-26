@@ -111,7 +111,21 @@ class transfer( ds_project_base ):
                         status = 102
                         # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
                         # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
-                        # This requires that uboonepro owns a cert. We should get 2 Gbps throughput with this scenario.
+                        # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
+                        # Need more logging to message service ... also let's put all this into a function that we call.
+
+                        cmd = "voms-proxy-info -all "
+                        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+                        (out,err) = proc.communicate()
+                        goodProxy = False
+                        for line in out:
+                            if "timeleft" in line:
+                                if int(s.split(" : ")[1].replace(":","")) > 0:
+                                    goodProxy = True
+                                    break;
+                        if not goodProxy:
+                            self.error('uboonepro has no proxy.')
+                            raise Exception 
 
                         # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
                         samweb = samweb_cli.SAMWebClient(experiment="uboone")
@@ -121,7 +135,7 @@ class transfer( ds_project_base ):
                         pnnl_loc = "dtn2.pnl.gov" + out_file
                         cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811/" + base_in_file + " sshftp://chur558@" + out_file
                         # Popen() gymnastics here, with resi capturing the return status.
-                        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+                        proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
                         (out,err) = proc.communicate()
                         resi = proc.returncode
                         # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
