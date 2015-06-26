@@ -132,9 +132,9 @@ def plot_resource_usage(proj,outpath):
     daysFmt  = dts.DateFormatter('%m-%d %H:%M')
 
     # format the ticks
-    ax.xaxis.set_major_locator(days)
+    ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
-    ax.xaxis.set_minor_locator(hours)
+    #ax.xaxis.set_minor_locator(hours)
 
     ax.set_xlim([datetime.date.today()-datetime.timedelta(days=1), datetime.date.today()])
 
@@ -148,7 +148,7 @@ def plot_resource_usage(proj,outpath):
     #plt.figure.autofmt_xdate()    
     plt.grid()
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
-    plt.legend(fontsize=20)
+    plt.legend(loc=2,fontsize=20)
 
     plt.savefig(outpath)
     return outpath
