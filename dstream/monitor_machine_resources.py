@@ -34,6 +34,8 @@ def plot_resource_usage(proj,outpath):
     RAM   = []
     tDISK = []
     DISK  = []
+    tPROJ = []
+    NPROJ = []
 
     lastDISK = -100
     lastRAM  = -100
@@ -54,6 +56,8 @@ def plot_resource_usage(proj,outpath):
         if ( (log_time != '') and (log_dict) ):
             # get time in python datetime format
             time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+            NPROJ.append(x._proj_ctr)
+            tPROJ.append(time)
             # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_HOME'):
@@ -150,8 +154,22 @@ def plot_resource_usage(proj,outpath):
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
     plt.legend(loc=2,fontsize=20)
 
-    outpath += "resource_monitoring_%s.png"%(servername)
-    plt.savefig(outpath)
+    outpathResource = outpath+"resource_monitoring_%s.png"%(servername)
+    plt.savefig(outpathResource)
+
+    fig, ax = plt.subplots(1,figsize=(12,8))
+    plt.plot(tPROJ[2:],NPROJ[2:],'ro:')
+    plt.title('PUBS Projects Running on %s'%(servername), fontsize=20)
+    ax.set_xlabel('Time',fontsize=20)
+    ax.set_ylabel('Number of Projects Running',fontsize=20)
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
+    ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
+    fig.autofmt_xdate()
+    outpathProjs = outpath+"numproj_monitoring_%s.png"%(servername)
+    plt.grid()
+    plt.savefig(outpathProjs)
     return outpath
     
 ## @class monitor_machine_resources
