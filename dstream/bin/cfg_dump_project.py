@@ -26,18 +26,14 @@ k=ds_reader(pubdb_conn_info.reader_info(), logger)
 k.connect()
 
 project_info_v=[]
-if len(sys.argv)==3:
-    info = k.project_info(sys.argv[2])
-    if not info:
-        logger.error('No project for the server: %s' % sys.argv[2])
-        sys.exit(1)
-    project_info_v.append(info)
-else:
-    project_info_v = k.list_all_projects()
 
-if not len(project_info_v):
-    logger.info('No project found.')
-    sys.exit(0)
+for p in k.list_all_projects():
+    if len(sys.argv) < 3 or p._server == sys.argv[2]:
+        project_info_v.append(p)
+
+if not project_info_v:
+    logger.error('No project found...')
+    sys.exit(1)
 
 fout=open(out_file,'w')
 for info in project_info_v:

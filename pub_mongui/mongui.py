@@ -108,7 +108,6 @@ for iproj in projects:
     
 def update_gui():
 
-    print "UPDATING GUI"
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
@@ -117,7 +116,6 @@ def update_gui():
     for iproj in projects:
 
         iprojname = iproj._project
-        print "Start: Project = %s"%iprojname
         #If this project isn't in the dictionary (I.E. it wasn't ever drawn on the GUI),
         #then skip it. This can be fixed by adding the project to the GUI params
         if iprojname not in proj_dict.keys():
@@ -170,9 +168,7 @@ def update_gui():
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
-        print "End of updating this project! I have redrawn it now."
 
-    print "End updating GUI"
 #Initial drawing of GUI with real values
 #This is also the function that is called to update the canvas periodically
 update_gui()

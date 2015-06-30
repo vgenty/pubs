@@ -121,11 +121,11 @@ def plot_resource_usage(proj,outpath):
     ax.set_ylim([0,100])
 
     if (len(datesCPU) == len(CPU)):
-        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o:', color='k', label='CPU usage', markersize=7)    
+        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK)):
-        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o:', color='r',label='DISK usage', markersize=7)
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o', color='r',label='DISK usage', markersize=7)
     if (len(datesRAM) == len(RAM)):
-        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o:', color='b', label='RAM usage', markersize=7)
+        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
 
 
 
@@ -158,7 +158,7 @@ def plot_resource_usage(proj,outpath):
     plt.savefig(outpathResource)
 
     fig, ax = plt.subplots(1,figsize=(12,8))
-    plt.plot(tPROJ[2:],NPROJ[2:],'ro:')
+    plt.plot(tPROJ[2:],NPROJ[2:],'ro')
     plt.title('PUBS Projects Running on %s'%(servername), fontsize=20)
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Number of Projects Running',fontsize=20)
