@@ -222,9 +222,10 @@ def pnnl_transfer( self ):
     samweb = samweb_cli.SAMWebClient(experiment="uboone")
     loc = samweb.locateFile(filenameorid=in_file)
     if ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
-        full_file = loc[0]["full_path"].strip('enstore:')
-        pnnl_loc = "dtn2.pnl.gov" + out_file
+        full_file = loc[0]["full_path"].strip('enstore:/pnfs/uboone')
+        pnnl_loc = "dtn2.pnl.gov/" + os.system.basename(out_file)
         cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
+        self.info('Will launch ' + cmd_gsiftp_to_sshftp)
         # Popen() gymnastics here, with resi capturing the return status.
         proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
         wait = 0
