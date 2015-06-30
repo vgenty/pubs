@@ -111,6 +111,8 @@ class reg_files_to_sam( ds_project_base ):
             in_file_base = self._infile_format % ( run, subrun )
             in_file = '%s/%s' % ( self._in_dir, in_file_base )
             in_json = '%s/%s.json' %( self._meta_dir, in_file_base )
+
+            self.info('Declaring ' + in_file + ' to SAM: using ' + in_json  )
             
             if os.path.isfile( in_file ) and os.path.isfile( in_json ):
                 self.info('Found %s' % (in_file) )

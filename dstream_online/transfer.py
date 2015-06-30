@@ -107,42 +107,14 @@ class transfer( ds_project_base ):
                     if "pnnl" not in self._project:
                         resi = ih.cp(( in_file, out_file ))
                         resj = ih.cp(( in_json, out_json ))
-                    else:
+
+                    # If this project is xfer'ing data to PNNL, we use gsitrp-to-sshftp in pnnl_transfer().
+                    else: 
                         status = 102
-                        # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
-                        # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
-                        # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
-                        # Need more logging to message service ... also let's put all this into a function that we call.
+                        (resi, resj) = self.pnnl_transfer()
 
-                        cmd = "voms-proxy-info -all "
-                        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-                        (out,err) = proc.communicate()
-                        goodProxy = False
-                        for line in out:
-                            if "timeleft" in line:
-                                if int(s.split(" : ")[1].replace(":","")) > 0:
-                                    goodProxy = True
-                                    break;
-                        if not goodProxy:
-                            self.error('uboonepro has no proxy.')
-                            raise Exception 
-
-                        # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
-                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                        loc = samweb.locateFile(filenameorid=in_file)
-                        # This needs testing!!!
-                        base_in_file = os.path.basename(loc...) # loc needs checking for "pnfs"
-                        pnnl_loc = "dtn2.pnl.gov" + out_file
-                        cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811/" + base_in_file + " sshftp://chur558@" + out_file
-                        # Popen() gymnastics here, with resi capturing the return status.
-                        proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-                        (out,err) = proc.communicate()
-                        resi = proc.returncode
-                        # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
-                        resj = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc)
-                        
                     if resi == 0 and resj == 0:
-                            status = 0
+                        status = 0
                     else:
                         status = 101
                 except:
@@ -220,6 +192,80 @@ class transfer( ds_project_base ):
 
             # Break from loop if counter became 0
             if not ctr: break
+
+def pnnl_transfer( self ):
+
+    # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
+    # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
+    # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
+    # Need more logging to message service ... also let's put all this into a function that we call.
+
+    # Not 100% sure that this voms-proxy-info is what's needed to check cert status with the way that's setup on near1,
+    # and I see gsiftp transfers working fine from evb to near1 for now....
+    '''
+    cmd = "voms-proxy-info -all "
+    proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+    (out,err) = proc.communicate()
+    goodProxy = False
+    for line in out:
+        if "timeleft" in line:
+            if int(s.split(" : ")[1].replace(":","")) > 0:
+                goodProxy = True
+                break;
+            if not goodProxy:
+                self.error('uboonepro has no proxy.')
+                raise Exception 
+   '''
+         
+    # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
+    transfer = 0
+    samweb = samweb_cli.SAMWebClient(experiment="uboone")
+    loc = samweb.locateFile(filenameorid=in_file)
+    if ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
+        full_file = loc[0]["full_path"].strip('enstore:')
+        pnnl_loc = "dtn2.pnl.gov" + out_file
+        cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
+        # Popen() gymnastics here, with resi capturing the return status.
+        proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        wait = 0
+        delay = 2
+        samcode = 12
+
+        while  proc.poll() is None:
+            wait+=delay
+            if delay > WAIT_TIME):
+                self.error ("pnnl_transfer timed out in awaiting transfer.")
+                timeout = True
+                proc.kill()
+                transfer = 11
+                break
+            self.info('pnnl_transfer process %d active... @ %d [sec]' % (proc,wait))
+            sleep (delay)
+    
+            if not transfer:
+                (out,err) = proc.communicate()
+                transfer = proc.returncode
+        # also grep the out for indication of success at end.
+                if not transfer:
+                    transfer = 10
+                    for line in out:
+                        if "success" in line:
+                            transfer = 0
+                            break
+    # end file lives in enstore
+
+    if not transfer:
+        # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
+        samcode = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc)
+        samloc  = samweb.locateFile(filenameorid=in_file)
+        self.info('pnnl_transfer finished moving ' + in_file + ' to PNNL, and samweb file location updated to include ' + str(samloc))
+    else:
+        self.error('pnnl_transfer finished with a problem on ' + in_file + '. status is: ' + str(status))
+
+    return (transfer, samcode)
+
+
+
 
 # A unit test section
 if __name__ == '__main__':
