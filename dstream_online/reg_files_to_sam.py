@@ -111,7 +111,7 @@ class reg_files_to_sam( ds_project_base ):
             in_file_base = self._infile_format % ( run, subrun )
             in_file = '%s/%s' % ( self._in_dir, in_file_base )
             in_json = '%s/%s.json' %( self._meta_dir, in_file_base )
-            
+
             if os.path.isfile( in_file ) and os.path.isfile( in_json ):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
@@ -140,8 +140,8 @@ File %s has already exists at SAM!
                         samweb.declareFile(md=json_dict)
                         status = 2
                     except:
-                        print "Unexpected error: samweb declareFile problem: "
-
+#                        print "Unexpected error: samweb declareFile problem: "
+                        self.error( "Unexpected error: samweb declareFile problem: ")
                         subject = "samweb declareFile problem: %s" % in_file_base
                         text = """
 File %s failed to be declared to SAM!
@@ -151,7 +151,7 @@ File %s failed to be declared to SAM!
                         pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
                         # print "Give some null properties to this meta data"
-                        print "Give this file a status 102"
+                        self.error( "Give this file a status 102")
                         status = 102
 
             else:
@@ -190,8 +190,9 @@ File %s failed to be declared to SAM!
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs(self._project_list,
-                                      self._project_requirement):
+        for x in [(391,10,0,0)]:
+        #for x in self.get_xtable_runs(self._project_list,
+        #                              self._project_requirement):
 
             # Counter decreases by 1
             ctr -= 1

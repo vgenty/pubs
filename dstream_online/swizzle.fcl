@@ -15,6 +15,21 @@ services:
           TimeService:            @local::microboone_timeservice
           DatabaseUtil:           @local::microboone_database
           }
+  FileCatalogMetadata: { applicationFamily: "art"
+                         applicationVersion: "vxx_yy_zz"
+                         fileType: "data"
+                         group: "uboone"
+                         runType: "physics"
+                         service_type: "FileCatalogMetadata"
+                        }
+  FileCatalogMetadataMicroBooNE: { FCLName: "prodcosmics_uboone.fcl"
+                                   FCLVersion: "vswizzle"
+                                   ProjectName: "Swizzler"
+                                   ProjectStage: "swizzle"
+                                   ProjectVersion: "vxx_yy_zz"
+                                   service_type: "FileCatalogMetadataMicroBooNE"
+            			 }
+
 }
 
 # Database settings
@@ -47,6 +62,7 @@ outputs:
    module_type: RootOutput
    fileName:    "larsoft.root" 
    compressionLevel: 3
+   dataTier: "raw"
   }
 }
 

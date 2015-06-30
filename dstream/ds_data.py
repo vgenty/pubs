@@ -349,13 +349,13 @@ class ds_project(object):
         if not self._enable == info._enable:
             msg += 'Enabled : %s => %s\n' % (self._enable,info._enable)
 
-        for x in self._resource.keys():
-            if not x in info._resource.keys():
+        for x in self._resource:
+            if not x in info._resource:
                 msg += 'Resource: Missing %s => %s\n' % (x,self._resource[x])
             elif not self._resource[x] == info._resource[x]:
                 msg += 'Resource: Change  %s : %s => %s\n' % (x,self._resource[x],info._resource[x])
-        for x in info._resource.keys():
-            if not x in self._resource.keys():
+        for x in info._resource:
+            if not x in self._resource:
                 msg += 'Resource: New %s => %s\n' % (x, info._resource[x])
         return msg
 

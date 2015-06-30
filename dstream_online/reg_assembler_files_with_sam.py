@@ -251,6 +251,8 @@ class reg_assembler_files_with_sam(ds_project_base):
                 try:
                     subprocess.call(['rsync', '-e', 'ssh', in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
                     subprocess.call(['rsync', '-e', 'ssh', in_json, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_json ])
+#                    subprocess.call(['scp',in_file, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_file ])
+#                    subprocess.call(['scp',in_json, 'uboonepro@uboonegpvm06.fnal.gov:%s' % out_json ])
                     status = 32
                 except:
                     status = 10

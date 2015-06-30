@@ -95,6 +95,9 @@ case `uname -n` in
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;
+
+		# for password log file
+		export FW_SEARCH_PATH=/home/uboonepro/.sql_access/:$FW_SEARCH_PATH
 		;;
 	esac
 	;;
