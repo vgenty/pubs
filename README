@@ -1,13 +1,2 @@
 
-The 3 projects here mv_, get_, reg_*.sh move a binary, assembler-produced subrun file (must not be a fake empty file) from an area to another area, 
-then uses the C++ python bound functions from uboonedaq code to open that file and get the interesting properties of that subrun, shove it into
-json format and dump that file in the same directory where the data came frome, and then finally registers that json metadata with SAM and moves
-the subrun file to the dropbox, where it gets swooped away to Enstore.
-
-To run, after doing your usual uboonedaq setup, you must source ~/development/uboonedaq/projects/cpp2py/config/setup_cpp2py.sh, 
-then source ~/pubs-install/pubs/config/setup.sh before finally batch_registering the proj_assembler_SAM.txt file and saying 
-python dstream/mv_assembler_daq_files.py, ... (or starting the usual pubs daemon which will run 'em all in the usual cron-y way that it does.)
-
-It is important to know, as of now (end of calendar 2014) this project comes from the uboonedaq branch of pubs. Stuff is configured to
-run as user postgres on the uboonedaq-evb machine. We will move everything over to the ubdaq-prod-evb machine, when we're ready to take PUBS to
-production.
+PUBS is a file management, and scheduling system used by the MicroBooNE experiment. See https://github.com/drinkingkazu/pubs/ for code.
