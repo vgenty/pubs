@@ -79,7 +79,7 @@ class reg_files_to_sam( ds_project_base ):
 
     ## @brief declare a file to SAM
     def declare_to_sam( self ):
-
+        
         # Attempt to connect DB. If failure, abort
         if not self.connect():
 	    self.error('Cannot connect to DB! Aborting...')
@@ -142,9 +142,10 @@ File %s has already exists at SAM!
                     try:
                         samweb.declareFile(md=json_dict)
                         status = 2
-                    except:
+                    except Exception as e:
 #                        print "Unexpected error: samweb declareFile problem: "
                         self.error( "Unexpected error: samweb declareFile problem: ")
+                        self.error( "%s" % e)
                         subject = "samweb declareFile problem: %s" % in_file_base
                         text = """
 File %s failed to be declared to SAM!
@@ -193,9 +194,9 @@ File %s failed to be declared to SAM!
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in [(391,10,0,0)]:
-        #for x in self.get_xtable_runs(self._project_list,
-        #                              self._project_requirement):
+        #for x in [(391,10,0,0)]:
+        for x in self.get_xtable_runs(self._project_list,
+                                      self._project_requirement):
 
             # Counter decreases by 1
             ctr -= 1
