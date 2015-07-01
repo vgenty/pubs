@@ -200,9 +200,7 @@ def pnnl_transfer( self ):
     # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
     # Need more logging to message service ... also let's put all this into a function that we call.
 
-    # Not 100% sure that this voms-proxy-info is what's needed to check cert status with the way that's setup on near1,
-    # and I see gsiftp transfers working fine from evb to near1 for now....
-    '''
+    
     cmd = "voms-proxy-info -all "
     proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
     (out,err) = proc.communicate()
@@ -215,7 +213,7 @@ def pnnl_transfer( self ):
             if not goodProxy:
                 self.error('uboonepro has no proxy.')
                 raise Exception 
-   '''
+   
          
     # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
     transfer = 0
