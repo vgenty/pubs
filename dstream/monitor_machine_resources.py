@@ -140,7 +140,7 @@ def plot_resource_usage(proj,outpath):
     ax.xaxis.set_major_formatter(daysFmt)
     #ax.xaxis.set_minor_locator(hours)
 
-    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
+    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
 
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()

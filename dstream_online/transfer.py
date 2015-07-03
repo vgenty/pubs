@@ -234,8 +234,16 @@ class transfer( ds_project_base ):
 
 
         full_file = loc[0]["full_path"].strip('enstore:/pnfs/uboone') + "/" +  in_file
-
-        pnnl_loc = "dtn2.pnl.gov/" + "pic/projects/microboone/data/"  + in_file
+#        pdb.set_trace()
+        pnnl_machine = "dtn2.pnl.gov"
+        pnnl_dir = 'pic/projects/microboone/data/'
+        ddir = str(jsonOb['runs'][0][0]) # Run number
+        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir "  + "/" + pnnl_dir + ddir
+        proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
+        (out,err) = proc.communicate() 
+        
+        pnnl_loc = pnnl_machine + "/" + pnnl_dir + ddir + "/" + in_file
         cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
         self.info('Will launch ' + cmd_gsiftp_to_sshftp)
         # Popen() gymnastics here, with resi capturing the return status.
@@ -262,22 +270,28 @@ class transfer( ds_project_base ):
             if not transfer:
                 size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
                 transfer = 10
-                pdb.set_trace()
                 if size_out == size_in:
                     transfer = 0
 
 
 # end file lives in enstore
 
-        pdb.set_trace()
+
         if not transfer:
-            # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
-            samcode = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc)
-            samloc  = samweb.locateFile(filenameorid=in_file)
-            self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + size_in + ' [bytes], to PNNL, and added samweb file location updated to include ' + str(samloc))
-            self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
+            try:
+                # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
+                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + ddir + "/" + in_file
+                samadd = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc_withcolon)
+                samloc  = samweb.locateFile(filenameorid=in_file)
+                if len(samloc)>1:
+                    samcode = 0
+                    self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
+                    self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
+                    self.info('Transfer and samaddFile are succsessful. Full SAM location for file is now ' + str(samloc))
+            except:
+                self.error('pnnl_transfer finished with a problem on ' + in_file + ' during addFile or locFile. samadd/samloc is: ' + str(samadd)+"/"+str(samloc))
         else:
-            self.error('pnnl_transfer finished with a problem on ' + in_file + '. addFile/locFile status is: ' + str(samcode)+"/"+str(samloc))
+            self.error('pnnl_transfer finished with a problem on ' + in_file)
                 
         return (transfer, samcode)
 
