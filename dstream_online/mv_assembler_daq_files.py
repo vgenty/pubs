@@ -80,8 +80,9 @@ class mv_assembler_daq_files(ds_project_base):
             filelist = glob.glob( in_file_holder )
             in_file = filelist[0]
 
-            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
-#            cmd = ['scp', in_file, 'ubdaq-prod-near1:%s' % out_file]
+#            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
+            cmd = ['rsync', '-v', in_file, out_file]
+
             proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
             done_list.append(False)
             run_id.append((run,subrun))
