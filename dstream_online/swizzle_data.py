@@ -22,6 +22,8 @@ import subprocess as sub
 #  This project swizzles the data that has successfully been declared, validated, signed, sealed delivered to SAM.
 #  Eventually we will in fact ask also that the beamdaq has been retrieved and merged, but that's only a config
 #  change in this project's config chunk. We submit lar jobs to local node only, by-passsing condor altogether for now.
+# bad status = 101 => we tried running this project on this (run,subrun) more than X times and all failed
+# bad status = 404 => file path not found. Probably deleted before swizzler could do its job...
 class swizzle_data(ds_project_base):
 
 
@@ -40,7 +42,9 @@ class swizzle_data(ds_project_base):
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
+        self._proc_lifetime = 600
         self._proc_list = []
+        self._proc_active = []
         self._log_file_list = []
         self._run_list = []
         self._subrun_list = []
@@ -52,6 +56,7 @@ class swizzle_data(ds_project_base):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
+#        self._nruns = 1
         self._fcl_file = '%s' % (resource['FCLFILE'])
         self._fcl_file = os.environ["PUB_TOP_DIR"] + "/dstream_online/" + self._fcl_file
         self._fcl_file_new  = self._fcl_file.replace(".fcl","_local.fcl")
@@ -65,18 +70,13 @@ class swizzle_data(ds_project_base):
         self._cpu_frac_limit = resource['USED_CPU_FRAC_LIMIT']
         self._available_memory = resource['AVAIL_MEMORY']
         self._disk_frac_limit = resource['USED_DISK_FRAC_LIMIT']
-
+        self._proc_lifetime = int(resource['LAR_LIFETIME'])
         # First update the place-holder version currently in the fcl file
-        f = open (self._fcl_file)
+        f = open (self._fcl_file,'r')
         n = open (self._fcl_file_new,'w')
-        for i in f:
-            if i.find('vxx_yy_zz')<0:
-                n.write(i)
-            else:
-                n.write(i.replace('vxx_yy_zz',os.environ["LARSOFT_VERSION"]))
-        f.close()
+        n.write(f.read().replace('vxx_yy_zz',os.environ["LARSOFT_VERSION"]))
         n.close()
-
+        f.close()
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -96,7 +96,6 @@ class swizzle_data(ds_project_base):
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project,self._parent_project],
                                       [1,0]):
-
             # Counter decreases by 1
             ctr -= 1
 
@@ -113,8 +112,13 @@ class swizzle_data(ds_project_base):
 
 #
 #
-            print "Looking for ", in_file
-            if os.path.isfile(in_file):
+#            print "Looking for ", in_file
+            if not os.path.isfile(in_file):
+                self.error('Could not find file %s. Assigning status 404')
+                status = 404
+
+            else:
+
                 self.info('Found %s' % (in_file))
 
                 try:
@@ -132,9 +136,9 @@ class swizzle_data(ds_project_base):
                     self.info('Launch cmd is ' + cmd)
 
                 except:
-                    print "Unexpected error:", sys.exc_info()[0]
+                    self.error(sys.exc_info()[0])
                     # print "Give some null properties to this meta data"
-                    print "Give this file a status 100"
+                    self.error("Give this file a status 100")
                     status = 100
                     
 
@@ -172,19 +176,21 @@ class swizzle_data(ds_project_base):
                     self._run_list.append(x[0])
                     self._subrun_list.append(x[1])
                     self.info( ' Swizzling (run,subrun,processID) = (%d,%d,%d)...' % (run,subrun,self._proc_list[-1].pid))
+                    self._proc_active.append(True)
                     status = 3
                     time.sleep (1)
 
-                # Create a status object to be logged to DB (if necessary)
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = status )
+            # Create a status object to be logged to DB (if necessary)
+            self.info('logging (run,subrun) = (%i,%i) with status %i'%(int(x[0]),int(x[1]),status))
+            status = ds_status( project = self._project,
+                                run     = int(x[0]),
+                                subrun  = int(x[1]),
+                                seq     = 0,
+                                status  = status )
             
-                # Log status
-                self.log_status( status )
-            print "ctr ", str(ctr)
+            # Log status
+            self.log_status( status )
+
             # Break from run/subrun loop if counter became 0
             if not ctr: break
 
@@ -199,34 +205,72 @@ class swizzle_data(ds_project_base):
 # Now continually loop over all the running processes and ask for them each to be finished before we break out
 #        while (1):
 #            proc_alive=False
+        time_spent = 0
+        while 1:
+            active_counter = 0
+            time.sleep(5)
+            time_spent += 5
+            for x in xrange(len(self._proc_list)):
 
-        for x in xrange(len(self._proc_list)):
-            #  if self._proc_list[x].poll() is None:
-            #      print 'Process ', self._proc_list[x].pid, ' is still running!'
-            #      proc_alive=True
-            #  else:
-            #      print 'Process ', x, ' is done...'
-            #      self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
-            self.info('Awaiting Swizzling job %d : ...' % (self._proc_list[x].pid))
-            (out,err) = self._proc_list[x].communicate()
-            self.info('Swizzling job %d finished for: ...' % (self._proc_list[x].pid))
-            fout = open(str(self._log_file_list[x]),'w')
-            fout.write(out)
-            fout.close()
-                        # Create a status object to be logged to DB 
-            status = 2
-            status = ds_status( project = self._project,
-                                run     = int(self._run_list[x]),
-                                subrun  = int(self._subrun_list[x]),
-                                seq     = 0,
-                                status  = status )
-            
-                        # Log status
-            self.log_status( status )
+                proc = self._proc_list[x]
+                if not self._proc_active[x]:
+                    continue
 
-#            if not proc_alive: break
- #           time.sleep(3)
+                if not proc.poll() is None: 
+                    self._proc_active[x] = False
+                    self.info('Finished swizzler process %s' % proc.pid)
+                    (out,err) = proc.communicate()
+                    fout = open(str(self._log_file_list[x]),'w')
+                    fout.write(out)
+                    fout.close()
 
+                    status = 2
+                    status = ds_status( project = self._project,
+                                        run     = int(self._run_list[x]),
+                                        subrun  = int(self._subrun_list[x]),
+                                        seq     = 0,
+                                        status  = status )
+                    # Log status
+                    self.log_status( status )
+
+                else:
+                    active_counter += 1
+            if not active_counter:
+                break
+            if time_spent%20 == 0:
+                self.info('Swizzling process %d/%d active... @ %d [sec]' % (active_counter,len(self._proc_list),time_spent))
+            else:
+                self.debug('Swizzling process %d/%d active... @ %d [sec]' % (active_counter,len(self._proc_list),time_spent))
+
+            if time_spent > self._proc_lifetime:
+                self.error('Exceeding the allowed time span (%d [sec])! Killing lar jobs...',self._proc_lifetime)
+                # Loop over & kill
+                for x in xrange(len(self._proc_list)):
+                    proc = self._proc_list[x]
+                    # ignore already finished ones
+                    if not self._proc_active[x]:
+                        continue
+                    # kill
+                    proc.kill()
+                    # Log "finished" status
+                    status = 2
+                    status = ds_status( project = self._project,
+                                        run     = int(self._run_list[x]),
+                                        subrun  = int(self._subrun_list[x]),
+                                        seq     = 0,
+                                        status  = status )
+                    self.log_status( status )
+
+                # Wait 30 sec and make sure they are dead
+                time.sleep(30)
+                for x in xrange(len(self._proc_list)):
+                    proc = self._proc_list[x]
+                    if not self._proc_active[x]:
+                        continue
+                    if proc.poll() is None:
+                        self.warning('Process %d not ending 30 sec after SIGINT... kill -9 now...' % proc.pid)
+                        sub.call(['kill','-9',str(proc.pid)])
+                    
 
 
     ## @brief access DB and retrieves processed run for validation
@@ -257,22 +301,50 @@ class swizzle_data(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
 
-
+            # Get status object
+            proj_status = self._api.get_status(ds_status(self._project,
+                                                         x[0],x[1],x[2]))
+            # get data string for this project for this (run,subrun)
+            datastr = proj_status._data
+            # variable to hold the number of attempts to run this project on this (run,subrun)
+            trial = 0
+            if (datastr != ''):
+                try:
+                    trial = int(datastr)
+                    self.info('Trial number is %i'%trial)
+                except:
+                    self.info('data field in status was neither string nor integer...')
+                    
             if os.path.exists(self._log_file_local):
-                if open(self._log_file_local).read().find('Art has completed and will exit with status 0') > 0:
+                contents = open(self._log_file_local,'r').read()
+                if contents.find('Art has completed and will exit with status 0') > 0:
                     self.info('Swizzling successfully completed for: run=%d, subrun=%d ...' % (run,subrun))
                     status = 0
                 else:
-                    self.info('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
+                    # Special treatment: it's OK if file boundary is observed
+                    if contents.find('File boundary') > 0 and contents.find('closeCurrentFile'):
+                        self.info('Swizzling completed with error BUT known issue of bin file eof... Success!')
+                        status=0
+                    else:
+                        self.error('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
+                        trial += 1
             else:
                     self.info('Swizzling has no corresponding logfile for: run=%d, subrun=%d ...' % (run,subrun))
+                    trial += 1
+
+            # if we tried this (run,subrun) too many times
+            # change status to bad status = 
+            if (trial > 3):
+                self.info('more than 3 trials...changing status to 101')
+                status = 101
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
                                 seq     = int(x[2]),
-                                status  = status )
+                                status  = status,
+                                data    = str(trial) )
             
             # Log status
             self.log_status( status )

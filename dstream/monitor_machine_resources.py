@@ -34,6 +34,8 @@ def plot_resource_usage(proj,outpath):
     RAM   = []
     tDISK = []
     DISK  = []
+    tPROJ = []
+    NPROJ = []
 
     lastDISK = -100
     lastRAM  = -100
@@ -54,21 +56,23 @@ def plot_resource_usage(proj,outpath):
         if ( (log_time != '') and (log_dict) ):
             # get time in python datetime format
             time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+            NPROJ.append(x._proj_ctr)
+            tPROJ.append(time)
             # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_HOME'):
-                    if ( cntr%100 == 0 ):
-                    #if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) ):
+                    #if ( cntr%100 == 0 ):
+                    if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastDISK = float(log_dict[key])*100
                         tDISK.append(time)
                         DISK.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) ):
+                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastRAM = float(log_dict[key])
                         tRAM.append(time)
                         RAM.append(float(log_dict[key]))
                 if (str(key) == 'CPU_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) ):
+                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastCPU = float(log_dict[key])
                         tCPU.append(time)
                         CPU.append(float(log_dict[key]))
@@ -117,11 +121,11 @@ def plot_resource_usage(proj,outpath):
     ax.set_ylim([0,100])
 
     if (len(datesCPU) == len(CPU)):
-        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o--', color='k', label='CPU usage', markersize=7)    
+        cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK)):
-        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage', markersize=7)
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o', color='r',label='DISK usage', markersize=7)
     if (len(datesRAM) == len(RAM)):
-        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o--', color='b', label='RAM usage', markersize=7)
+        ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
 
 
 
@@ -132,10 +136,11 @@ def plot_resource_usage(proj,outpath):
     daysFmt  = dts.DateFormatter('%m-%d %H:%M')
 
     # format the ticks
-    ax.xaxis.set_major_locator(days)
+    ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
-    ax.xaxis.set_minor_locator(hours)
+    #ax.xaxis.set_minor_locator(hours)
 
+    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
 
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
@@ -147,9 +152,24 @@ def plot_resource_usage(proj,outpath):
     #plt.figure.autofmt_xdate()    
     plt.grid()
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
-    plt.legend(fontsize=20)
+    plt.legend(loc=2,fontsize=20)
 
-    plt.savefig(outpath)
+    outpathResource = outpath+"resource_monitoring_%s.png"%(servername)
+    plt.savefig(outpathResource)
+
+    fig, ax = plt.subplots(1,figsize=(12,8))
+    plt.plot(tPROJ[2:],NPROJ[2:],'ro')
+    plt.title('PUBS Projects Running on %s'%(servername), fontsize=20)
+    ax.set_xlabel('Time',fontsize=20)
+    ax.set_ylabel('Number of Projects Running',fontsize=20)
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
+    ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
+    fig.autofmt_xdate()
+    outpathProjs = outpath+"numproj_monitoring_%s.png"%(servername)
+    plt.grid()
+    plt.savefig(outpathProjs)
     return outpath
     
 ## @class monitor_machine_resources
@@ -210,9 +230,10 @@ class monitor_machine_resources(ds_project_base):
 
         ctr = 0
         #try:
-        plotpath = pubstop+'/'+self._data_dir+'/'+'monitoring_%i.png'%ctr
+        plotpath = pubstop+'/'+self._data_dir+'/'
         self.info('saving plot to path: %s'%plotpath)
         outpath = plot_resource_usage(project,plotpath)
+        self.info('saving plot to path: %s'%outpath)
         if (outpath == 'failed import'):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):

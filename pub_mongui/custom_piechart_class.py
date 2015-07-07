@@ -6,8 +6,11 @@ class PieChartItem(QtGui.QGraphicsObject):
     Class written by kaleko that makes a pie chart item, which inherits from pyqtgraph.GraphicsObject
     so it can be created and plotted. It takes in the x, y coordinates of the center, and the radius.
     (perhaps the x-y coordinates are not necessary... this is something I need to investigate further.
-    The idea is that perhaps a project with many runs/subruns would have a larger pie chart,
+    The idea is that a project with many runs/subruns has a larger pie chart,
     and the slices of the pie chart represent the fraction of run/subruns pending/running/errorstate.
+    The pie chart object itself stores its slices, a flag of whether or not it has been drawn yet,
+    and a history of number of pending run/subruns since its creation (updated each time the
+    mongui updates)
     """
 
     def __init__(self,data):
@@ -18,8 +21,20 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.y = data[2]
         self.r = data[3]
         self.slices = data[4]
+        self.history = []
         #Descripton is set separately
         self.descript = ''
+        self.was_updated = False
+        self.generatePicture()
+
+
+    def updateData(self,data):
+        self.name = data[0]
+        self.x = data[1]
+        self.y = data[2]
+        self.r = data[3]
+        self.slices = data[4]
+        self.was_updated = True
         self.generatePicture()
 
     def generatePicture(self):
@@ -35,7 +50,6 @@ class PieChartItem(QtGui.QGraphicsObject):
             p.setBrush(pg.mkBrush(mycolor))
             p.drawPie(self.boundingRect(),start_angle,int(myfrac*360*16))
             start_angle += int(myfrac*360*16)
-
         p.end()    
 
     def paint(self, p, *args):
@@ -66,3 +80,21 @@ class PieChartItem(QtGui.QGraphicsObject):
         
     def getName(self):
         return self.name
+
+    def appendHistory(self, toappend):
+        #If too many pending run/subruns are stored, trim the list
+        if len(self.history) > 500:
+            self.history.pop(0)
+        self.history.append(toappend)
+
+    def getHistory(self):
+        return self.history
+
+    def doneUpdating(self):
+        self.was_updated = False
+
+    def wasUpdated(self):
+        return self.was_updated
+
+    def getRadius(self):
+        return self.r

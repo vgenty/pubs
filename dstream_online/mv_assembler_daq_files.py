@@ -21,37 +21,50 @@ class mv_assembler_daq_files(ds_project_base):
 
     # Define project name as class attribute
     _project = 'mv_binary_evb'
-
+    _nruns   = 0
+    _in_dir  = ''
+    _out_dir = ''
+    _infile_foramt  = ''
+    _outfile_format = ''
+    _parallelize = False
+    _max_wait = 600
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
         # Call base class ctor
         super(mv_assembler_daq_files,self).__init__()
-
-        self._out_file_format = ''
-        self._out_dir = ''
-        self._nruns   = None
-
-    ## @brief access DB and retrieves new runs
-    def process_newruns(self):
+        if not self.load_params():
+            raise Exception()
+        
+    ## @brief load project parameters
+    def load_params(self):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
 	    self.error('Cannot connect to DB! Aborting...')
-	    return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-
+            return False
+        try:
             resource = self._api.get_resource(self._project)
-
-            self._nruns = int(resource['NRUNS'])
+#            self._nruns = int(resource['NRUNS'])
+            self._nruns = 2
             self._out_dir = '%s' % (resource['OUTDIR'])
             self._in_dir = '%s' % (resource['INDIR'])
             self._infile_format = resource['INFILE_FORMAT']
             self._outfile_format = resource['OUTFILE_FORMAT']
+            exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
+            self._max_wait = int(resource['MAX_WAIT'])
+        except Exception:
+            return False
+
+        return True
+
+    ## @brief access DB and retrieves new runs
+    def process_newruns(self):
 
         ctr = self._nruns
+        proc_list=[]
+        done_list=[]
+        run_id=[]
         for x in self.get_runs(self._project,1):
 
             # Counter decreases by 1
@@ -62,54 +75,103 @@ class mv_assembler_daq_files(ds_project_base):
 
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
-
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
             filelist = glob.glob( in_file_holder )
             in_file = filelist[0]
-            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
-            subprocess.call(cmd)
-            # os.symlink(in_file, ('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
-# In the end, use the line below rather than the one above.
-#            os.symlink(glob.glob(in_file)[0],('%s/%s' % (self._out_dir, self._outfile_format % (run,subrun))))
 
+#            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
+            cmd = ['rsync', '-v', in_file, out_file]
 
-            # Pretend I'm doing something
-            time.sleep(1)
-
+            proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
+            done_list.append(False)
+            run_id.append((run,subrun))
+            self.info('Started rsync (run,subrun)=%s @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
                                 subrun  = subrun,
                                 seq     = 0,
-                                status  = 2 )
-            
-            # Log status
+                                status  = 3 )
             self.log_status( status )
-
-            # Break from loop if counter became 0
+            # if not parallelized, wait till proc is done
+            if not self._parallelize:
+                time_spent = 0
+                while proc_list[-1].poll() is None:
+                    time.sleep(1)
+                    time_spent +=1
+                    if time_spent > self._max_wait:
+                        self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
+                        proc_list[-1].kill()
+                        time.sleep(5)
+                        if proc_list[-1].poll() is None:
+                            self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
+                            subprocess.call(['kill','-9',str(proc_list[-1].pid)])
+                        break
+                self.info('Finished rsync [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+                status = ds_status( project = self._project,
+                                    run     = run_id[-1][0],
+                                    subrun  = run_id[-1][1],
+                                    seq     = 0,
+                                    status  = 2 )
+                self.log_status( status )
+            # if parallelized, just sleep 5 sec and go next run
+            else:
+                time.sleep(5)
             if not ctr: break
+        
+        # if not parallelized, done
+        if not self._parallelize:
+            return
 
+        finished = False
+        time_spent = 0
+        while not finished:
+            finished = True
+            time.sleep(1)
+            time_spent += 1
+            active_counter = 0
+            for x in xrange(len(proc_list)):
+                if done_list[x]: continue
+                if not proc_list[x].poll() is None:
+                    self.info('Finished rsync [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    status = ds_status( project = self._project,
+                                        run     = run_id[x][0],
+                                        subrun  = run_id[x][1],
+                                        seq     = 0,
+                                        status  = 2 )
+                    self.log_status( status )
+                    done_list[x] = True
+                else:
+                    active_counter += 1
+                    finished = False
+            if time_spent%10:
+                self.info('Waiting for rsync to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
+            if time_spent > self._max_wait:
+                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
+                for x in xrange(len(proc_list)):
+                    proc_list[x].kill()
+
+                    status = ds_status( project = self._project,
+                                        run     = run_id[x][0],
+                                        subrun  = run_id[x][1],
+                                        seq     = 0,
+                                        status  = 2 )
+                    self.log_status( status )
+
+                    # hard kill if still alive
+                    time.sleep(5)
+                    if proc_list[x].poll() is None:
+                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
+                        subprocess.call(['kill','-9',str(proc_list[x].pid)])
+                break
+        self.info('All finished @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
     ## @brief access DB and validate finished runs
     def validate(self):
 
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-	    self.error('Cannot connect to DB! Aborting...')
-	    return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-
-            resource = self._api.get_resource(self._project)
-
-            self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s/%s' % (os.environ['PUB_TOP_DIR'],resource['OUTDIR'])
-            self._outfile_format = resource['OUTFILE_FORMAT']
-
         ctr = self._nruns
-# see if the status=2 files we've processed are indeed where they should be.
+        # see if the status=2 files we've processed are indeed where they should be.
         for x in self.get_runs(self._project,2): 
 
             # Counter decreases by 1
@@ -120,6 +182,7 @@ class mv_assembler_daq_files(ds_project_base):
             status = 0
 
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            
             res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
             if res:
                 self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
@@ -128,10 +191,6 @@ class mv_assembler_daq_files(ds_project_base):
                 self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
                 status = 0
                 
-
-            # Pretend I'm doing something
-            time.sleep(1)
-
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,

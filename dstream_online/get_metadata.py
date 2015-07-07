@@ -46,7 +46,6 @@ class get_metadata( ds_project_base ):
 
         self._nruns = None
         self._out_dir = ''
-        self._outfile_format = ''
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
@@ -68,7 +67,6 @@ class get_metadata( ds_project_base ):
         
         self._nruns = int(resource['NRUNS'])
         self._out_dir = '%s' % (resource['OUTDIR'])
-        self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
@@ -104,7 +102,7 @@ class get_metadata( ds_project_base ):
             
             # Check input file exists. Otherwise report error
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
 
 
 #
@@ -135,8 +133,8 @@ class get_metadata( ds_project_base ):
                             # samweb.validateFileMetadata(json_file) # this throws/raises exception
                             status = 2
                         except:
-                            print "Problem with samweb metadata: ", jsonData
-                            print sys.exc_info()[0]
+                            self.error( "Problem with samweb metadata: ", jsonData)
+                            self.error( sys.exc_info()[0])
                             status=100
  
 
@@ -186,7 +184,7 @@ class get_metadata( ds_project_base ):
 
             status = 1
             in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
 
             if os.path.isfile(out_file):
 #                os.system('rm %s' % in_file)
@@ -236,7 +234,7 @@ class get_metadata( ds_project_base ):
 
             status = 1
 
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
 
             if os.path.isfile(out_file):
                 os.system('rm %s' % out_file)
@@ -307,7 +305,7 @@ class get_metadata( ds_project_base ):
                 self.info('Successfully extract metadata from the ubdaq file.')
 
         except:
-            print "Unexpected error:", sys.exc_info()[0]
+            self.error ("Unexpected error:", sys.exc_info()[0] )
             # print "Give some null properties to this meta data"
             # print "Give this file a status 100"
             status = 100
@@ -324,7 +322,22 @@ class get_metadata( ds_project_base ):
         # run number and subrun number in the metadata seem to be funny,
         # and currently we are using the values in the file name.
         # Also add ub_project.name/stage/version, and data_tier by hand
-        jsonData = { 'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [run,  subrun, 'test'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": self._jver }, "data_tier": "raw", "event_count": self._jeevt - self._jsevt + 1 ,"ub_project.name": "online", "ub_project.stage": "assembler", "ub_project.version": self._pubsver }
+        jsonData = { 'file_name': os.path.basename(in_file), 
+                     'file_type': "data", 
+                     'file_size': fsize, 
+                     'file_format': "binaryraw-uncompressed", 
+                     'runs': [ [run,  subrun, 'test'] ], 
+                     'first_event': self._jsevt, 
+                     'start_time': self._jstime, 
+                     'end_time': self._jetime, 
+                     'last_event': self._jeevt, 
+                     'group': 'uboone', 
+                     "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, 
+                     "application": {  "family": "online",  "name": "assembler", "version": self._jver }, 
+                     "data_tier": "raw", "event_count": self._jeevt - self._jsevt + 1 ,
+                     "ub_project.name": "online", 
+                     "ub_project.stage": "assembler", 
+                     "ub_project.version": self._pubsver }
         # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
 #, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
 #                print jsonData

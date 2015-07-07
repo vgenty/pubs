@@ -13,7 +13,9 @@ from dstream import ds_project_base
 from dstream import ds_status
 # ifdh
 import ifdh
-
+import subprocess as sub
+import samweb_cli, extractor_dict
+import pdb, json
 
 ## @class transfer
 #  @brief Transferring files
@@ -98,13 +100,21 @@ class transfer( ds_project_base ):
             # construct ifdh object
             ih = ifdh.ifdh()
 
-            if os.path.isfile( in_file ) and os.path.isfile( in_json ):
+
+            if os.path.isfile( in_file ) and (os.path.isfile( in_json ) or ("pnnl" in self._project)):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
-
+                
                 try:
-                    resi = ih.cp(( in_file, out_file ))
-                    resj = ih.cp(( in_json, out_json ))
+                    if "pnnl" not in self._project:
+                        resi = ih.cp(( in_file, out_file ))
+                        resj = ih.cp(( in_json, out_json ))
+
+                    # If this project is xfer'ing data to PNNL, we use gsiftp-to-sshftp in pnnl_transfer().
+                    else: 
+                        status = 102
+                        (resi, resj) = self.pnnl_transfer(in_file)
+
                     if resi == 0 and resj == 0:
                         status = 0
                     else:
@@ -185,6 +195,109 @@ class transfer( ds_project_base ):
             # Break from loop if counter became 0
             if not ctr: break
 
+    def pnnl_transfer( self, file_arg ):
+
+        # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
+        # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
+        # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
+        # Need more logging to message service ... also let's put all this into a function that we call.
+
+
+        cmd = "voms-proxy-info -all "
+        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        (out,err) = proc.communicate()
+        goodProxy = False
+
+        for line in out.split('\n'):
+            if "timeleft" in line:
+                if int(line.split(" : ")[1].replace(":","")) > 0:
+                    goodProxy = True
+                    break;
+
+        if not goodProxy:
+            self.error('uboonepro has no proxy.')
+            raise Exception 
+   
+
+        in_file = os.path.basename(file_arg)
+    # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
+        transfer = 0
+        samweb = samweb_cli.SAMWebClient(experiment="uboone")
+        loc = samweb.locateFile(filenameorid=in_file)
+        jsonOb = extractor_dict.getmetadata(file_arg)
+        size_in = jsonOb['file_size']
+        samcode = 12
+
+
+        if not ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
+            return (transfer, samcode)
+
+
+        full_file = loc[0]["full_path"].replace('enstore:','') + "/" +  in_file
+#        pdb.set_trace()
+        pnnl_machine = "dtn2.pnl.gov"
+        pnnl_dir = 'pic/projects/microboone/data/'
+        ddir = str(jsonOb['runs'][0][0]) # Run number
+        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir "  + "/" + pnnl_dir + ddir
+        proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
+        (out,err) = proc.communicate() 
+        
+        pnnl_loc = pnnl_machine + "/" + pnnl_dir + ddir + "/" + in_file
+        cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
+        self.info('Will launch ' + cmd_gsiftp_to_sshftp)
+        # Popen() gymnastics here, with resi capturing the return status.
+        proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        wait = 0
+        delay = 5
+
+
+        while  proc.poll() is None:
+            wait+=delay
+            if wait > delay*20:
+                self.error ("pnnl_transfer timed out in awaiting transfer.")
+                proc.kill()
+                transfer = 11
+                break
+            self.info('pnnl_transfer process ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec]')
+            time.sleep (delay)
+    
+        size_out = 0
+        if not transfer:
+            (out,err) = proc.communicate()
+            transfer = proc.returncode
+                # also grep the out for indication of success at end.
+            if not transfer:
+                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
+                transfer = 10
+                if size_out == size_in:
+                    transfer = 0
+
+
+# end file lives in enstore
+
+
+        if not transfer:
+            try:
+                # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
+                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + ddir + "/" + in_file
+                samadd = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc_withcolon)
+                samloc  = samweb.locateFile(filenameorid=in_file)
+                if len(samloc)>1:
+                    samcode = 0
+                    self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
+                    self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
+                    self.info('Transfer and samaddFile are succsessful. Full SAM location for file is now ' + str(samloc))
+            except:
+                self.error('pnnl_transfer finished with a problem on ' + in_file + ' during addFile or locFile. samadd/samloc is: ' + str(samadd)+"/"+str(samloc))
+        else:
+            self.error('pnnl_transfer finished with a problem on ' + in_file)
+                
+        return (transfer, samcode)
+
+
+
+
 # A unit test section
 if __name__ == '__main__':
 
@@ -194,4 +307,5 @@ if __name__ == '__main__':
 
     obj.transfer_file()
 
-    # obj.validate_outfile()
+    # if "pnnl" not in self._project:
+    #    obj.validate_outfile()
