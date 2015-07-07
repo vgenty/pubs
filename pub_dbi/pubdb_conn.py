@@ -92,11 +92,17 @@ class pubdb_conn(object):
 
         now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
         try:
-            conn = psycopg2.connect(host=conn_info._host,
-                                    port=conn_info._port,
-                                    database=conn_info._db,
-                                    user=conn_info._user,
-                                    password=conn_info._passwd)
+            if conn_info._port:
+                conn = psycopg2.connect(host=conn_info._host,
+                                        port=conn_info._port,
+                                        database=conn_info._db,
+                                        user=conn_info._user,
+                                        password=conn_info._passwd)
+            else:
+                conn = psycopg2.connect(host=conn_info._host,
+                                        database=conn_info._db,
+                                        user=conn_info._user,
+                                        password=conn_info._passwd)
             cls.info('Connected to DB: (%s,%s,%s,%s,XXX) @ %s' % (conn_info._host,
                                                                   conn_info._port,
                                                                   conn_info._db,
