@@ -320,14 +320,6 @@ class swizzle_data(ds_project_base):
                 if contents.find('Art has completed and will exit with status 0') > 0:
                     self.info('Swizzling successfully completed for: run=%d, subrun=%d ...' % (run,subrun))
                     status = 0
-                else:
-                    # Special treatment: it's OK if file boundary is observed
-                    if contents.find('File boundary') > 0 and contents.find('closeCurrentFile'):
-                        self.info('Swizzling completed with error BUT known issue of bin file eof... Success!')
-                        status=0
-                    else:
-                        self.error('Swizzling completed with error for: run=%d, subrun=%d ...' % (run,subrun))
-                        trial += 1
             else:
                     self.info('Swizzling has no corresponding logfile for: run=%d, subrun=%d ...' % (run,subrun))
                     trial += 1

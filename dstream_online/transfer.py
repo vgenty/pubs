@@ -104,7 +104,7 @@ class transfer( ds_project_base ):
             if os.path.isfile( in_file ) and (os.path.isfile( in_json ) or ("pnnl" in self._project)):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
-                pdb.set_trace()
+
                 try:
                     if "pnnl" not in self._project:
                         resi = ih.cp(( in_file, out_file ))
@@ -112,7 +112,7 @@ class transfer( ds_project_base ):
 
                     # If this project is xfer'ing data to PNNL, we use gsiftp-to-sshftp in pnnl_transfer().
                     else: 
-#                        status = 102
+
                         (resi, resj) = self.pnnl_transfer(in_file)
 
                     if resi == 0 and resj == 0:
@@ -287,7 +287,7 @@ class transfer( ds_project_base ):
                     samcode = 0
                     self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
                     self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
-                    self.info('Transfer and samaddFile are succsessful. Full SAM location for file is now ' + str(samloc))
+                    self.info('Transfer and samaddFile are successful. Full SAM location for file is now ' + str(samloc))
             except:
                 self.error('pnnl_transfer finished with a problem on ' + in_file + ' during addFile or locFile. samadd/samloc is: ' + str(samadd)+"/"+str(samloc))
         else:

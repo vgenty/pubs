@@ -6,7 +6,7 @@ process_name: Swizzler
 services:
 {
   TFileService: { fileName: "daq_hist.root" }
-  Timing:       {}
+  TimeTracker:       {}
   RandomNumberGenerator: {} 
   user: {
           ExptGeoHelperInterface: @local::microboone_geometry_helper
