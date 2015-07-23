@@ -344,6 +344,8 @@ class production(ds_project_base):
             if strerr:
                 self.warning(strerr)
         except:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
             self.error('Exception raied by project.docheck:')
             e = sys.exc_info()
             for item in e:
