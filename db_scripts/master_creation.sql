@@ -1290,6 +1290,19 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
-			    
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS GetStatusSummary();
+
+CREATE OR REPLACE FUNCTION GetStatusSummary()
+       	  	  RETURNS TABLE ( Project TEXT, NRuns INT, NSubRuns INT, Status SMALLINT )
+		  AS $$
+DECLARE
+BEGIN
+
+END;
+$$ LANGUAGE PLOGSQL;
 
 

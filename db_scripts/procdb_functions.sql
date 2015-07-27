@@ -12,6 +12,41 @@ DROP TYPE IF EXISTS RunSubrunList CASCADE;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
+DROP FUNCTION IF EXISTS ListStatus(projName TEXT);
+CREATE OR REPLACE FUNCTION ListStatus(projName TEXT DEFAULT NULL)
+	  	  RETURNS TABLE (Project TEXT, Status SMALLINT, Counter BIGINT) AS $$
+DECLARE
+  rec RECORD;
+  rec_proj_list RECORD;
+  myq  TEXT;
+BEGIN
+  IF projName IS NOT NULL THEN
+    IF NOT DoesTableExist(projName) THEN
+      RAISE EXCEPTION '+++++++++++ Project % does not exist... +++++++++++', projName;
+    END IF;
+
+    myq := format('SELECT Status, Count((Run,SubRun)) AS Counter FROM %s GROUP BY Status;',projName);
+
+    FOR rec IN EXECUTE myq LOOP
+      RETURN QUERY SELECT projName, rec.Status, rec.Counter;
+    END LOOP;
+  ELSE
+
+    myq := 'SELECT DISTINCT Project FROM ProcessTable';
+    
+    FOR rec_proj_list IN EXECUTE myq LOOP
+      myq := format('SELECT Status, Count((Run,SubRun)) AS Counter FROM %s GROUP BY Status;',rec_proj_list.Project);
+      FOR rec IN EXECUTE myq LOOP
+        RETURN QUERY SELECT rec_proj_list.Project, rec.Status, rec.Counter;
+      END LOOP;
+    END LOOP;
+  END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
 --Create a Project table with columns: Run, Subrun, Status, Seq
 DROP FUNCTION IF EXISTS MakeProjTable(TEXT);
 CREATE OR REPLACE FUNCTION MakeProjTable(myName TEXT) RETURNS INT AS $$
