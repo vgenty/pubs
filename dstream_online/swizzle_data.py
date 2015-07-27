@@ -218,13 +218,18 @@ class swizzle_data(ds_project_base):
 
                 if not proc.poll() is None: 
                     self._proc_active[x] = False
+                    self.info('The return code was %d ' % proc.returncode )
                     self.info('Finished swizzler process %s' % proc.pid)
                     (out,err) = proc.communicate()
                     fout = open(str(self._log_file_list[x]),'w')
                     fout.write(out)
                     fout.close()
 
-                    status = 2
+                    if proc.returncode != 0:
+                        status = proc.returncode
+                    else:
+                        status = 2
+
                     status = ds_status( project = self._project,
                                         run     = int(self._run_list[x]),
                                         subrun  = int(self._subrun_list[x]),

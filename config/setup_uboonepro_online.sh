@@ -90,8 +90,8 @@ case `uname -n` in
                 #
 	        setup sam_web_client;
 		setup ifdhc v1_8_2 -q e7:p279:prof;
-		setup uboonedaq_datatypes v6_11_05a -q e7:prof;
-		setup uboonecode v04_13_01 -q prof:e7;
+		setup uboonedaq_datatypes v6_12_00 -q e7:prof;
+		setup uboonecode v04_17_00 -q prof:e7;
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;

@@ -77,8 +77,10 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
+        #we want the last argument of this list get_xtable_runs call to be False
+        #that way the list is old files first to newew files last and clean up that way
         for x in self.get_xtable_runs([self._project, self._parent_project], 
-                                      [            1,                    0]):
+                                      [            1,                    0],False):
 
             # Counter decreases by 1
             ctr -=1
@@ -96,7 +98,7 @@ class ds_clean(ds_project_base):
                 #check that out_file is a file before trying to remove 
                 #(hopefully should avoid unintentional rm with bad out_dir/name_pattern combo)
                 if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                    rm_status=os.system('ssh -x %s "rm %s"' % tuple(in_file.split(":")))
+                    rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
                     tmp_status=2
             else:
                 self.info('Looks like the file is local on this node')
@@ -106,7 +108,7 @@ class ds_clean(ds_project_base):
                     multiple_file_status=200
                 if os.path.isfile(list_of_files[0]):
                     self.info('Going to remove the file with rm...')
-                    rm_status=os.system('rm %s' % list_of_files[0])
+                    rm_status=os.system('rm -f %s' % list_of_files[0])
                     tmp_status=2
 
             if rm_status==0:
@@ -141,7 +143,7 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_runs(self._project,2):
+        for x in self.get_runs(self._project,2,False):
 
             # Counter decreases by 1
             ctr -=1
@@ -189,7 +191,7 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_runs(self._project,100):
+        for x in self.get_runs(self._project,100,False):
 
             # Counter decreases by 1
             ctr -=1

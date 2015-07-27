@@ -128,7 +128,7 @@ class ds_reader(pubdb_reader):
     # Fetch run & sub-runs for a specified project (tname) with a specified status.\n
     # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.\n
-    def get_runs(self,tname,status):
+    def get_runs(self,tname,status,new_to_old=True):
 
         if not type(tname)==type(str()) or not type(status)==type(int()):
             self._logger.critical('Invalid input data type!')
@@ -145,8 +145,9 @@ class ds_reader(pubdb_reader):
         if self.nrows():
             for x in self:
                 runs.append(x)
-
-        runs.reverse()
+        
+        if new_to_old:
+            runs.reverse()
         return runs
 
     ## @brief Fetch a list of enabled daemons for execution. Return is an array of ds_daemon.
@@ -182,7 +183,7 @@ class ds_reader(pubdb_reader):
     # The second argument should be a list of integers each representing a status of project.\n
     # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.
-    def get_xtable_runs(self,table_v, status_v):
+    def get_xtable_runs(self,table_v, status_v, new_to_old=True):
 
         if not isinstance(table_v,list) or not isinstance(status_v,list):
             self._logger.critical('Invalid input data type!')
@@ -216,7 +217,9 @@ class ds_reader(pubdb_reader):
         if self.nrows():
             for x in self:
                 runs.append(x)
-        runs.reverse()
+
+        if new_to_old:
+            runs.reverse()
         return runs
 
     ## @brief Fetch a daemon configuration for the specified server. Returns ds_daemon if found. Else None.

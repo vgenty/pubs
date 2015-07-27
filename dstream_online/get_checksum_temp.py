@@ -74,7 +74,6 @@ class get_checksum( ds_project_base ):
             ctr -= 1
 
             (run, subrun) = (int(x[0]), int(x[1]))
-
             # Report starting
             self.info('Calculating the file checksum: run=%d, subrun=%d ...' % (run,subrun))
 

@@ -81,7 +81,8 @@ class mv_assembler_daq_files(ds_project_base):
             in_file = filelist[0]
 
 #            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
-            cmd = ['rsync', '-v', in_file, out_file]
+#            cmd = ['rsync', '-v', in_file, out_file]
+            cmd = ['cp', '-v', in_file, out_file]
 
             proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
             done_list.append(False)
@@ -183,7 +184,8 @@ class mv_assembler_daq_files(ds_project_base):
 
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
             
-            res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
+#            res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
+            res = subprocess.call(['ls', out_file])
             if res:
                 self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
                 status = 1

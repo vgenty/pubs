@@ -37,7 +37,9 @@ def near1_logger():
         if (diskUsage > 0.9):
             # send email...
             msg = "disk usage in %s above 90-percent..."%homedir
-            d_msg.email('proc_daemon','near1_logger',msg)
+            print msg
+            #self.info(msg)
+            #d_msg.email('proc_daemon','near1_logger',msg)
     else:
         # log the fact that /home is not recognized as dir
         #print "/home not recognized as directory..."
@@ -49,7 +51,9 @@ def near1_logger():
         if (diskUsage > 0.9):
             # send email...
             msg = "disk usage in %s above 90-percent..."%datadir
-            d_msg.email('proc_daemon','near1_logger',msg)
+            print msg
+            #self.info(msg)
+            #d_msg.email('proc_daemon','near1_logger',msg)
     else:
         # log the fact that /data is not recognized as dir
         #print "/data not recognized as directory..."
@@ -118,7 +122,9 @@ def evb_logger():
         if (diskUsage > 0.9):
             # send email...
             msg = "disk usage in %s above 90-percent..."%homedir
-            d_msg.email('proc_daemon','evb_logger',msg)
+            print msg
+            #self.info(msg)
+            #d_msg.email('proc_daemon','evb_logger',msg)
 
     else:
         # log the fact that /home is not recognized as dir
@@ -131,7 +137,9 @@ def evb_logger():
         if (diskUsage > 0.9):
             # send email...
             msg = "disk usage in %s above 90-percent..."%datadir
-            d_msg.email('proc_daemon','evb_logger',msg)
+            print msg
+            #self.info(msg)
+            #d_msg.email('proc_daemon','evb_logger',msg)
 
     else:
         # log the fact that /data is not recognized as dir

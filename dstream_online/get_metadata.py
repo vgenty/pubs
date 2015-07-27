@@ -58,7 +58,10 @@ class get_metadata( ds_project_base ):
         self._jeevt = -12
         self._jsevt = -12
         self._jver = -12
-        self._pubsver = "untagged" # once PUBS is ups-ified, grab its version and shove that here?
+        self._pubsver = "v6_00_00" #Kirby - I think this should actually be the assembler version
+# since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
+# and it's stored based on that, but the storage location is independent of the pubs version 
+#        self._pubsver = "untagged" # once PUBS is ups-ified, grab its version and shove that here?
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
