@@ -46,6 +46,26 @@ class ds_reader(pubdb_reader):
                 exist = x[0]
         return exist
 
+    ## Function to return a list of project status
+    def list_status(self,project=None):
+
+        query = 'SELECT * FROM ListStatus();'
+        if not project is None:
+            query = 'SELECT * FROM ListStatus(\'%s\');' % project
+
+        result = {}
+        if not self.execute(query):
+            return result
+        if not self.nrows() or self.nrows() < 0:
+            return result
+
+        for x in self:
+            if not x[0] in result:
+                result[x[0]]=[]
+            result[x[0]].append((int(x[1]),int(x[2])))
+
+        return result
+
     ## Function to get project's resource
     def get_resource(self,project):
         
