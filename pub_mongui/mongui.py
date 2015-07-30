@@ -108,9 +108,13 @@ for iproj in projects:
     
 def update_gui():
 
+    #This is the one DB query that returns all projects and array of different statuses per project
+    gdbi.update()
+
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
+    #This no longer does a DB query, just reads info from previous query in gdbi.update()
     projects = gdbi.getAllProjects()
 
     for iproj in projects:
@@ -130,7 +134,7 @@ def update_gui():
         #Compute the radius if the pie chart, based on the number of entries
         ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
         #Compute the slices of the pie chart
-        pie_slices = gdbi.computePieSlices(iprojname, tot_n)
+        pie_slices = gdbi.newcomputePieSlices(iprojname, tot_n)
 
         #To do:
         #Check if the pie chart has changed since last update

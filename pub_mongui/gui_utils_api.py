@@ -22,9 +22,41 @@ class GuiUtilsAPI():
     except:
       print "Unable to connect to database... womp womp :("
 
-  def getAllProjects(self):
-    return self.dbi.list_all_projects()
+    #Dictionary that contains projects as keys, and arrays of statuses as values. ex:
+    #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
+    self.proj_dict = self.dbi.list_status()
 
+    self.colors = [ 'b', 'g', 'r', 'y', 'm', 'o' ]
+
+  def update(self):
+    self.proj_dict = self.dbi.list_status()
+
+  def getAllProjects(self):
+    return self.proj_dict.keys()
+
+  def newcomputePieSlices(self,projname):
+
+    if projname not in self.proj_dict.keys():
+      print "Uh oh projname is not in dictionary. Figure out what happened..."
+      return [ (1., 'r') ]
+
+    statuses = self.proj_dict[projname]
+    #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
+    #tot_n does not include status == 0
+    tot_n = sum([x[1] for x in statuses if x[0]])
+
+    if len(statuses) > len(self.colors):
+      print "Uh oh, more different statuses than colors! Increase number of colors!"
+      return [ (1., 'r') ]
+
+    slices = []
+    for x in statuses:
+      #No slice for status == 0
+      if not x[0]: continue
+      slices.append( ( (float(x[1])/tot_n), self.colors[len(slices)] ) )
+    
+    return slices
+      
   def computePieSlices(self,projname,tot_n=0):
 
     if tot_n:
@@ -59,7 +91,8 @@ class GuiUtilsAPI():
   # (don't care about fully completed run/subruns)
   def getNRunSubruns(self,projname):
 
-    n_status1 = len(self.dbi.get_runs(projname,status=1))
-    n_status2 = len(self.dbi.get_runs(projname,status=2))
-    tot_n = n_status1 + n_status2
+    statuses = self.proj_dict[projname]
+    #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
+    #tot_n does not include status == 0
+    tot_n = sum([x[1] for x in statuses if x[0]])
     return tot_n
