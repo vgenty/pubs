@@ -30,6 +30,7 @@ def near1_logger():
     
     homedir = '/home'
     datadir = '/data'
+    datalocal = '/datalocal'
 
     if (os.path.isdir(homedir)):
         diskUsage = getDISKusage(homedir)
@@ -51,6 +52,21 @@ def near1_logger():
         if (diskUsage > 0.9):
             # send email...
             msg = "disk usage in %s above 90-percent..."%datadir
+            print msg
+            #self.info(msg)
+            #d_msg.email('proc_daemon','near1_logger',msg)
+    else:
+        # log the fact that /data is not recognized as dir
+        #print "/data not recognized as directory..."
+        status = -1
+
+
+    if (os.path.isdir(datalocal)):
+        diskUsage = getDISKusage(datalocal)
+        result['DISK_USAGE_DATALOCAL'] = diskUsage
+        if (diskUsage > 0.9):
+            # send email...
+            msg = "disk usage in %s above 90-percent..."%datalocal
             print msg
             #self.info(msg)
             #d_msg.email('proc_daemon','near1_logger',msg)
@@ -145,7 +161,8 @@ def evb_logger():
         # log the fact that /data is not recognized as dir
         #print "/data not recognized as directory..."
         status = -1
-        
+
+
     mempath = '/proc/meminfo'
     if (os.path.isfile(mempath)):
         RAMused = getRAMusage(mempath)

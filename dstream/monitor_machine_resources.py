@@ -60,7 +60,7 @@ def plot_resource_usage(proj,outpath):
             tPROJ.append(time)
             # keep track of last entry for each curve
             for key in log_dict:
-                if (str(key) == 'DISK_USAGE_HOME'):
+                if (str(key) == 'DISK_USAGE_DATA'):
                     #if ( cntr%100 == 0 ):
                     if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
                         lastDISK = float(log_dict[key])*100
