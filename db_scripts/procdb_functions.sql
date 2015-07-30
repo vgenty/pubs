@@ -1,13 +1,6 @@
---SET ROLE uboonedaq_admin;
+SET ROLE uboonedaq_admin;
 --SET ROLE uboone_admin;
 --Overwrite functions if they already exist
-
----------------------------------------------------------------------
---/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
----------------------------------------------------------------------
-
---Homemade types
-DROP TYPE IF EXISTS RunSubrunList CASCADE;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
@@ -527,3 +520,32 @@ BEGIN
   RETURN;
 END;
 $$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS RemoveRun(Run INT, SubRun INT);
+CREATE OR REPLACE FUNCTION RemoveRun(Run INT, SubRun INT) 
+       	  	  RETURNS VOID AS $$
+DECLARE
+  query TEXT;
+  rec RECORD;
+BEGIN
+
+
+  FOR rec IN SELECT * FROM ListProject()
+  LOOP
+      IF NOT TableExist(rec.Project::TEXT) THEN
+        RAISE EXCEPTION '+++++++++++++++++ Project table not found ++++++++++++++++++';
+      END IF;
+      query := format('DELETE FROM %s WHERE RunNumber=%d AND SubRunNumber=%d;',rec.Project::TEXT,Run,SubRun);
+      EXECUTE query; 
+  END LOOP;
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+--Homemade types
+DROP TYPE IF EXISTS RunSubrunList CASCADE;
+
