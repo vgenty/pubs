@@ -1,4 +1,10 @@
 import os,sys,socket
+
+#
+# Age of Eric Church
+#
+kAGE_OF_CHURCH=50
+
 #
 # Server name
 #
