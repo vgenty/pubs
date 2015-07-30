@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
+from gui_utils_api import GuiUtils
 
 #These are temporary imports to demonstrate a random plot
 import numpy as np
@@ -11,6 +12,7 @@ class CustomProjectSubwindow():
         self.piechartitem = piechartitem
         self.pname = piechartitem.getName()
         self.pdesc = piechartitem.getDescript()
+        self.colors = GuiUtils().getColors()
 
         # Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
@@ -23,8 +25,8 @@ class CustomProjectSubwindow():
         #self.AddRandomPlot()
         self.AddHistoryPlot()
 
+        
     def AddTextViewbox(self, intext):
-
         #Make a text item that is the project description
         mytext = pg.TextItem(text=intext)
         mytext.setTextWidth(450)
@@ -37,7 +39,6 @@ class CustomProjectSubwindow():
         textvb.addItem(mytext)
 
     def AddRandomPlot(self):
-
         #Draw a random plot to demonstrate possibilities
         p1 = self.win.addPlot(row=1,col=0)
         p1.setLabel('top','Sample plot (TBD): Project %s'%self.pname)
@@ -46,9 +47,19 @@ class CustomProjectSubwindow():
 
     def AddHistoryPlot(self):
         p1 = self.win.addPlot(row=1,col=0)
-        p1.setLabel('top','# Pending Run/Subruns for Project %s'%self.pname)
-        data = np.array(self.piechartitem.getHistory())
-        curve = p1.plot(data)
+        p1.setLabel('top','# Run/Subruns for Project %s'%self.pname)
+        p1.setLabel('bottom','Time Since Starting GUI, in Units Of %d Seconds'%GuiUtils().getUpdatePeriod())
+        p1.showGrid(x=True,y=True)
+        history = self.piechartitem.getHistory()
+        leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
+        for status, values in history.iteritems():
+            data = np.array(values)
+            #add multiple plots by just calling p1.plot() a bunch of times
+            mycolor = self.colors[status] if status in self.colors.keys() else 'r'
+            curve = p1.plot(data,pen=mycolor,name='Status %d'%status)
+            leg.addItem(curve,'Status %d'%status)
+        leg.setParentItem(p1)
+            
 
     def __del__(self):
         pass
