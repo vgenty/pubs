@@ -46,6 +46,11 @@ class proc_action(object):
     ## Simple method to access name of a project
     def name(self): return self._info._project
 
+    ## Kill process
+    def kill(self):
+        if self.active():
+            self._proc.kill()
+
     ## Boolean function to check if the project's execution process is alive or not
     def active(self):
         if self._proc is None: return None
