@@ -84,7 +84,16 @@ class PieChartItem(QtGui.QGraphicsObject):
         return self.name
 
     def appendHistory(self, statuses_and_values_toappend):
+
+        #Increment counter of number of history updates
         self.n_history_updates = self.n_history_updates + 1
+
+        #If history has never been updated before, create history dict.
+        if self.n_history_updates == 1:
+            for istat_val in statuses_and_values_toappend:
+                status, value = istat_val[0], istat_val[1]
+                self.history[status] = [value]
+            return
 
         #statuses_and_values_toappend looks like
         #[ (1, 1234), (3, 999), (100, 14) ]
@@ -96,12 +105,9 @@ class PieChartItem(QtGui.QGraphicsObject):
             status, value = istat_val[0], istat_val[1]
             #if this status has never been added to history, back-fill it with zeros
             if status not in self.history.keys():
-                self.history[status] = [0] * (self.n_history_updates-1)
+                self.history[status] = [0] * int(self.n_history_updates-1)
+                print self.history[status]
             self.history[status].append(value)
-
-        for istat_val in statuses_and_values_toappend:
-            if len(self.history[status]) != self.n_history_updates:
-                self.history[status].append(0)
 
         #If too many pending run/subruns are stored, trim the list
         if self.n_history_updates > 500:
