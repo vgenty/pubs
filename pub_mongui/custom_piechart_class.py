@@ -11,6 +11,7 @@ class PieChartItem(QtGui.QGraphicsObject):
     The pie chart object itself stores its slices, a flag of whether or not it has been drawn yet,
     and a history of number of pending run/subruns since its creation (updated each time the
     mongui updates)
+    The history is a dict of {status number:[number of that status at t0, # at t1, # at t2, ...]}
     """
 
     def __init__(self,data):
@@ -21,7 +22,8 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.y = data[2]
         self.r = data[3]
         self.slices = data[4]
-        self.history = []
+        self.n_history_updates = 0
+        self.history = {}
         #Descripton is set separately
         self.descript = ''
         self.was_updated = False
@@ -81,11 +83,31 @@ class PieChartItem(QtGui.QGraphicsObject):
     def getName(self):
         return self.name
 
-    def appendHistory(self, toappend):
+    def appendHistory(self, statuses_and_values_toappend):
+        self.n_history_updates = self.n_history_updates + 1
+
+        #statuses_and_values_toappend looks like
+        #[ (1, 1234), (3, 999), (100, 14) ]
+        #i think if there is initially status=1 with 1 entry, and that entry switches to status 0,
+        #then the status=1 pair gets dropped out of statuses_and_values... so, will need to pad
+        #an entry in its place with value = 0
+        keys_to_include = self.history.keys()
+        for istat_val in statuses_and_values_toappend:
+            status, value = istat_val[0], istat_val[1]
+            #if this status has never been added to history, back-fill it with zeros
+            if status not in self.history.keys():
+                self.history[status] = [0] * (self.n_history_updates-1)
+            self.history[status].append(value)
+
+        for istat_val in statuses_and_values_toappend:
+            if len(self.history[status]) != self.n_history_updates:
+                self.history[status].append(0)
+
         #If too many pending run/subruns are stored, trim the list
-        if len(self.history) > 500:
-            self.history.pop(0)
-        self.history.append(toappend)
+        if self.n_history_updates > 500:
+            for mykey in self.history.keys():
+                self.history[mykey].pop(0)
+
 
     def getHistory(self):
         return self.history

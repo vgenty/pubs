@@ -77,48 +77,72 @@ class mv_assembler_daq_files(ds_project_base):
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            status_code=1
             filelist = glob.glob( in_file_holder )
-            in_file = filelist[0]
-
-#            cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
-#            cmd = ['rsync', '-v', in_file, out_file]
-            cmd = ['cp', '-v', in_file, out_file]
-
-            proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
-            done_list.append(False)
-            run_id.append((run,subrun))
-            self.info('Started rsync (run,subrun)=%s @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = 3 )
-            self.log_status( status )
-            # if not parallelized, wait till proc is done
-            if not self._parallelize:
-                time_spent = 0
-                while proc_list[-1].poll() is None:
-                    time.sleep(1)
-                    time_spent +=1
-                    if time_spent > self._max_wait:
-                        self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
-                        proc_list[-1].kill()
-                        time.sleep(5)
-                        if proc_list[-1].poll() is None:
-                            self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
-                            subprocess.call(['kill','-9',str(proc_list[-1].pid)])
-                        break
-                self.info('Finished rsync [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+            if (len(filelist)<1):
+                self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
                 status = ds_status( project = self._project,
-                                    run     = run_id[-1][0],
-                                    subrun  = run_id[-1][1],
+                                    run     = run,
+                                    subrun  = subrun,
                                     seq     = 0,
-                                    status  = 2 )
+                                    status  = status_code )
+                self.log_status( status )                
+
+            if (len(filelist)>1):
+                self.info('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.info('ERROR: List of files found %s' % filelist)
+            
+            if (len(filelist)>0):
+                in_file = filelist[0]
+
+                #cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
+                #cmd = ['rsync', '-v', in_file, out_file]
+                cmd = ['cp', '-v', in_file, out_file]
+                proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
+                done_list.append(False)
+                run_id.append((run,subrun))
+                self.info('Started copy (run,subrun)=%s @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+                # Create a status object to be logged to DB (if necessary)
+                status_code=3
+
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+
                 self.log_status( status )
+
+            # if not parallelized, wait till proc is done
+                if not self._parallelize:
+                    time_spent = 0
+                    while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
+                        time.sleep(1)
+                        time_spent +=1
+
+                        if time_spent > self._max_wait:
+                            self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
+                            proc_list[-1].kill()
+                            time.sleep(5)
+
+                            if proc_list[-1].poll() is None:
+                                self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
+                                subprocess.call(['kill','-9',str(proc_list[-1].pid)])
+                                break
+
+                    self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    status = ds_status( project = self._project,
+                                        run     = run_id[-1][0],
+                                        subrun  = run_id[-1][1],
+                                        seq     = 0,
+                                        status  = 2 )
+                    self.log_status( status )
+
             # if parallelized, just sleep 5 sec and go next run
-            else:
-                time.sleep(5)
+                else:
+                    time.sleep(5)
+
             if not ctr: break
         
         # if not parallelized, done
@@ -135,29 +159,31 @@ class mv_assembler_daq_files(ds_project_base):
             for x in xrange(len(proc_list)):
                 if done_list[x]: continue
                 if not proc_list[x].poll() is None:
-                    self.info('Finished rsync [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    self.info('Finished copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    status_code = 2
                     status = ds_status( project = self._project,
                                         run     = run_id[x][0],
                                         subrun  = run_id[x][1],
                                         seq     = 0,
-                                        status  = 2 )
+                                        status  = status_code )
                     self.log_status( status )
                     done_list[x] = True
                 else:
                     active_counter += 1
                     finished = False
             if time_spent%10:
-                self.info('Waiting for rsync to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
+                self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
             if time_spent > self._max_wait:
                 self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
                 for x in xrange(len(proc_list)):
                     proc_list[x].kill()
 
+                    status_code = 101
                     status = ds_status( project = self._project,
                                         run     = run_id[x][0],
                                         subrun  = run_id[x][1],
                                         seq     = 0,
-                                        status  = 2 )
+                                        status  = status_code )
                     self.log_status( status )
 
                     # hard kill if still alive
@@ -180,7 +206,7 @@ class mv_assembler_daq_files(ds_project_base):
 
             run    = int(x[0])
             subrun = int(x[1])
-            status = 0
+            status_code = 2
 
             out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
             
@@ -188,17 +214,17 @@ class mv_assembler_daq_files(ds_project_base):
             res = subprocess.call(['ls', out_file])
             if res:
                 self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-                status = 1
+                status_code = 102
             else:
                 self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                status = 0
+                status_code = 0
                 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
                                 subrun  = subrun,
                                 seq     = 0,
-                                status  = status )
+                                status  = status_code )
             
             # Log status
             self.log_status( status )

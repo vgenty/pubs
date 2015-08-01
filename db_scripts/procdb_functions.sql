@@ -525,27 +525,46 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS RemoveRun(RunTableName TEXT, Run INT, SubRun INT);
 DROP FUNCTION IF EXISTS RemoveRun(Run INT, SubRun INT);
-CREATE OR REPLACE FUNCTION RemoveRun(Run INT, SubRun INT) 
+CREATE OR REPLACE FUNCTION RemoveRun(RunTableName TEXT, Run INT, SubRun INT) 
        	  	  RETURNS VOID AS $$
 DECLARE
   query TEXT;
   rec RECORD;
 BEGIN
 
+  IF NOT DoesTableExist(RunTableName) THEN
+    RAISE EXCEPTION '+++++++++++++++++ Project table not found +++++++++++++++++';
+  END IF;
 
   FOR rec IN SELECT * FROM ListProject()
   LOOP
-      IF NOT TableExist(rec.Project::TEXT) THEN
+      IF NOT DoesTableExist(rec.Project::TEXT) THEN
         RAISE EXCEPTION '+++++++++++++++++ Project table not found ++++++++++++++++++';
       END IF;
-      query := format('DELETE FROM %s WHERE RunNumber=%d AND SubRunNumber=%d;',rec.Project::TEXT,Run,SubRun);
+  END LOOP;
+
+  FOR rec IN SELECT * FROM ListProject()
+  LOOP
+      IF NOT DoesTableExist(rec.Project::TEXT) THEN
+        RAISE EXCEPTION '+++++++++++++++++ Project table not found ++++++++++++++++++';
+      END IF;
+      query := format( 'DELETE FROM %s WHERE %s.Run=%s AND %s.SubRun=%s;',
+      	       	       rec.Project::TEXT,
+		       rec.Project::TEXT, Run,
+		       rec.Project::TEXT, SubRun);
       EXECUTE query; 
   END LOOP;
+
+  query := format( 'DELETE FROM %s WHERE %s.RunNumber=%s AND %s.SubRunNumber=%s;',
+  	   	   RunTableName,
+		   RunTableName, Run,
+		   RunTableName, SubRun );
+  EXECUTE query;
 
 END;
 $$ LANGUAGE PLPGSQL;
 
 --Homemade types
-DROP TYPE IF EXISTS RunSubrunList CASCADE;
 

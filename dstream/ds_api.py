@@ -10,7 +10,7 @@
 # python import
 import psycopg2, sys
 # pub_util package import
-from pub_util     import pub_logger
+from pub_util     import pub_logger, pub_env
 # pub_dbi package import
 from pub_dbi      import pubdb_reader, pubdb_writer
 # dstream import
@@ -1011,7 +1011,27 @@ class death_star(ds_master):
 
         return result
 
+    ## @brief Remove a specific run/subrun combination from the DB
+    #  @details Remove a specific run/subrun combination from both the run and project status table
+    def star_destroyer(self, runtable, run, subrun, age_of_church):
+
+        if not age_of_church == pub_env.kAGE_OF_CHURCH:
+
+            self._logger.error('A star destroyer cannot ship out w/o Church')
+
+            return False
+
+        query = 'Select RemoveRun(\'%s\',%d,%d);' % (runtable,run,subrun)
 
 
+        result = self.commit(query)
 
+        if result:
 
+            self._logger.warning('Star Destroyer is shipped your way with FedEx ground.')
+
+        else:
+
+            self._logger.warning('Sorry. Your credit card was not accepted.')
+
+        return result

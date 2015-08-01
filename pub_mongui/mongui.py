@@ -7,7 +7,7 @@ import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
-from gui_utils_api import GuiUtilsAPI
+from gui_utils_api import GuiUtilsAPI, GuiUtils
 
 # catch ctrl+C to terminate the program
 import signal
@@ -27,11 +27,13 @@ from pub_dbi import pubdb_conn_info
 #to-do: it takes like 5 seconds to loop through projects and do all the necessary queries to build their pie charts...
 #this definitely should be faster.
 
-_update_period = 10#in seconds
 my_template = 'pubs_diagram_061515.png'
+_update_period = GuiUtils().getUpdatePeriod()#in seconds
+
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
+
 
 #suppress warnings temporarily:
 QtCore.qInstallMsgHandler(lambda *args: None)
@@ -62,7 +64,7 @@ view.show()
 view.scale(0.8,0.8)
 
 #Get a list of all projects from the gui DBI
-projects = gdbi.getAllProjects() # [project, command, server, sleepafter .... , enabled, resource]
+projectnames = gdbi.getAllProjectNames() 
 
 # Dictionary of project name --> pie chart item
 proj_dict = {}
@@ -74,9 +76,7 @@ template_params = getParams(my_template)
 #Read in the project descriptions stored in a separate text file
 proj_descripts = getProjectDescriptions()
 
-for iproj in projects:
-
-    iprojname = iproj._project
+for iprojname in projectnames:
 
     if iprojname not in template_params:
         print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
@@ -99,7 +99,7 @@ for iproj in projects:
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
     mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
-    mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2\nRed: Project Disabled')
+    mytext.setPlainText('Legend:\nBlue: Status1\nOthers: Other Statuses\nGray: Project Disabled')
     mytext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
@@ -108,14 +108,18 @@ for iproj in projects:
     
 def update_gui():
 
+    #This is the one DB query that returns all projects and array of different statuses per project
+    gdbi.update()
+
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
-    projects = gdbi.getAllProjects()
+    #This no longer does a DB query, just reads info from previous query in gdbi.update()
+    projectnames = gdbi.getAllProjectNames()
+    enabledprojectnames = gdbi.getEnabledProjectNames()
 
-    for iproj in projects:
+    for iprojname in projectnames:
 
-        iprojname = iproj._project
         #If this project isn't in the dictionary (I.E. it wasn't ever drawn on the GUI),
         #then skip it. This can be fixed by adding the project to the GUI params
         if iprojname not in proj_dict.keys():
@@ -126,11 +130,11 @@ def update_gui():
         #Get the maximum radius of for this pie chart from the template parameters
         max_radius = float(template_params[iprojname][2])
         #Compute the number of entries in the pie chart (denominator)
-        tot_n = gdbi.getNRunSubruns(iprojname)
+        tot_n = gdbi.getTotNRunSubruns(iprojname)
         #Compute the radius if the pie chart, based on the number of entries
         ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
         #Compute the slices of the pie chart
-        pie_slices = gdbi.computePieSlices(iprojname, tot_n)
+        pie_slices = gdbi.computePieSlices(iprojname)
 
         #To do:
         #Check if the pie chart has changed since last update
@@ -138,11 +142,13 @@ def update_gui():
         
         #Set the new data that will be used to make a new pie chart
         #If the project is disabled, make a filled-in red circle
-        if iproj._enable == True:
+        #KALEKO NEEDS TO REWRITE THE ONE SQL QUERY TO ALSO INCLUDE WHETHER EACH PROJECT IS ENABLED
+        if iprojname in enabledprojectnames:
             idata = (iprojname, ix, iy, ir, pie_slices )
         else:
-            idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
-
+            #Gray out disabled projects
+            idata = (iprojname, ix, iy, ir, [ (1., 0.5) ] )
+        
         #To-do: play around with what is being done (removing+adding)
         #to try to speed up this code
 
@@ -151,7 +157,9 @@ def update_gui():
 
         #update the piechart item with the new data
         proj_dict[iprojname].updateData(idata)
-        proj_dict[iprojname].appendHistory(tot_n)
+        
+        #appendHistory should take in [ (status, value), (anotherstatus, anothervalue), ...]
+        proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
         #Draw the new piechart in the place of the old one
         scene.addItem(proj_dict[iprojname])
