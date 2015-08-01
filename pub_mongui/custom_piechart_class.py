@@ -86,10 +86,6 @@ class PieChartItem(QtGui.QGraphicsObject):
     def appendHistory(self, statuses_and_values_toappend):
         self.n_history_updates = self.n_history_updates + 1
 
-        #If too many pending run/subruns are stored, trim the list
-        if self.n_history_updates > 500:
-            for mykey in self.history.keys():
-                self.history[mykey].pop(0)
         #statuses_and_values_toappend looks like
         #[ (1, 1234), (3, 999), (100, 14) ]
         #i think if there is initially status=1 with 1 entry, and that entry switches to status 0,
@@ -106,6 +102,12 @@ class PieChartItem(QtGui.QGraphicsObject):
         for istat_val in statuses_and_values_toappend:
             if len(self.history[status]) != self.n_history_updates:
                 self.history[status].append(0)
+
+        #If too many pending run/subruns are stored, trim the list
+        if self.n_history_updates > 500:
+            for mykey in self.history.keys():
+                self.history[mykey].pop(0)
+
 
     def getHistory(self):
         return self.history
