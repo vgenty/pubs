@@ -121,8 +121,7 @@ class register_new_run(ds_project_base):
                     # NoiseRun-YYYY_M_DD_HH_MM_SS-RUN-SUBRUN.ubdaq
                     run    = int(f.replace('.ubdaq','').split('-')[-2])
                     subrun = int(f.replace('.ubdaq','').split('-')[-1])
-                    self.info('found for run (%i, %i)'%(run,subrun))
-                    
+                    #self.info('found run (%i, %i)'%(run,subrun))
                     file_info[tuple((run,subrun))] = [f,time_create,time_modify]
 
                 except:
@@ -144,7 +143,10 @@ class register_new_run(ds_project_base):
             logger = pub_logger.get_logger('register_new_run')
             reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
             last_recorded_info = reader.get_last_run_subrun(self._runtable)
-            #last_recorded_info = (0,0)
+
+            # log which (run,subrun) pair was added last
+            self.info('last recorded (run,subrun) is (%d,%d)'%(int(last_recorded_info[0]),int(last_recorded_info[1])))
+            self.info('No run with (run,subrun) smaller than this will be added to the RunTable')
 
             # if we made it this far the file info needs to be
             # recorded to the database
@@ -177,22 +179,31 @@ class register_new_run(ds_project_base):
                 if (info <= last_recorded_info):
                     continue;
 
-                # info is key (run,subrun)
-                # dictionary value @ key is array
-                # [file name, time_crate, time_modify]
-                run           = info[0]
-                subrun        = info[1]
-                run_info      = file_info[info]
-                file_creation = time.gmtime(int(run_info[1]))
-                file_closing  = time.gmtime(int(run_info[2]))
-                file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
-                file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
-                
-                self.info('filling death star...')
-                # insert into the death start
-                rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],file_creation, file_closing)
-                # Report starting
-                self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
+                self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
+
+                try:
+
+                    # info is key (run,subrun)
+                    # dictionary value @ key is array
+                    # [file name, time_crate, time_modify]
+                    run           = info[0]
+                    subrun        = info[1]
+                    run_info      = file_info[info]
+                    file_creation = time.gmtime(int(run_info[1]))
+                    file_closing  = time.gmtime(int(run_info[2]))
+                    file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
+                    file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+                    
+                    self.info('filling death star...')
+                    # insert into the death start
+                    rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],file_creation, file_closing)
+                    # Report starting
+                    self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
+
+                except:
+                    
+                    # we did not succeed in adding this (run,subrun)
+                    self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
 
 
 
