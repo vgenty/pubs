@@ -233,7 +233,7 @@ class transfer( ds_project_base ):
             return (transfer, samcode)
 
 
-        full_file = loc[0]["full_path"].replace('enstore:','') + "/" +  in_file
+        full_file = loc[0]["full_path"].replace('enstore:/pnfs/uboone','') + "/" +  in_file
 #        pdb.set_trace()
         pnnl_machine = "dtn2.pnl.gov"
         pnnl_dir = 'pic/projects/microboone/data/'
