@@ -99,7 +99,7 @@ for iprojname in projectnames:
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
     mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
-    mytext.setPlainText('Legend:\nBlue: Status1\nGreen: Status2\nRed: Project Disabled')
+    mytext.setPlainText('Legend:\nBlue: Status1\nOthers: Other Statuses\nGray: Project Disabled')
     mytext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
@@ -146,7 +146,8 @@ def update_gui():
         if iprojname in enabledprojectnames:
             idata = (iprojname, ix, iy, ir, pie_slices )
         else:
-            idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
+            #Gray out disabled projects
+            idata = (iprojname, ix, iy, ir, [ (1., 0.5) ] )
         
         #To-do: play around with what is being done (removing+adding)
         #to try to speed up this code
