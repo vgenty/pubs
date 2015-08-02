@@ -4,7 +4,7 @@
 #  @author david caratelli
 
 # python include
-import time, os
+import time, os, sys
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util import
@@ -25,6 +25,7 @@ def plot_resource_usage(proj,outpath):
         from mpl_toolkits.axes_grid1 import host_subplot
         import mpl_toolkits.axisartist as AA
         import datetime
+        import numpy as np
     except ImportError:
         return 'failed import'
 
@@ -89,33 +90,6 @@ def plot_resource_usage(proj,outpath):
 
     fig, ax = plt.subplots(1,figsize=(12,8))
 
-
-    
-    '''
-    host = host_subplot(111,axes_class=AA.Axes)
-
-    plt.subplots_adjust(right=0.75)
-    pltRAM = host.twinx()
-    pltCPU = host.twinx()
-    
-    offset = 60
-    new_fixed_axis = pltCPU.get_grid_helper().new_fixed_axis
-    pltCPU.axis['right'] = new_fixed_axis(loc='right',
-                                          axes=pltCPU,
-                                          offset=(offset,0))
-    
-    pltCPU.axis['right'].toggle(all=True)
-    
-    host.set_xlabel('Time', fontsize=20)
-    host.set_ylabel('DISK usage Frac.', fontsize=18, color='r')
-    host.set_ylim([0,1])
-    
-    pltRAM.set_ylabel('RAM Usage %', fontsize=18, color='b')
-    pltRAM.set_ylim([0,100])
-    pltCPU.set_ylabel('CPU Usage %', fontsize=18, color='k')
-    pltCPU.set_ylim([0,100])
-    '''
-
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Usage %',fontsize=20)
     ax.set_ylim([0,100])
@@ -159,12 +133,15 @@ def plot_resource_usage(proj,outpath):
 
     fig, ax = plt.subplots(1,figsize=(12,8))
     plt.plot(tPROJ[2:],NPROJ[2:],'ro')
+    # get max number of projects to set axes accordingly
+    nmax = np.amax(np.array(NPROJ[2:]))
     plt.title('PUBS Projects Running on %s'%(servername), fontsize=20)
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Number of Projects Running',fontsize=20)
     ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
     ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
+    ax.set_ylim([0,nmax+1])
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
     outpathProjs = outpath+"numproj_monitoring_%s.png"%(servername)
@@ -185,10 +162,16 @@ class monitor_machine_resources(ds_project_base):
 
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self,nruns=None):
+    def __init__(self,arg = ''):
 
         # Call base class ctor
-        super(monitor_machine_resources,self).__init__()
+        super(monitor_machine_resources,self).__init__( arg )
+
+        if not arg:
+            self.error('No project name specified!')
+            raise Exception
+
+        self._project = arg
 
         self._data_dir = ''
         self._experts  = ''
@@ -212,42 +195,38 @@ class monitor_machine_resources(ds_project_base):
 
         # get daemon_log
         try:
-            logger = pub_logger.get_logger('list_log')
-            k = ds_api.ds_reader(pubdb_conn_info.reader_info(),logger)
-            k.connect()
-            project = k.list_daemon_log()
+            #logger = pub_logger.get_logger('list_log')
+            #k = self._api.ds_reader(pubdb_conn_info.reader_info(),logger)
+            #k.connect()
+            project = self._api.list_daemon_log(server=pub_env.kSERVER_NAME)
         except:
             self.error('could not get logger')
             return
 
         # if no projects found
         if not project:
-            self.info('no projects found...exiting')
+            self.info('no projects found...exiting @ %s'%(time.strftime("%Y-%m-%d %H:%M:%S")))
             return
             
         # directory where to store plots
         pubstop = str(os.environ.get('PUB_TOP_DIR'))
 
-        ctr = 0
-        #try:
         plotpath = pubstop+'/'+self._data_dir+'/'
-        self.info('saving plot to path: %s'%plotpath)
+        self.info('saving plot to path: %s @ %s'%(plotpath,time.strftime("%Y-%m-%d %H:%M:%S")))
         outpath = plot_resource_usage(project,plotpath)
-        self.info('saving plot to path: %s'%outpath)
         if (outpath == 'failed import'):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):
             self.error('No plot produced...')
-        ctr += 1
-        #except:
-        #    self.info('could not produce plot') 
 
         
 
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = monitor_machine_resources(5)
+    proj_name = sys.argv[1]
+
+    test_obj = monitor_machine_resources(proj_name)
 
     test_obj.process_newruns()
 
