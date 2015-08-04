@@ -27,7 +27,8 @@ class GuiUtilsAPI():
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
     self.proj_dict = self.dbi.list_status()
     self.enabled_projects = [ x._project for x in self.dbi.list_projects() ]
-    self.colors = GuiUtils().getColors()
+    self.my_utils = GuiUtils()
+    self.colors = self.my_utils.getColors()
 
   def update(self):
     self.proj_dict = self.dbi.list_status()
@@ -95,9 +96,10 @@ class GuiUtilsAPI():
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled or disabled, running or dead]
+    max_daemon_log_lag = 60 #seconds
     is_enabled = self.dbi.daemon_info(servername)._enable
     d_logs = self.dbi.list_daemon_log(servername)
-    time_since_log_update = min([getTimeSinceInSeconds(x._logtime) for x in d_logs])
+    time_since_log_update = min([self.my_utils.getTimeSinceInSeconds(x._logtime) for x in d_logs])
     is_running = True if time_since_log_update < max_daemon_log_lag else False
     return (is_enabled, is_running)
 
@@ -115,7 +117,5 @@ class GuiUtils():
     return self.update_period
 
   def getTimeSinceInSeconds(self,timestamp):
-    #timestamp is a string of the form '2015-08-03 15:34:57.773465'
-    t0  = datetime.datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S.%f")
     now = datetime.datetime.today()
-    return (now - t0).seconds
+    return (now - timestamp).seconds
