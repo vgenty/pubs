@@ -3,6 +3,7 @@ from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
 
+import datetime
 import math
 
 class GuiUtilsAPI():
@@ -92,6 +93,13 @@ class GuiUtilsAPI():
     #don't include status == 0 in any of this
     return [x for x in self.proj_dict[projname] if x[0]]
     
+  def getDaemonStatuses(self, servername):
+    #Returns [enabled or disabled, running or dead]
+    is_enabled = self.dbi.daemon_info(servername)._enable
+    d_logs = self.dbi.list_daemon_log(servername)
+    time_since_log_update = min([getTimeSinceInSeconds(x._logtime) for x in d_logs])
+    is_running = True if time_since_log_update < max_daemon_log_lag else False
+    return (is_enabled, is_running)
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
@@ -105,3 +113,9 @@ class GuiUtils():
 
   def getUpdatePeriod(self):
     return self.update_period
+
+  def getTimeSinceInSeconds(self,timestamp):
+    #timestamp is a string of the form '2015-08-03 15:34:57.773465'
+    t0  = datetime.datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S.%f")
+    now = datetime.datetime.today()
+    return (now - t0).seconds
