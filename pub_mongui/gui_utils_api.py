@@ -3,6 +3,7 @@ from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
 
+import datetime
 import math
 
 class GuiUtilsAPI():
@@ -26,7 +27,8 @@ class GuiUtilsAPI():
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
     self.proj_dict = self.dbi.list_status()
     self.enabled_projects = [ x._project for x in self.dbi.list_projects() ]
-    self.colors = GuiUtils().getColors()
+    self.my_utils = GuiUtils()
+    self.colors = self.my_utils.getColors()
 
   def update(self):
     self.proj_dict = self.dbi.list_status()
@@ -75,8 +77,13 @@ class GuiUtilsAPI():
     #unless radius > Rmax, in which case use radius = Rmax
     #This function has r = 0.5*Rmax when n = 5
     radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(tot_n))
+
+    #Quick overwrite to make all pie charts maximum size
+    radius = 999999.
+
     #Double check the radius isn't bigger than the max allowed
     return radius if radius <= max_radius else max_radius
+    
 
   #Get the number of run/subruns that are relevant for pie charts
   # (don't care about fully completed run/subruns)
@@ -92,12 +99,35 @@ class GuiUtilsAPI():
     #don't include status == 0 in any of this
     return [x for x in self.proj_dict[projname] if x[0]]
     
+  def getDaemonStatuses(self, servername):
+    #Returns [enabled or disabled, running or dead]
+    max_daemon_log_lag = 60 #seconds
+    is_enabled = self.dbi.daemon_info(servername)._enable
+    d_logs = self.dbi.list_daemon_log(servername)
+    time_since_log_update = min([self.my_utils.getTimeSinceInSeconds(x._logtime) for x in d_logs])
+    is_running = True if time_since_log_update < max_daemon_log_lag else False
+    return (is_enabled, is_running)
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
   def __init__(self):
     #r, g, b, c, m, y, k, w    
-    self.colors = { 1:'b', 2:'g', 3: 'w', 4:'k', 100:'y', 102:'m', 65:'r', 101:'c', 404:'k', 999:'w', -9:'y' }
+    #self.colors = { 1:'b', 2:'g', 3: 'w', 4:'w', 100:'y', 102:'m', 65:'r', 101:'c', 404:'k', 999:'w', -9:'y' }
+    #empire strikes back color themes!
+    self.colors={ 1:[47,74,101],
+                  2:[18,59,142],
+                  3:[205,180,101],
+                  4:[205,180,101],
+                  100:[235,160,113],
+                  102:[117,21,41],
+                  65:[165,17,26],
+                  101:[144,149,38],
+                  404:[11,20,40],
+                  999:[19,33,71],
+                  -9:[206,211,124],
+                  1000:[18,59,142],
+                  4112:[47,75,101]
+                  }
     self.update_period = 10 #seconds
 
   def getColors(self):
@@ -105,3 +135,7 @@ class GuiUtils():
 
   def getUpdatePeriod(self):
     return self.update_period
+
+  def getTimeSinceInSeconds(self,timestamp):
+    now = datetime.datetime.today()
+    return (now - timestamp).seconds
