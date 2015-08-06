@@ -27,7 +27,7 @@ from pub_dbi import pubdb_conn_info
 #to-do: it takes like 5 seconds to loop through projects and do all the necessary queries to build their pie charts...
 #this definitely should be faster.
 
-my_template = 'pubs_diagram_061515.png'
+my_template = 'pubs_diagram_080615.png'
 relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 

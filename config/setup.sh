@@ -8,6 +8,26 @@ if [[ -z $PUB_TOP_DIR ]]; then
     export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
 fi
 
+case `whoami` in
+    (uboonepro)
+        echo uboonepro should be using its dedicated setup script.
+	echo Do not cross the boundary, you fool!
+	return 1
+	;;
+    (*)
+        echo Setting up PUBS for non-uboonepro account...
+	if [[ -f $HOME/.sqlaccess/prod_conf.sh ]]; then
+	    echo Sourcing X/sqlaccess/prod_conf.sh...
+	    source $HOME/.sqlaccess/prod_conf.sh
+	else
+	    source $PUB_TOP_DIR/config/ubdaq_personal_conf.sh
+	fi
+	;;
+esac
+
+
+
+
 #
 # PSQL configuration
 #
@@ -74,16 +94,17 @@ case `uname -n` in
         source /uboone_offline/setup
         export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`/$USER
         mkdir -p $PUB_LOGGER_FILE_LOCATION;
-	source $PUB_TOP_DIR/config/ubdaq_personal_conf.sh
 	case `uname -n` in
 	    (ubdaq-prod-smc*)
 	        setup git
+		setup pyqtgraph
 		setup postgresql v9_3_6 -q p279
 		export PUB_DAEMON_LOG_MODULE=dstream_online.smc_logger
 		export PUB_DAEMON_HANDLER_MODULE=dstream_online.smc_handler
 		;;
 	    (ubdaq-prod-evb*)
 	        setup git
+		setup pyqtgraph
 		setup postgresql v9_3_6 -q p279
 	        setup sam_web_client
 		export PUB_DAEMON_LOG_MODULE=dstream_online.evb_logger
@@ -94,6 +115,7 @@ case `uname -n` in
                 # This is not guaranteed to work (Kazu June-02-2015)
                 #
 	        setup git
+		setup pyqtgraph
 	        setup sam_web_client
 		setup ifdhc v1_8_2 -q e7:p279:prof
 		setup uboonedaq_datatypes v6_10_03 -q e7:debug
