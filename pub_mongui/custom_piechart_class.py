@@ -103,11 +103,18 @@ class PieChartItem(QtGui.QGraphicsObject):
         keys_to_include = self.history.keys()
         for istat_val in statuses_and_values_toappend:
             status, value = istat_val[0], istat_val[1]
+            #acknowledge that you've used this key
+            keys_to_include.remove(status)
             #if this status has never been added to history, back-fill it with zeros
             if status not in self.history.keys():
                 self.history[status] = [0] * int(self.n_history_updates-1)
                 print self.history[status]
             self.history[status].append(value)
+
+        #Now there may be leftover keys, that previously had statuses but have since gone to zero
+        #Keep these around, and add zeros
+        for istat in keys_to_include:
+            self.history[status].append(0)
 
         #If too many pending run/subruns are stored, trim the list
         if self.n_history_updates > 500:
