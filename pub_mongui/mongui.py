@@ -62,7 +62,8 @@ view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
 
 #For now, zoom out a little bit so it can fit on my screen ...
-view.scale(0.8,0.8)
+#view.scale(0.8,0.8)
+view.scale(1.2,1.2)
 
 #Get a list of all projects from the gui DBI
 projectnames = gdbi.getAllProjectNames() 
@@ -181,13 +182,13 @@ def update_gui():
 
 
     #Add text to bottom left of GUI showing if daemons are running and enabled
-    if daemon_text: scene.removeItem(daemon_text)
+    #if daemon_text: scene.removeItem(daemon_text)
     daemon_text = QtGui.QGraphicsTextItem()
-    daemon_text.setPos(scene_xmin+0.20*scene_width,scene_height*0.90)
+    daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
     text_content = ''
     for dname in relevant_daemons:
         d_enabled, d_running = gdbi.getDaemonStatuses(dname)
-        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dnmae, d_enabled, d_running)
+        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
     daemon_text.setPlainText(text_content)
     daemon_text.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
