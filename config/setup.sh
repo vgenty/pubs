@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# If PUB_TOP_DIR not set, try to guess
+if [[ -z $PUB_TOP_DIR ]]; then
+    # Find the location of this script:
+    me="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    # Find the directory one above.
+    export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
+fi
+
 case `whoami` in
     (uboonepro)
         echo uboonepro should be using its dedicated setup script.
@@ -18,13 +26,7 @@ case `whoami` in
 esac
 
 
-# If PUB_TOP_DIR not set, try to guess
-if [[ -z $PUB_TOP_DIR ]]; then
-    # Find the location of this script:
-    me="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    # Find the directory one above.
-    export PUB_TOP_DIR="$( cd "$( dirname "$me" )" && pwd )"
-fi
+
 
 #
 # PSQL configuration
