@@ -28,6 +28,7 @@ from pub_dbi import pubdb_conn_info
 #this definitely should be faster.
 
 my_template = 'pubs_diagram_061515.png'
+relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 
 
@@ -176,6 +177,24 @@ def update_gui():
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
+
+
+
+    #Add text to bottom left of GUI showing if daemons are running and enabled
+    if daemon_text: scene.removeItem(daemon_text)
+    daemon_text = QtGui.QGraphicsTextItem()
+    daemon_text.setPos(scene_xmin+0.20*scene_width,scene_height*0.90)
+    text_content = ''
+    for dname in relevant_daemons:
+        d_enabled, d_running = gdbi.getDaemonStatuses(dname)
+        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dnmae, d_enabled, d_running)
+    daemon_text.setPlainText(text_content)
+    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
+    myfont = QtGui.QFont()
+    myfont.setPointSize(12)
+    daemon_text.setFont(myfont)
+    scene.addItem(daemon_text)
+
 
 #Initial drawing of GUI with real values
 #This is also the function that is called to update the canvas periodically
