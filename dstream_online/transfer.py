@@ -268,7 +268,8 @@ class transfer( ds_project_base ):
             transfer = proc.returncode
                 # also grep the out for indication of success at end.
             if not transfer:
-                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
+                size_out = int(out.split(" ")[out.split(" ").index('bytes')-1])
+#                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
                 transfer = 10
                 if size_out == size_in:
                     transfer = 0

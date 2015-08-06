@@ -68,15 +68,16 @@ case `uname -n` in
 	source /home/uboonepro/.sql_access/uboonepro_prod_conf.sh;
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
-	setup uboonedaq_datatypes v6_11_05a -q e7:prof;
 	case `uname -n` in
             (ubdaq-prod-smc*)
 		setup pyqtgraph;
 		setup postgresql v9_3_6 -q p279;
+	        setup uboonedaq_datatypes v6_13_06 -q e7:prof;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.ubdaq_logger_smc;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc;
                 ;;
             (ubdaq-prod-evb*)
+	        setup uboonedaq_datatypes v6_13_06 -q e7:prof;
 	        setup sam_web_client;
 		setup postgresql v9_3_6 -q p279;
 		setup pyqtgraph;
@@ -90,8 +91,10 @@ case `uname -n` in
                 #
 	        setup sam_web_client;
 		setup ifdhc v1_8_2 -q e7:p279:prof;
-		setup uboonedaq_datatypes v6_13_03 -q e7:debug;
-		setup uboonecode v04_17_00 -q prof:e7;
+		#setup uboonedaq_datatypes v6_13_06 -q e7:debug;
+		#we should setup the uboonedaq_datatypes by hand on near1, but instead
+		#let it be setup as a dependency of the uboonecode version
+		setup uboonecode v04_18_00 -q prof:e7;
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;
