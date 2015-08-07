@@ -100,8 +100,8 @@ for iprojname in projectnames:
 
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
-    mytext.setPlainText('Legend:\nBlue: Status1\nOthers: Other Statuses\nGray: Project Disabled')
+    mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.95)
+    mytext.setPlainText('Legend:\nColorful: Good. Gray: Project Disabled')
     mytext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(10)

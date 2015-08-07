@@ -56,8 +56,12 @@ class GuiUtilsAPI():
       return [ (1., 'r') ]
 
     slices = []
+    #one giant green slice for fully completed project
+    if len(statuses) == 1 and statuses[0][0] == 0:
+      return [ ( 1., 'g' ) ]
+
     for x in statuses:
-      #No slice for status == 0
+      #Don't care about status == 0
       if not x[0]: continue
       if x[0] not in self.colors.keys():
         print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
