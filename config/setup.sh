@@ -49,6 +49,10 @@ export PATH=$PUB_BIN_DIR:$PATH
 # 
 # Default logger level
 export PUB_LOGGER_LEVEL=kLOGGER_DEBUG
+#shifters don't need the cout spam
+if [ `whoami` == 'uboonedaq' ]; then
+    export PUB_LOGGER_LEVEL=kLOGGER_ERROR
+fi
 # Default message drain
 export PUB_LOGGER_DRAIN=kLOGGER_COUT
 #export PUB_LOGGER_DRAIN=kLOGGER_FILE
