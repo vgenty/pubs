@@ -70,8 +70,9 @@ class GuiUtilsAPI():
   def computePieRadius(self, projname, max_radius, tot_n=0):
 
     #If piechart has no entries, give it a zero radius
-    if not tot_n:
-      return 0.
+    #skip this for now
+    #if not tot_n:
+    #  return 0.
 
     #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
     #unless radius > Rmax, in which case use radius = Rmax
