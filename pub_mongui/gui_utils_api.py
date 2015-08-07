@@ -138,4 +138,4 @@ class GuiUtils():
 
   def getTimeSinceInSeconds(self,timestamp):
     now = datetime.datetime.today()
-    return (now - timestamp).seconds
+    return (now - timestamp).total_seconds()
