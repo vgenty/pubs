@@ -77,7 +77,7 @@ class GuiUtilsAPI():
     #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
     #unless radius > Rmax, in which case use radius = Rmax
     #This function has r = 0.5*Rmax when n = 5
-    radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(tot_n))
+    #radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(tot_n))
 
     #Quick overwrite to make all pie charts maximum size
     radius = 999999.
