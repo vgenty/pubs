@@ -16,7 +16,7 @@ case $1 in
 	echo starting daemon;
 	export PUB_LOGGER_LEVEL=kLOGGER_INFO
 	export PUB_LOGGER_DRAIN=kLOGGER_FILE
-	nohup $PUB_TOP_DIR/dstream/daemon.py > /dev/null &
+	nohup $PUB_TOP_DIR/dstream/daemon.py > $PUB_TOP_DIR/log/`uname -n`/daemon.sh.log &
     else
 	echo daemon already running;
     fi
@@ -38,7 +38,7 @@ case $1 in
     fi
     export PUB_LOGGER_LEVEL=kLOGGER_INFO
     export PUB_LOGGER_DRAIN=kLOGGER_FILE
-    nohup $PUB_TOP_DIR/dstream/daemon.py > /dev/null &
+    nohup $PUB_TOP_DIR/dstream/daemon.py > $PUB_TOP_DIR/log/`uname -n`/daemon.sh.log &
     ;;
 esac
 
