@@ -118,19 +118,24 @@ class GuiUtilsAPI():
     is_running = True if time_since_log_update < max_daemon_log_lag else False
     return (is_enabled, is_running)
   
-  def genDaemonText(self):
+  def genDaemonTextAndWarnings(self):
     #Add text to bottom left of GUI showing if daemons are running and enabled
     daemon_text = QtGui.QGraphicsTextItem()
+    daemon_warning = ''
     text_content = ''
     for dname in self.my_utils.getRelevantDaemons():
         d_enabled, d_running = self.getDaemonStatuses(dname)
         text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
+        if not d_enabled:
+            daemon_warning += 'Daemon %s is DISABLED!\n'%dname
+        if not d_running:
+            daemon_warning += 'Daemon %s is NOT RUNNING!\n'%dname
     daemon_text.setPlainText(text_content)
     daemon_text.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(12)
     daemon_text.setFont(myfont)
-    return daemon_text
+    return daemon_text, daemon_warning
 
 
 class GuiUtils():

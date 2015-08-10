@@ -79,7 +79,7 @@ proj_descripts = getProjectDescriptions()
 
 #Daemon text item (stored in array because that's the only way I can get it to work)
 daemon_texts = []
-daemon_text = gdbi.genDaemonText()
+daemon_text, daemon_warning = gdbi.genDaemonTextAndWarnings()
 daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
 scene.addItem(daemon_text)
 daemon_texts.append(daemon_text)
@@ -125,12 +125,15 @@ def update_gui():
     #Remove the daemon text item from array storing it globally
     daemon_texts.pop(0)
     #re-draw the daemon text item
-    daemon_text = gdbi.genDaemonText()
+    daemon_text, daemon_warning = gdbi.genDaemonTextAndWarnings()
     daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
     scene.addItem(daemon_text)
     #Store the new daemon text item
     daemon_texts.append(daemon_text)
-
+    #If there were any warnings, open a window shouting at shifters
+    if daemon_warning:
+        dwarnings = scene.openDaemonWindow(daemon_warning)
+    
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
