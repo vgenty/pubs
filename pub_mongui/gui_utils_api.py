@@ -111,7 +111,7 @@ class GuiUtilsAPI():
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled or disabled, running or dead]
-    max_daemon_log_lag = 60 #seconds
+    max_daemon_log_lag = 120 #seconds
     is_enabled = self.dbi.daemon_info(servername)._enable
     d_logs = self.dbi.list_daemon_log(servername)
     time_since_log_update = min([self.my_utils.getTimeSinceInSeconds(x._logtime) for x in d_logs])
@@ -121,22 +121,31 @@ class GuiUtilsAPI():
   def genDaemonTextAndWarnings(self):
     #Add text to bottom left of GUI showing if daemons are running and enabled
     daemon_text = QtGui.QGraphicsTextItem()
-    daemon_warning = ''
+    daemon_warning = QtGui.QGraphicsTextItem()
     text_content = ''
+    warning_content = ''
     for dname in self.my_utils.getRelevantDaemons():
         d_enabled, d_running = self.getDaemonStatuses(dname)
         text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
         if not d_enabled:
-            daemon_warning += 'Daemon %s is DISABLED!\n'%dname
+            warning_content += 'Daemon %s is DISABLED as of %s\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
         if not d_running:
-            daemon_warning += 'Daemon %s is NOT RUNNING!\n'%dname
+            warning_content += 'Daemon %s is NOT RUNNING as of %s!\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
+    if warning_content: warning_content += "Tell an expert!"
+
     daemon_text.setPlainText(text_content)
     daemon_text.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(12)
     daemon_text.setFont(myfont)
-    return daemon_text, daemon_warning
+    daemon_warning.setPlainText(warning_content)
+    daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
+    warningfont = QtGui.QFont()
+    warningfont.setPointSize(50)
+    daemon_warning.setFont(warningfont)
 
+    #if daemon_warning actually had nothing in it, return no daemon warning
+    return (daemon_text, daemon_warning) if warning_content else (daemon_text, 0)
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
