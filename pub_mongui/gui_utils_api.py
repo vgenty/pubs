@@ -1,3 +1,8 @@
+try:
+    from pyqtgraph.Qt import QtGui, QtCore
+except ImportError:
+    raise ImportError('Ruh roh. You need to set up pyqtgraph before you can use this GUI.')
+
 # dstream import
 from dstream.ds_api import ds_reader
 # pub_dbi import
@@ -112,6 +117,21 @@ class GuiUtilsAPI():
     time_since_log_update = min([self.my_utils.getTimeSinceInSeconds(x._logtime) for x in d_logs])
     is_running = True if time_since_log_update < max_daemon_log_lag else False
     return (is_enabled, is_running)
+  
+  def genDaemonText(self):
+    #Add text to bottom left of GUI showing if daemons are running and enabled
+    daemon_text = QtGui.QGraphicsTextItem()
+    text_content = ''
+    for dname in self.my_utils.getRelevantDaemons():
+        d_enabled, d_running = self.getDaemonStatuses(dname)
+        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
+    daemon_text.setPlainText(text_content)
+    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
+    myfont = QtGui.QFont()
+    myfont.setPointSize(12)
+    daemon_text.setFont(myfont)
+    return daemon_text
+
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
@@ -134,6 +154,8 @@ class GuiUtils():
                   4112:[47,75,101]
                   }
     self.update_period = 10 #seconds
+    self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
+
 
   def getColors(self):
     return self.colors
@@ -144,3 +166,6 @@ class GuiUtils():
   def getTimeSinceInSeconds(self,timestamp):
     now = datetime.datetime.today()
     return (now - timestamp).total_seconds()
+
+  def getRelevantDaemons(self):
+    return self.relevant_daemons

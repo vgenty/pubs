@@ -28,7 +28,6 @@ from pub_dbi import pubdb_conn_info
 #this definitely should be faster.
 
 my_template = 'pubs_diagram_080615.png'
-relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 
 
@@ -78,6 +77,13 @@ template_params = getParams(my_template)
 #Read in the project descriptions stored in a separate text file
 proj_descripts = getProjectDescriptions()
 
+#Daemon text item (stored in array because that's the only way I can get it to work)
+daemon_texts = []
+daemon_text = gdbi.genDaemonText()
+daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
+scene.addItem(daemon_text)
+daemon_texts.append(daemon_text)
+
 for iprojname in projectnames:
 
     if iprojname not in template_params:
@@ -107,11 +113,23 @@ for iprojname in projectnames:
     myfont.setPointSize(10)
     mytext.setFont(myfont)
     scene.addItem(mytext)
+
     
 def update_gui():
 
     #This is the one DB query that returns all projects and array of different statuses per project
     gdbi.update()
+
+    #Remove the daemon text item from scene
+    scene.removeItem(daemon_texts[0])
+    #Remove the daemon text item from array storing it globally
+    daemon_texts.pop(0)
+    #re-draw the daemon text item
+    daemon_text = gdbi.genDaemonText()
+    daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
+    scene.addItem(daemon_text)
+    #Store the new daemon text item
+    daemon_texts.append(daemon_text)
 
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
@@ -178,23 +196,6 @@ def update_gui():
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
-
-
-
-    #Add text to bottom left of GUI showing if daemons are running and enabled
-    #if daemon_text: scene.removeItem(daemon_text)
-    daemon_text = QtGui.QGraphicsTextItem()
-    daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
-    text_content = ''
-    for dname in relevant_daemons:
-        d_enabled, d_running = gdbi.getDaemonStatuses(dname)
-        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
-    daemon_text.setPlainText(text_content)
-    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
-    myfont = QtGui.QFont()
-    myfont.setPointSize(12)
-    daemon_text.setFont(myfont)
-    scene.addItem(daemon_text)
 
 
 #Initial drawing of GUI with real values
