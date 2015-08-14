@@ -111,10 +111,12 @@ class GuiUtilsAPI():
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled or disabled, running or dead]
-    max_daemon_log_lag = 120 #seconds
+    max_daemon_log_lag = 600 #seconds
     is_enabled = self.dbi.daemon_info(servername)._enable
     d_logs = self.dbi.list_daemon_log(servername)
-    time_since_log_update = min([self.my_utils.getTimeSinceInSeconds(x._logtime) for x in d_logs])
+    #this should maybe just be time_since = take the LAST log in d_logs, then get logtime
+    #taking advantage of fact that d_logs is time ordered
+    time_since_log_update = self.my_utils.getTimeSinceInSeconds(d_logs[-1]._logtime)
     is_running = True if time_since_log_update < max_daemon_log_lag else False
     return (is_enabled, is_running)
   
