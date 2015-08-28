@@ -234,42 +234,74 @@ class transfer( ds_project_base ):
 
 
         full_file = loc[0]["full_path"].replace('enstore:/pnfs/uboone','') + "/" +  in_file
-#        pdb.set_trace()
+
         pnnl_machine = "dtn2.pnl.gov"
         pnnl_dir = 'pic/projects/microboone/data/'
         ddir = str(jsonOb['runs'][0][0]) # Run number
-        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir "  + "/" + pnnl_dir + ddir
+        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + ddir
         proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
         # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
         (out,err) = proc.communicate() 
         
         pnnl_loc = pnnl_machine + "/" + pnnl_dir + ddir + "/" + in_file
-        cmd_gsiftp_to_sshftp = "globus-url-copy -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
-        self.info('Will launch ' + cmd_gsiftp_to_sshftp)
-        # Popen() gymnastics here, with resi capturing the return status.
-        proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-        wait = 0
+        cmd_gsiftp_to_sshftp = "globus-url-copy -rst -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
+
+        # Popen() gymnastics here
+        ntry = 0
         delay = 5
-
-
-        while  proc.poll() is None:
-            wait+=delay
-            if wait > delay*20:
-                self.error ("pnnl_transfer timed out in awaiting transfer.")
-                proc.kill()
-                transfer = 11
+        ntry_max = 1 # more than 1 is not demonstrably helping. In fact, it creates lotsa orphaned ssh's. EC, 8-Aug-2015.
+        ndelays = 20
+        while (ntry != ntry_max):
+            self.info('Will launch ' + cmd_gsiftp_to_sshftp)
+            info_str = "pnnl_transfer trying " + str(ntry+1) + " (of " + str(ntry_max) + ") times."
+            self.info (info_str)
+            proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+            wait = 0
+            transfer = 0
+            while  proc.poll() is None:
+                wait+=delay
+                if wait > delay*ndelays:
+                    self.error ("pnnl_transfer timed out in awaiting transfer.")
+                    proc.kill()
+                    transfer = 11
+                    break
+                self.info('pnnl_transfer process ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec]')
+                time.sleep (delay)
+            if (transfer != 11):
                 break
-            self.info('pnnl_transfer process ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec]')
-            time.sleep (delay)
-    
+
+            # This rm usually fails for reasons I don't understand. If it succeeded the retry would work.
+            # Commenting it out, since we're setting ntry_max=1 now anyway, EC 8-Aug-2015.
+            # rm the (usually) 0 length file.
+            #cmd_rm = "ssh chur558@" + pnnl_machine + " rm -f "  + "/" + pnnl_dir + ddir + "/" + in_file
+            #proc = sub.Popen(cmd_rm,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+            #self.info("pnnl_transfer process: Attempting to remove " + pnnl_dir + ddir + "/" + in_file)
+            #time.sleep(5) # give it 5 seconds, then kill it if not done.
+            #if proc.poll() is None:
+            #    proc.kill()
+            #    self.error("pnnl_transfer process: " + cmd_rm + " failed.")
+
+            ntry+=1
+            ndelays+=10 # extend time period to force timeout for next effort.
+
+
+
+
         size_out = 0
         if not transfer:
             (out,err) = proc.communicate()
             transfer = proc.returncode
                 # also grep the out for indication of success at end.
+
             if not transfer:
-                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
+#                self.info('out is ' + out)
+                li = out.split(" ")
+                mind = max(ind for ind, val in enumerate(li) if val == 'bytes') - 1
+                size_out = int(li[mind])
+#                size_out = int(out.split("\n")[4].split(" ")[out.split(" ").index("bytes")-1])
+#                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
                 transfer = 10
+
                 if size_out == size_in:
                     transfer = 0
 
@@ -283,7 +315,7 @@ class transfer( ds_project_base ):
                 pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + ddir + "/" + in_file
                 samadd = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc_withcolon)
                 samloc  = samweb.locateFile(filenameorid=in_file)
-                if len(samloc)>1:
+                if len(samloc)>0:
                     samcode = 0
                     self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
                     self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
