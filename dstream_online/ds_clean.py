@@ -88,6 +88,7 @@ class ds_clean(ds_project_base):
             (run, subrun) = (int(x[0]), int(x[1]))
 
             tmp_status = 1
+            rm_status = 1
             multiple_file_status=0
 
             # Check input file exists. Otherwise report error
@@ -106,7 +107,18 @@ class ds_clean(ds_project_base):
                 if len(list_of_files) > 1:
                     self.info('More than one file matched the pattern')
                     multiple_file_status=200
-                if os.path.isfile(list_of_files[0]):
+                elif len(list_of_files) < 1:
+                    self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                    status_code=100
+                    status = ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = subrun,
+                                        seq     = 0,
+                                        status  = status_code )
+                    self.log_status( status )     
+                else: 
+                    if not os.path.isfile(list_of_files[0]):
+                        self.info("ERROR: os.path.isfile('%s') returned false?!"%list_of_files[0])
                     self.info('Going to remove the file with rm...')
                     rm_status=os.system('rm -f %s' % list_of_files[0])
                     tmp_status=2
