@@ -100,14 +100,26 @@ class PieChartItem(QtGui.QGraphicsObject):
         #i think if there is initially status=1 with 1 entry, and that entry switches to status 0,
         #then the status=1 pair gets dropped out of statuses_and_values... so, will need to pad
         #an entry in its place with value = 0
+
+        #keys to include are all the statuses that have been added to history at any point in time
         keys_to_include = self.history.keys()
+
+        #loop over statuses that you currently want to add to history
         for istat_val in statuses_and_values_toappend:
             status, value = istat_val[0], istat_val[1]
+
             #if this status has never been added to history, back-fill it with zeros
             if status not in self.history.keys():
                 self.history[status] = [0] * int(self.n_history_updates-1)
-                print self.history[status]
+
+            #add this status and value to the history
             self.history[status].append(value)
+
+        #there may be statuses that are in history, that are not being requested to be updated right now
+        statuses_to_manually_include = list(set(self.history.keys())-set([x[0] for x in statuses_and_values_toappend]))
+        #Keep these around, and add zeros for this update
+        for istat in statuses_to_manually_include:
+            self.history[istat].append(0)
 
         #If too many pending run/subruns are stored, trim the list
         if self.n_history_updates > 500:

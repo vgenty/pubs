@@ -27,7 +27,7 @@ from pub_dbi import pubdb_conn_info
 #to-do: it takes like 5 seconds to loop through projects and do all the necessary queries to build their pie charts...
 #this definitely should be faster.
 
-my_template = 'pubs_diagram_061515.png'
+my_template = 'pubs_diagram_082615.png'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 
 
@@ -61,7 +61,8 @@ view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
 
 #For now, zoom out a little bit so it can fit on my screen ...
-view.scale(0.8,0.8)
+#view.scale(0.8,0.8)
+view.scale(1.2,1.2)
 
 #Get a list of all projects from the gui DBI
 projectnames = gdbi.getAllProjectNames() 
@@ -75,6 +76,13 @@ template_params = getParams(my_template)
 
 #Read in the project descriptions stored in a separate text file
 proj_descripts = getProjectDescriptions()
+
+#Daemon text item (stored in array because that's the only way I can get it to work)
+daemon_texts = []
+daemon_text, daemon_warning = gdbi.genDaemonTextAndWarnings()
+daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
+scene.addItem(daemon_text)
+daemon_texts.append(daemon_text)
 
 for iprojname in projectnames:
 
@@ -99,18 +107,33 @@ for iprojname in projectnames:
     #Add a legend to the bottom right #to do: make legend always in foreground
     mytext = QtGui.QGraphicsTextItem()
     mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
-    mytext.setPlainText('Legend:\nBlue: Status1\nOthers: Other Statuses\nGray: Project Disabled')
+    mytext.setPlainText('Legend:\nColorful: Good. \nGray: Project Disabled')
     mytext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setPointSize(10)
     mytext.setFont(myfont)
     scene.addItem(mytext)
+
     
 def update_gui():
 
     #This is the one DB query that returns all projects and array of different statuses per project
     gdbi.update()
 
+    #Remove the daemon text item from scene
+    scene.removeItem(daemon_texts[0])
+    #Remove the daemon text item from array storing it globally
+    daemon_texts.pop(0)
+    #re-draw the daemon text item
+    daemon_text, daemon_warning = gdbi.genDaemonTextAndWarnings()
+    daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
+    scene.addItem(daemon_text)
+    #Store the new daemon text item
+    daemon_texts.append(daemon_text)
+    #If there were any warnings, open a window shouting at shifters
+    #if daemon_warning:
+    #    dwarnings = scene.openDaemonWindow(daemon_warning)
+    
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
@@ -176,6 +199,7 @@ def update_gui():
         myfont.setPointSize(10)
         mytext.setFont(myfont)
         scene.addItem(mytext)
+
 
 #Initial drawing of GUI with real values
 #This is also the function that is called to update the canvas periodically

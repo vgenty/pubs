@@ -1,8 +1,14 @@
+try:
+    from pyqtgraph.Qt import QtGui, QtCore
+except ImportError:
+    raise ImportError('Ruh roh. You need to set up pyqtgraph before you can use this GUI.')
+
 # dstream import
 from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
 
+import datetime
 import math
 
 class GuiUtilsAPI():
@@ -26,7 +32,8 @@ class GuiUtilsAPI():
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
     self.proj_dict = self.dbi.list_status()
     self.enabled_projects = [ x._project for x in self.dbi.list_projects() ]
-    self.colors = GuiUtils().getColors()
+    self.my_utils = GuiUtils()
+    self.colors = self.my_utils.getColors()
 
   def update(self):
     self.proj_dict = self.dbi.list_status()
@@ -54,8 +61,12 @@ class GuiUtilsAPI():
       return [ (1., 'r') ]
 
     slices = []
+    #one giant green slice for fully completed project
+    if len(statuses) == 1 and statuses[0][0] == 0:
+      return [ ( 1., 'g' ) ]
+
     for x in statuses:
-      #No slice for status == 0
+      #Don't care about status == 0
       if not x[0]: continue
       if x[0] not in self.colors.keys():
         print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
@@ -68,15 +79,21 @@ class GuiUtilsAPI():
   def computePieRadius(self, projname, max_radius, tot_n=0):
 
     #If piechart has no entries, give it a zero radius
-    if not tot_n:
-      return 0.
+    #skip this for now
+    #if not tot_n:
+    #  return 0.
 
     #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
     #unless radius > Rmax, in which case use radius = Rmax
     #This function has r = 0.5*Rmax when n = 5
-    radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(tot_n))
+    #radius = (float(max_radius)/(2 * math.log(5.) )) * math.log(float(tot_n))
+
+    #Quick overwrite to make all pie charts maximum size
+    radius = 999999.
+
     #Double check the radius isn't bigger than the max allowed
     return radius if radius <= max_radius else max_radius
+    
 
   #Get the number of run/subruns that are relevant for pie charts
   # (don't care about fully completed run/subruns)
@@ -92,16 +109,79 @@ class GuiUtilsAPI():
     #don't include status == 0 in any of this
     return [x for x in self.proj_dict[projname] if x[0]]
     
+  def getDaemonStatuses(self, servername):
+    #Returns [enabled or disabled, running or dead]
+    max_daemon_log_lag = 600 #seconds
+    is_enabled = self.dbi.daemon_info(servername)._enable
+    d_logs = self.dbi.list_daemon_log(servername)
+    #this should maybe just be time_since = take the LAST log in d_logs, then get logtime
+    #taking advantage of fact that d_logs is time ordered
+    time_since_log_update = self.my_utils.getTimeSinceInSeconds(d_logs[-1]._logtime)
+    is_running = True if time_since_log_update < max_daemon_log_lag else False
+    return (is_enabled, is_running)
+  
+  def genDaemonTextAndWarnings(self):
+    #Add text to bottom left of GUI showing if daemons are running and enabled
+    daemon_text = QtGui.QGraphicsTextItem()
+    daemon_warning = QtGui.QGraphicsTextItem()
+    text_content = ''
+    warning_content = ''
+    for dname in self.my_utils.getRelevantDaemons():
+        d_enabled, d_running = self.getDaemonStatuses(dname)
+        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
+        if not d_enabled:
+            warning_content += 'Daemon %s is DISABLED as of %s\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
+        if not d_running:
+            warning_content += 'Daemon %s is NOT RUNNING as of %s!\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
+    if warning_content: warning_content += "Tell an expert!"
+
+    daemon_text.setPlainText(text_content)
+    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
+    myfont = QtGui.QFont()
+    myfont.setPointSize(12)
+    daemon_text.setFont(myfont)
+    daemon_warning.setPlainText(warning_content)
+    daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
+    warningfont = QtGui.QFont()
+    warningfont.setPointSize(50)
+    daemon_warning.setFont(warningfont)
+
+    #if daemon_warning actually had nothing in it, return no daemon warning
+    return (daemon_text, daemon_warning) if warning_content else (daemon_text, 0)
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
   def __init__(self):
     #r, g, b, c, m, y, k, w    
-    self.colors = { 1:'b', 2:'g', 3: 'w', 4:'k', 100:'y', 102:'m', 65:'r', 101:'c', 404:'k', 999:'w', -9:'y' }
+    #self.colors = { 1:'b', 2:'g', 3: 'w', 4:'w', 100:'y', 102:'m', 65:'r', 101:'c', 404:'k', 999:'w', -9:'y' }
+    #empire strikes back color themes!
+    self.colors={ 1:[47,74,101],
+                  2:[18,59,142],
+                  3:[205,180,101],
+                  4:[205,180,101],
+                  100:[235,160,113],
+                  102:[117,21,41],
+                  65:[165,17,26],
+                  101:[144,149,38],
+                  404:[11,20,40],
+                  999:[19,33,71],
+                  -9:[206,211,124],
+                  1000:[18,59,142],
+                  4112:[47,75,101]
+                  }
     self.update_period = 10 #seconds
+    self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
+
 
   def getColors(self):
     return self.colors
 
   def getUpdatePeriod(self):
     return self.update_period
+
+  def getTimeSinceInSeconds(self,timestamp):
+    now = datetime.datetime.today()
+    return (now - timestamp).total_seconds()
+
+  def getRelevantDaemons(self):
+    return self.relevant_daemons

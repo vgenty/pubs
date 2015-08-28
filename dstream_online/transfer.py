@@ -298,8 +298,6 @@ class transfer( ds_project_base ):
                 li = out.split(" ")
                 mind = max(ind for ind, val in enumerate(li) if val == 'bytes') - 1
                 size_out = int(li[mind])
-#                size_out = int(out.split("\n")[4].split(" ")[out.split(" ").index("bytes")-1])
-#                size_out = int(out.split("\n")[4].split("    ")[6].split(" ")[0])
                 transfer = 10
 
                 if size_out == size_in:

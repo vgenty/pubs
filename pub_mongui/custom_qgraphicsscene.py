@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
 from custom_project_subwindow import CustomProjectSubwindow
+from custom_daemon_subwindow import CustomDaemonSubwindow
 
 class CustomQGraphicsScene(QtGui.QGraphicsScene):
     """
@@ -26,3 +27,6 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
 
     def mouseReleaseEvent(self, event):
         pass
+
+    def openDaemonWindow(self,daemon_warning):
+        self.win = CustomDaemonSubwindow(daemon_warning)
