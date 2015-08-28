@@ -113,6 +113,12 @@ class swizzle_data(ds_project_base):
 #
 #
 #            print "Looking for ", in_file
+# This is a hackity, hacky hack. But for now, run 1409 is the first run taken with the cable swap performed on Thurs Aug 13, 2015.
+# I'm putting this hack into place so that we don't swizzle the data before that with uboonecode v04_19_00 since there is not
+# yet an interval of validity for the database and channel mapping. Basically, the swizzler_data.py will ignore anything before
+#run 1409 and just not process it.
+            if not run>1408: continue
+
             if not os.path.isfile(in_file):
                 self.error('Could not find file %s. Assigning status 404')
                 status = 404
