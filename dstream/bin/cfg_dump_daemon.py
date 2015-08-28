@@ -46,6 +46,7 @@ for info in daemon_info_v:
     fout.write('SERVER        %s\n' % info._server)
     fout.write('MAX_CTR       %s\n' % info._max_proj_ctr)
     fout.write('LIFETIME      %s\n' % info._lifetime)
+    fout.write('CLEANUP_TIME  %s\n' % info._cleanup_time)
     fout.write('LOG_LIFETIME  %s\n' % info._log_lifetime)
     fout.write('SYNC_TIME     %s\n' % info._runsync_time)
     fout.write('UPDATE_TIME   %s\n' % info._update_time)

@@ -293,7 +293,7 @@ class proc_daemon(ds_base):
         try:
             d_msg.email( self.__class__.__name__,
                          subject  = 'Daemon ended!',
-                         text     = 'Daemon has eneded. The following message was produced:\n%s' % message)
+                         text     = 'Daemon has ended. The following message was produced:\n%s' % message)
         except BaseException as be:
             self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
             for line in be.v.split('\n'):
@@ -301,6 +301,16 @@ class proc_daemon(ds_base):
 
     ## Initiate an indefinite loop of projects' info-loading & execution 
     def routine(self):
+
+        ## Email notification that daemon is initialized
+        try:
+            d_msg.email( self.__class__.__name__,
+                         subject  = 'Daemon started!',
+                         text     = 'Daemon has started.')
+        except BaseException as be:
+            self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
+            for line in be.v.split('\n'):
+                self._logger.error(line)
 
         routine_ctr=0
         routine_sleep=0
@@ -358,7 +368,21 @@ class proc_daemon(ds_base):
             if (routine_ctr-1) % self._config._runsync_time == 0:
 
                 self.info('Routine RunSync Start @ %s' % now_str)
-                self.runsync_projects()
+                try:
+                    self.runsync_projects()
+                except Exception as runsync_error:
+                    msg  = 'RunSync failed...\n'
+                    msg += str(runsync_error)
+                    self.error(msg)
+
+                    try:
+                        d_msg.email(self.__class__.__name__,
+                                    subject  = 'Daemon Error',
+                                    text = 'Failed to execute RunSynch @ %s' % now_str)
+                                
+                    except DSException as msg_error:
+                        self.critical('Report to daemon experts failed!')
+
                 self.info('Routine RunSync Done  @ %s' % now_str)
 
             if now_ts < self._next_exec_time: continue
