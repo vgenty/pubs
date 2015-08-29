@@ -258,9 +258,9 @@ class proc_daemon(ds_base):
                 projects.append(p)
         return projects
         
-    ## Access DB and bring all (enabled) project tables up-to-date with MainRun table
-    def runsync_projects(self):
-        self._api.runsynch()
+    ## Access DB and bring project(s) table up-to-date with MainRun table
+    def runsync_project(self,project=None):
+        self._api.runsynch(project)
 
     ## Clean up @ end
     def finish(self):
@@ -369,7 +369,12 @@ class proc_daemon(ds_base):
 
                 self.info('Routine RunSync Start @ %s' % now_str)
                 try:
-                    self.runsync_projects()
+                    for proj_name,proj_ptr in self._project_v.iteritems():
+
+                        if not proj_ptr._info._enable: continue
+
+                        self.runsync_project(proj_name)
+
                 except Exception as runsync_error:
                     msg  = 'RunSync failed...\n'
                     msg += str(runsync_error)

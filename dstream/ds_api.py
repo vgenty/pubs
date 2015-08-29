@@ -842,9 +842,15 @@ class ds_master(ds_writer,ds_reader):
 
 
     ## @brief Method to synchronize all project tables with MainRun table
-    def runsynch(self):
+    def runsynch(self,project=None):
 
-        query = ' SELECT AllProjectRunSynch(); '
+        if not project:
+            query = ' SELECT AllProjectRunSynch(); '
+        elif not self.project_exist(project):
+            self._logger.error('Project %s not found!' % project)
+            return False
+        else:
+            query = ' SELECT OneProjectRunSynch(\'%s\');' % project
         
         return self.commit(query)
 

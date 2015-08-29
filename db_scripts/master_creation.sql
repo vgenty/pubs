@@ -1175,6 +1175,47 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
+--
+-- This function will get a new argument and codechanges such that MainRun -> OnlineDAQdb.MainRun below, and then
+-- we will get our mainruns from the table the DAQ is actually filling from assemblerApp and sebApp.
+--
+CREATE OR REPLACE FUNCTION OneProjectRunSynch( project_name TEXT ) RETURNS VOID AS $$
+DECLARE
+  query TEXT;
+  rec RECORD;
+BEGIN
+
+  IF NOT DoesProjectExist(project_name) THEN
+    RAISE EXCEPTION '% project does not exist!', project_name;
+  END IF;
+
+  SELECT RunTable,StartRun,StartSubRun,ProjectVer FROM ProjectInfo(project_name) INTO rec;
+
+  IF NOT DoesTableExist(rec.RunTable) THEN
+    RAISE EXCEPTION '% table does not exist!', rec.RunTable;
+  END IF;
+
+  query := format( 'SELECT %s.RunNumber AS Run, %s.SubRunNumber AS SubRun, 0, %s, 1 
+  	   	    FROM %s LEFT JOIN %s ON %s.Run=%s.RunNumber AND %s.SubRun=%s.SubRunNumber AND %s.ProjectVer=%s
+		    WHERE (%s.Run IS NULL AND %s.SubRun IS NULL)  AND
+		    (%s.RunNumber>%s OR (%s.RunNumber=%s AND %s.SubRunNumber>=%s))
+		    ORDER BY %s.RunNumber, %s.SubRunNumber',
+  	   	   rec.RunTable, rec.RunTable, rec.ProjectVer,
+		   rec.RunTable, project_name, project_name, rec.RunTable, project_name, rec.RunTable, project_name, rec.ProjectVer,
+		   project_name, project_name, 
+		   rec.RunTable, rec.StartRun, rec.RunTable, rec.StartRun, rec.RunTable, rec.StartSubRun,
+		   rec.RunTable, rec.RunTable );
+
+  query := format(' INSERT INTO %s (%s)', project_name, query);
+            	   
+  EXECUTE query;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+
 DROP FUNCTION IF EXISTS ProjectInfo(project_name TEXT);
 DROP FUNCTION IF EXISTS ProjectInfo(project_name TEXT, project_ver INT);
 
@@ -1219,9 +1260,9 @@ $$ LANGUAGE PLPGSQL;
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
 
-DROP FUNCTION IF EXISTS ProjectResource(project_name TEXT);
+DROP FUNCTION IF EXISTS ProjectResource(TEXT);
 CREATE OR REPLACE FUNCTION ProjectResource( project_name TEXT)
-       	  	  	   RETURNS HSTORE AS $$
+       	  	  	   		   RETURNS HSTORE AS $$
 DECLARE
 res_resource HSTORE;
 
@@ -1303,6 +1344,6 @@ DECLARE
 BEGIN
 
 END;
-$$ LANGUAGE PLOGSQL;
+$$ LANGUAGE PLPGSQL;
 
 
