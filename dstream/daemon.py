@@ -30,19 +30,27 @@ class proc_action(object):
     ## default ctor accepting ds_project instance
     def __init__(self, project_info,logger=None):
 
-        if not isinstance(project_info,ds_project):
-            raise ValueError
-
         self._logger = logger
         if not self._logger:
             self._logger = pub_logger.get_logger(self.__class__.__name__)
 
         ## Project information
-        self._info = copy.copy(project_info)
+        self._info = None
 
         ## Process handle
         self._proc = None
 
+        ## Boolean for running process
+        self._running = False
+
+        self.set_info(project_info)
+
+    ## project info updater
+    def set_info(self,project_info):
+        if not isinstance(project_info,ds_project):
+            raise ValueError
+        self._info = copy.copy(project_info)
+        
     ## Simple method to access name of a project
     def name(self): return self._info._project
 
@@ -50,11 +58,13 @@ class proc_action(object):
     def kill(self):
         if self.active():
             self._proc.kill()
+            self._running = False
 
     ## Boolean function to check if the project's execution process is alive or not
     def active(self):
-        if self._proc is None: return None
-        else: return (self._proc.poll() is None)
+        if self._proc:
+            self._running = (self._proc.poll() is None)
+        return self._running
 
     ## @brief Clears a project process, if exists, and returns (stdout,stderr). 
     #  @details If process is active, it waits to finish. Use active() function\n
@@ -214,31 +224,72 @@ class proc_daemon(ds_base):
     ## Access DB and load projects for execution + update pre-loaded project information
     def load_projects(self):
 
-        rm_list = list(self._project_v.keys())
-
         # Load new/updated projects
+        msg = ''
         for x in self._api.list_all_projects():
 
-            if x._project in rm_list:
-                rm_list.remove(x._project)
+            proj_ptr = None
+            if x._project in self._project_v:
+                proj_ptr = self._project_v[x._project]
 
             if x._server and not x._server in self._server:
-                self.debug('Skipping a project on irrelevant server: %s',x._project)
+                self.debug('Skipping a project on irrelevant server: %s' % x._project)
                 continue
             
-            if x._project in self._project_v and self._project_v[x._project].active():
-                self.info('Skipping update on project %s (still active)',x._project)
+            if proj_ptr and proj_ptr.active():
+                self.info('Skipping update on project %s (still active)' % x._project)
                 continue
 
-            self.info('Updating project %s information' % x._project)
-            self._project_v[x._project] = proc_action(x,self._logger)
+            if not x._enable:
+                if not proj_ptr:
+                    self.debug('Skipping a disabled project: %s' % x._project)
+                elif proj_ptr._info._enable:
+                    self.info('Disabling project: %s' % x._project)
+                    if not msg:
+                        msg = 'Report @ proc_daemon::load_projects()\n'
+                    msg += 'Disabling \'%s\'\n' % x._project
+                    proj_ptr.set_info(x)
+                continue
+
+            if not proj_ptr:
+                self.info('Enabling project %s' % x._project)
+                if not msg:
+                    msg = 'Report @ proc_daemon::load_projects()\n'
+                msg += 'Enabling \'%s\'\n' % x._project
+                self._project_v[x._project] = proc_action(x,self._logger)
+
+            elif not proj_ptr._info._enable:
+                self.info('Re-enabling project %s' % x._project)
+                if not msg:
+                    msg = 'Report @ proc_daemon::load_projects()\n'
+                msg += 'Re-enabling project \'%s\'\n' % x._project
+                proj_ptr.set_info(x)
+                
+            elif not x == self._project_v[x._project]._info:
+                self.info('Updating project %s information' % x._project)
+                if not msg:
+                    msg = 'Report @ proc_daemon::load_projects()\n'
+                msg += 'Updating project info for \'%s\'\n' % x._project
+                proj_ptr.set_info(x)
+
             if not x._project in self._exe_time_v:
                 self._exe_time_v[x._project] = None
                 self._exe_ctr_v[x._project]  = 0
-                
-        for p in rm_list:
-            if not self._project_v[p].active() is None:
-                self._project_v.pop(p)
+
+#        for p in rm_list:
+#            print p, self._project_v[p].active()
+#            if not self._project_v[p].active() is None:
+#                self._project_v.pop(p)
+
+        if msg and self._config:
+            try:
+                d_msg.email( self.__class__.__name__,
+                             subject  = 'Project Info Update Report',
+                             text     = msg)
+            except BaseException as be:
+                self._logger.critical('Project update could not be reported via email!')
+                for line in be.v.split('\n'):
+                    self._logger.error(line)
 
     ## List projects in the priority order to be executed
     def ordered_projects(self):
@@ -302,16 +353,6 @@ class proc_daemon(ds_base):
     ## Initiate an indefinite loop of projects' info-loading & execution 
     def routine(self):
 
-        ## Email notification that daemon is initialized
-        try:
-            d_msg.email( self.__class__.__name__,
-                         subject  = 'Daemon started!',
-                         text     = 'Daemon has started.')
-        except BaseException as be:
-            self._logger.critical('Project %s error could not be reported via email!' % self._info._project)                
-            for line in be.v.split('\n'):
-                self._logger.error(line)
-
         routine_ctr=0
         routine_sleep=0
         while routine_ctr >= 0 and not self._exit_routine:
@@ -330,7 +371,20 @@ class proc_daemon(ds_base):
             try:
                 self._api.connect()
                 if not self._config:
+
                     self.load_daemon()
+
+                    try:
+                        msg  = 'Daemon has started @ %s\n' % self._config._server
+                        msg += str(self._config)
+                        d_msg.email( self.__class__.__name__,
+                                     subject  = 'Daemon started!',
+                                     text     = msg)
+                    except BaseException as be:
+                        self._logger.critical('Project %s error could not be reported via email!' % self._info._project)
+                        for line in be.v.split('\n'):
+                            self._logger.error(line)
+                    
             except DBException as e:
                 self.error('Failed connection to DB @ %s ... Retry in 1 minute' % now_str)
                 routine_sleep = 60
