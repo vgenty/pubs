@@ -16,6 +16,7 @@ import datetime, json
 import samweb_cli
 import samweb_client.utility
 import extractor_dict
+import pdb
 import subprocess
 
 
@@ -270,6 +271,7 @@ class get_metadata( ds_project_base ):
             status = 1
             #print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
             cmd = "dumpEventHeaders " + in_file + " 1000000 "
+#            pdb.set_trace()
             proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             (out,err) = proc.communicate() # blocks till done.
             if not proc.returncode:

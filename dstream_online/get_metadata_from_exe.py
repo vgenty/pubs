@@ -17,7 +17,7 @@ import samweb_cli
 import samweb_client.utility
 import extractor_dict
 import subprocess
-
+import pdb
 
 ## @Class dstream_online.get_metadata
 #  @brief Get metadata from a binary or a swizzled file
@@ -269,6 +269,7 @@ class get_metadata( ds_project_base ):
             # print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
             cmd = "dumpEventHeaders " + in_file + " 1000000 "
             proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            pdb.set_trace()
             (out,err) = proc.communicate() # blocks till done.
             if not proc.returncode:
                 for line in out.split('\n'):
