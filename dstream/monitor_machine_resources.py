@@ -48,6 +48,10 @@ def plot_resource_usage(proj,outpath):
     cntr = 0
     # number of total entries in DB
     totentries = float(len(proj))
+
+    # interval between which to plots point for variables
+    # so that plot is not over-crowded
+    spacing = 5
     
     for x in proj:
 
@@ -63,17 +67,17 @@ def plot_resource_usage(proj,outpath):
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_DATA'):
                     #if ( cntr%100 == 0 ):
-                    if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
+                    if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastDISK = float(log_dict[key])*100
                         tDISK.append(time)
                         DISK.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
+                    if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastRAM = float(log_dict[key])
                         tRAM.append(time)
                         RAM.append(float(log_dict[key]))
                 if (str(key) == 'CPU_PERCENT'):
-                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) or (cntr%100 == 0) ):
+                    if ( (abs(float(log_dict[key]) - lastCPU) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastCPU = float(log_dict[key])
                         tCPU.append(time)
                         CPU.append(float(log_dict[key]))
@@ -97,10 +101,9 @@ def plot_resource_usage(proj,outpath):
     if (len(datesCPU) == len(CPU)):
         cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK)):
-        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o', color='r',label='DISK usage', markersize=7)
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage', markersize=7)
     if (len(datesRAM) == len(RAM)):
         ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
-
 
 
     years    = dts.YearLocator()   # every year
@@ -116,6 +119,15 @@ def plot_resource_usage(proj,outpath):
 
     ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
 
+    # if the last entry in Disk Usage is above a threshold that indicates that the usage is too high
+    # change the background color of the plot
+    diskMax = 95
+    if ( DISK[-1] > diskMax ):
+        xlim = plt.xlim()
+        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                   label='DISK USAGE ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+
+
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
             
@@ -126,7 +138,7 @@ def plot_resource_usage(proj,outpath):
     #plt.figure.autofmt_xdate()    
     plt.grid()
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
-    plt.legend(loc=2,fontsize=20)
+    plt.legend(loc=3,fontsize=20)
 
     outpathResource = outpath+"resource_monitoring_%s.png"%(servername)
     plt.savefig(outpathResource)
