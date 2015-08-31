@@ -299,14 +299,15 @@ class ds_project(object):
     def __eq__(self,rhs):
         if ( not self._project == rhs._project or
              not self._command == rhs._command or
-             not self._period  == rhs._period or
-             not self._sleep   == rhs._sleep or
              not self._run     == rhs._run or
              not self._subrun  == rhs._subrun or
              not self._email   == rhs._email or
              not self._server  == rhs._server or
+             not self._sleep   == rhs._sleep or
              not self._runtable == rhs._runtable or
-             not self._email   == rhs._email ):
+             not self._period  == rhs._period or
+             not self._enable  == rhs._enable or
+             not self._ver     == rhs._ver ):
              return False
         for x in self._resource.keys():
             if not x in rhs._resource.keys(): return False

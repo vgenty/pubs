@@ -79,7 +79,8 @@ class compare_checksum( ds_project_base ):
             (run, subrun, seq) = (int(x[0]), int(x[1]), 0)
 
             # Report starting
-            self.info('Comparing checksums: run=%d, subrun=%d ...' % ( run, subrun ))
+            now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
+            self.info('Comparing checksums: run=%d, subrun=%d @ %s' % ( run, subrun, now_str ))
 
             statusCode = 1
 
@@ -106,7 +107,8 @@ class compare_checksum( ds_project_base ):
             time.sleep(0.5)
 
             # Report finishing
-            self.info('Finished comparing checksums: run=%d, subrun=%d ...' % ( run, subrun ))
+            now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
+            self.info('Finished comparing checksums: run=%d, subrun=%d @ %s' % ( run, subrun, now_str ))
 
             # Create a status object to be logged to DB (if necessary)
             # Let's say we set the status to be 10

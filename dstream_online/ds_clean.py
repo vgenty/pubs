@@ -79,8 +79,10 @@ class ds_clean(ds_project_base):
         ctr = self._nruns
         #we want the last argument of this list get_xtable_runs call to be False
         #that way the list is old files first to newew files last and clean up that way
-        for x in self.get_xtable_runs([self._project, self._parent_project], 
-                                      [            1,                    0],False):
+        target_runs = self.get_xtable_runs([self._project, self._parent_project], 
+                                           [            1,                    0],False)
+        self.info('Found %d runs to be processed (from project %s)...' % (len(target_runs),self._parent_project))
+        for x in target_runs:
 
             # Counter decreases by 1
             ctr -=1
@@ -214,7 +216,7 @@ class ds_clean(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Will try removing %s again later.' % (in_file))
 
-            tmp_status = 1
+            tmp_status = 100
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
