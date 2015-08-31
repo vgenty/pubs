@@ -6,7 +6,86 @@ Flavor     = ANY
 Qualifiers = ""
 
 Action = setup
+
+  # UPS environment variables.
+
   prodDir()
   setupEnv()
+
+  # Pubs environment variables.
+
   envSet(PUB_TOP_DIR, ${UPS_PROD_DIR})
-  sourceRequired(${PUB_TOP_DIR}/config/setup.${UPS_SHELL}, NO_UPS_ENV)
+  envSet(PUB_BIN_DIR, ${PUB_TOP_DIR})
+  pathPrepend(PATH, ${PUB_BIN_DIR})
+  pathPrepend(PYTHONPATH, ${PUB_TOP_DIR})
+  envSet(PUB_LOGGER_LEVEL, kLOGGER_ERROR)
+  envSet(PUB_LOGGER_DRAIN, kLOGGER_COUT)
+  envSet(PUB_LOGGER_FILE_LOCATION, "")
+  envSet(PUB_DAEMON_LOG_MODULE, "")
+  envSet(PUB_DAEMON_HANDLER_MODULE, "")
+  envSet(SSL_CERT_DIR, /etc/grid-security/certificates)
+
+  # Psql environment variables.
+
+  envSet(PGOPTIONS, "-c client_min_messages=WARNING")
+
+  # Dependent products
+
+  setupRequired("postgresql v9_3_6 -q p279")
+  setupOptional("larbatch v01_13_01")
+  setupOptional("sam_web_client")
+  setupOptional("pyqtgraph")
+
+  # Do conditional initializations here.
+
+  # Dstream_prod on uboonegpvm.
+
+  if(uname -n | grep -q uboonegpvm)
+    execute("echo Set up for dstream_prod on uboonegpvmXX", NO_UPS_ENV)
+    envSet(PUB_DAEMON_LOG_MODULE, dstream_prod.gpvm_logger)
+    envSet(PUB_LOGGER_FILE_LOCATION, /uboone/data/users/${USER}/pubs/log/`uname -n`)
+    sourceRequired(${HOME}/.sqlaccess/prod_access.sh, NO_UPS_ENV)
+  endif(uname -n | grep -q uboonegpvm)
+
+  # Dstream_online on ubdaq-prod-smc
+
+  if(uname -n | grep -q ubdaq-prod-smc)
+    execute("echo Set up for dstream_online on ubdaq-prod-smc", NO_UPS_ENV)
+    envSet(X509_USER_PROXY, /home/uboonepro/uboonepro_production_near1_proxy_file)
+    envSet(PUB_DAEMON_LOG_MODULE, dstream_online.ubdaq_logger_smc)
+    envSet(PUB_DAEMON_HANDLER_MODULE, dstream_online.ubdaq_handler_smc)
+    envSet(PUB_LOGGER_FILE_LOCATION, "./`uname -n`")
+    sourceRequired(/home/uboonepro/.sql_access/uboonepro_prod_conf.sh, NO_UPS_ENV)
+  endif(uname -n | grep -q ubdaq-prod-smc)
+
+  # Dstream_online on ubdaq-prod-evb
+
+  if(uname -n | grep -q ubdaq-prod-evb)
+    execute("echo Set up for dstream_online on ubdaq-prod-evb", NO_UPS_ENV)
+    envSet(X509_USER_PROXY, /home/uboonepro/uboonepro_production_near1_proxy_file)
+    envSet(KRB5CCNAME, FILE:/tmp/krb5cc_uboonepro_evb)
+    envSet(PUB_DAEMON_LOG_MODULE, dstream_online.evb_logger)
+    envSet(PUB_DAEMON_HANDLER_MODULE, dstream_online.evb_handler)
+    envSet(PUB_LOGGER_FILE_LOCATION, "./`uname -n`")
+    sourceRequired(/home/uboonepro/.sql_access/uboonepro_prod_conf.sh, NO_UPS_ENV)
+  endif(uname -n | grep -q ubdaq-prod-evb)
+
+  # Dstream_online on ubdaq-prod-near1
+
+  if(uname -n | grep -q ubdaq-prod-near1)
+    execute("echo Set up for dstream_online on ubdaq-prod-near1", NO_UPS_ENV)
+    envSet(X509_USER_PROXY, /home/uboonepro/uboonepro_production_near1_proxy_file)
+    envSet(PUB_DAEMON_LOG_MODULE, dstream_online.near1_logger)
+    envSet(PUB_DAEMON_HANDLER_MODULE, dstream_online.near1_handler)
+    envSet(PUB_LOGGER_FILE_LOCATION, "./`uname -n`")
+    sourceRequired(/home/uboonepro/.sql_access/uboonepro_prod_conf.sh, NO_UPS_ENV)
+  endif(uname -n | grep -q ubdaq-prod-near1)
+
+  # Make sure log file location exists.
+
+  if(test -d $PUB_LOGGER_FILE_LOCATION)
+    execute("echo Log file location is $PUB_LOGGER_FILE_LOCATION", NO_UPS_ENV)
+  else()
+    execute("echo Creating log file location is $PUB_LOGGER_FILE_LOCATION", NO_UPS_ENV)
+    execute("mkdir -p $PUB_LOGGER_FILE_LOCATION", NO_UPS_ENV)
+  endif(test -d $PUB_LOGGER_FILE_LOCATION)
