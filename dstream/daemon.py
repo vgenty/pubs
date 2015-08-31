@@ -60,6 +60,11 @@ class proc_action(object):
             self._proc.kill()
             self._running = False
 
+    ## Boolean function to check if there is a process instance
+    def process_exist(self):
+        if self._proc is None: return False
+        return True
+
     ## Boolean function to check if the project's execution process is alive or not
     def active(self):
         if self._proc:
@@ -74,6 +79,7 @@ class proc_action(object):
         (out,err) = self._proc.communicate()
         code = self._proc.poll()
         del self._proc
+        self._running=False
         self._proc = None
         return (code,out,err)
 
@@ -86,6 +92,7 @@ class proc_action(object):
                                #shell=True,
                                stdout = PIPE,
                                stderr = PIPE)
+            self._running = True
         except OSError as e:
 
             self._logger.error(e.strerror)
@@ -469,7 +476,7 @@ class proc_daemon(ds_base):
                 proj_active = proj_ptr.active()
                 if not proj_active:
 
-                    if proj_active is not None:
+                    if not proj_active and proj_ptr.process_exist():
                         self._api.project_stopped(proj)
                         (code,out,err) = proj_ptr.clear()
 
