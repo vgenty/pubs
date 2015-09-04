@@ -5,7 +5,7 @@
 
 # python include
 import time,os,sys,time
-import subprocess
+import subprocess, traceback
 import StringIO
 # pub_dbi package include
 from pub_dbi import DBException
@@ -17,6 +17,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 # From larbatch
 import project
+import project_utilities
 from project_modules.pubsdeadenderror import PubsDeadEndError
 from project_modules.pubsinputerror import PubsInputError
 
@@ -32,7 +33,9 @@ class production(ds_project_base):
                     kSUBMITTED,
                     kRUNNING,
                     kFINISHED,
-                    kTOBERECOVERED ) = xrange(7)
+                    kTOBERECOVERED,
+                    kREADYFORSAM,
+                    kDECLARED ) = xrange(9)
 
     JOBSUB_LOG = '%s/joblist.txt' % os.environ['PUB_LOGGER_FILE_LOCATION']
 
@@ -57,7 +60,9 @@ class production(ds_project_base):
                              self.kSUBMITTED     : self.isRunning,
                              self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
-                             self.kTOBERECOVERED : self.recover }
+                             self.kTOBERECOVERED : self.recover,
+                             self.kREADYFORSAM   : self.declare,
+                             self.kDECLARED      : self.store }
         self._max_runid = None
         self._nruns     = None
         self._xml_file  = ''
@@ -168,7 +173,7 @@ class production(ds_project_base):
         # Check job out
         failure_codes = ['Traceback (most recent call last):',
                          'Failed to fetch']
-        success_codes = ['JOBSUBJOBID','JOBSUB SERVER RESPONSE CODE : 200 (Success)']
+        success_codes = ['JOBSUBJOBID']
         for code in failure_codes:
             if stat_str.find(code) >=0:
                 print "found:",code
@@ -204,6 +209,8 @@ class production(ds_project_base):
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return current_status
 
         # Submit job.
@@ -215,6 +222,8 @@ class production(ds_project_base):
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return current_status
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
@@ -326,6 +335,8 @@ class production(ds_project_base):
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return statusCode + istage 
 
         # Do check.
@@ -350,23 +361,14 @@ class production(ds_project_base):
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return statusCode + istage
 
         # Update pubs status.
         if check_status == 0:
-           statusCode = self.kDONE
-           istage += 10
+           statusCode = self.kREADYFORSAM
            self._data = ''
-
-           # If all the stages complete, send an email to experts
-           if not istage in self._stage_digits:
-               subject = "Completed: MCC sample %s" % self._project
-               text = """
-Sample     : %s
-Stage      : %s
-               """ % ( self._project, self._digit_to_name[istage-10] )
-
-               pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
         elif nSubmit > self._nresubmission:
            # If the sample has been submitted more than a certain number
@@ -417,6 +419,8 @@ Job IDs    : %s
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return current_status
 
         # Submit job.
@@ -428,6 +432,8 @@ Job IDs    : %s
             e = sys.exc_info()
             for item in e:
                 self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
             return current_status
         self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
 
@@ -471,6 +477,186 @@ Job IDs    : %s
             self.error( 'HEY this is not a valid status code!: %d' % arg )
         return arg
     # def __decode_status__()
+
+    def declare( self, statusCode, istage, run, subrun ):
+
+        # Get stage name.
+        stage = self._digit_to_name[istage]
+
+        # Get project and stage object.
+        try:
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+        except:
+            self.error('Exception raied by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage 
+
+        # Do declaration.
+        try:
+            real_stdout = sys.stdout
+            real_stderr = sys.stderr
+            sys.stdout = StringIO.StringIO()
+            sys.stderr = StringIO.StringIO()
+
+            # Declare artroot files.
+
+            declare_status = project.docheck_declarations(stobj.logdir, stobj.outdir,
+                                                          declare=True, ana=False)
+
+            # Declare analysis root files.
+
+            if declare_status == 0:
+                declare_status = project.docheck_declarations(stobj.logdir, stobj.outdir,
+                                                              declare=True, ana=True)
+
+            # Create artroot dataset definition.
+
+            if declare_status == 0:
+                dim = project_utilities.dimensions(probj, stobj, ana=False)
+                declare_status = project.docheck_definition(stobj.defname, dim, True)
+
+            # Create analysis dataset definition.
+
+            if declare_status == 0:
+                dim = project_utilities.dimensions(probj, stobj, ana=True)
+                declare_status = project.docheck_definition(stobj.defname, dim, True)
+
+            strout = sys.stdout.getvalue()
+            strerr = sys.stderr.getvalue()
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            if strout:
+                self.info(strout)
+            if strerr:
+                self.warning(strerr)
+        except:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            self.error('Exception raied by project.docheck_declarations:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage
+
+        # Update pubs status.
+        if declare_status == 0:
+           statusCode = self.kDECLARED
+
+        statusCode += istage
+        self.info("SAM declarations, status: %d" % statusCode)
+
+        # Pretend I'm doing something
+        time.sleep(5)
+
+        # Here we may need some checks
+
+        return statusCode
+    # def declare( self, statusCode, istage, run, subrun ):
+
+
+    def store( self, statusCode, istage, run, subrun ):
+
+        # Only store the final stage.
+        # If this is not the final stage, advance to the next stage.
+
+        if istage != self._stage_digits[-1]:
+            statusCode = self.kDONE
+            istage += 10
+            return statusCode + istage
+
+        # Get stage name.
+        stage = self._digit_to_name[istage]
+
+        # Get project and stage object.
+        try:
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+        except:
+            self.error('Exception raied by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage 
+
+        # Do store.
+        try:
+            real_stdout = sys.stdout
+            real_stderr = sys.stderr
+            sys.stdout = StringIO.StringIO()
+            sys.stderr = StringIO.StringIO()
+
+            # Store files.
+
+            dim = project_utilities.dimensions(probj, stobj, ana=False)
+            store_status = project.docheck_locations(dim, stobj.outdir, 
+                                                     add=False,
+                                                     clean=False,
+                                                     remove=False,
+                                                     upload=True)
+
+            if store_status == 0:
+                dim = project_utilities.dimensions(probj, stobj, ana=True)
+                store_status = project.docheck_locations(dim, stobj.outdir, 
+                                                         add=False,
+                                                         clean=False,
+                                                         remove=False,
+                                                         upload=True)
+
+            strout = sys.stdout.getvalue()
+            strerr = sys.stderr.getvalue()
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            if strout:
+                self.info(strout)
+            if strerr:
+                self.warning(strerr)
+        except:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            self.error('Exception raied by project.docheck_locations:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage
+
+        # Update pubs status.
+        if store_status == 0:
+           statusCode = self.kDONE
+           istage += 10
+
+        # Pretend I'm doing something
+        time.sleep(5)
+
+        # If all the stages complete, send an email to experts
+        if not istage in self._stage_digits:
+            subject = "Completed: MCC sample %s" % self._project
+            text = """
+Sample     : %s
+Stage      : %s
+               """ % ( self._project, self._digit_to_name[istage-10] )
+
+            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+
+        statusCode += istage
+        self.info("SAM store, status: %d" % statusCode)
+
+        # Pretend I'm doing something
+        time.sleep(5)
+
+        # Here we may need some checks
+
+        return statusCode
+    # def store( self, statusCode, istage, run, subrun ):
+
 
     ## @brief access DB and retrieves new runs
     def process( self ):
