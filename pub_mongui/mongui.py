@@ -131,8 +131,8 @@ def update_gui():
     #Store the new daemon text item
     daemon_texts.append(daemon_text)
     #If there were any warnings, open a window shouting at shifters
-    #if daemon_warning:
-    #    dwarnings = scene.openDaemonWindow(daemon_warning)
+    if daemon_warning:
+        dwarnings = scene.openDaemonWindow(daemon_warning)
     
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,

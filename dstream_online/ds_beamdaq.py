@@ -31,6 +31,8 @@ class ds_beamdaq(ds_project_base):
         super(ds_beamdaq,self).__init__()
 
         self._nruns    = None
+        self._fcldir   = ''
+        self._fclfile  = ''
         self._infodir  = ''
         self._infofile = ''
         self._jsondir  = ''
@@ -50,12 +52,15 @@ class ds_beamdaq(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns    = int(resource['NRUNS'])
+            self._fcldir   = resource['FCLDIR']
+            self._fclfile  = resource['FCLFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
             self._jsondir  = resource['JSONDIR']
             self._jsonfile = resource['JSONFILE']
 
         ctr = self._nruns
+        self.info('****************************************************')
         for x in self.get_runs(self._project,1):
 
             # Counter decreases by 1
@@ -79,7 +84,7 @@ class ds_beamdaq(ds_project_base):
             self.info('Getting beam data: run=%d, subrun=%d' % (run,subrun))
             self.info('  t0=%s, t1=%s' % (tbegin,tend))
 
-            cmd='bdaq_get --run-number %i --subrun-number %i --begin-time %i %i --end-time %i %i'%(run,subrun,int(tbegin.strftime("%s")),0,int(tend.strftime("%s"))+1,0)
+            cmd='bdaq_get --run-number %i --subrun-number %i --begin-time %i %i --end-time %i %i -f %s/%s'%(run,subrun,int(tbegin.strftime("%s")),0,int(tend.strftime("%s"))+1,0,self._fcldir,self._fclfile)
             self.info('Run cmd: %s'%cmd)
             subprocess.call( cmd, shell = True )
             # Create a status object to be logged to DB (if necessary)
