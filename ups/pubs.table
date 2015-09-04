@@ -16,7 +16,7 @@ Action = setup
 
   envSet(PUB_TOP_DIR, ${UPS_PROD_DIR})
   envSet(PUB_BIN_DIR, ${PUB_TOP_DIR})
-  pathPrepend(PATH, ${PUB_BIN_DIR})
+  pathPrepend(PATH, ${PUB_TOP_DIR}/bin)
   pathPrepend(PYTHONPATH, ${PUB_TOP_DIR})
   envSet(PUB_LOGGER_LEVEL, kLOGGER_ERROR)
   envSet(PUB_LOGGER_DRAIN, kLOGGER_COUT)
@@ -32,7 +32,7 @@ Action = setup
   # Dependent products
 
   setupRequired("postgresql v9_3_6 -q p279")
-  setupOptional("larbatch v01_13_01")
+  setupOptional("larbatch v01_13_02")
   setupOptional("sam_web_client")
   setupOptional("pyqtgraph")
 
