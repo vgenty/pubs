@@ -345,6 +345,7 @@ class production(ds_project_base):
             real_stderr = sys.stderr
             sys.stdout = StringIO.StringIO()
             sys.stderr = StringIO.StringIO()
+            project.doshorten(stobj)
             check_status = project.docheck(probj, stobj, ana=False)
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
