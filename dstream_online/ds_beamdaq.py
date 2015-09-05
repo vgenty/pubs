@@ -56,8 +56,10 @@ class ds_beamdaq(ds_project_base):
             self._fclfile  = resource['FCLFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
-            self._jsondir  = resource['JSONDIR']
-            self._jsonfile = resource['JSONFILE']
+            #self._jsondir  = resource['JSONDIR']
+            #self._jsonfile = resource['JSONFILE']
+            self._timedir  = resource['TIMEDIR']
+            self._timefile = resource['TIMEFILE']
 
         ctr = self._nruns
         self.info('****************************************************')
@@ -69,16 +71,31 @@ class ds_beamdaq(ds_project_base):
             run    = int(x[0])
             subrun = int(x[1])
 
+            '''
             jsonfname='%s/%s'%(self._jsondir,self._jsonfile%(run,subrun))
             if (not os.path.isfile(jsonfname)):
                 self.info('Waiting for json file %s'%jsonfname)
                 continue
             json_file=open(jsonfname)
             json_data=json.load(json_file)
-
             tbegin=datetime.datetime.strptime(json_data["stime"], "%a %b %d %H:%M:%S %Z %Y")
             tend=datetime.datetime.strptime(json_data["etime"], "%a %b %d %H:%M:%S %Z %Y")
             json_file.close()
+            '''
+            # Read timestamp from text file for testing
+            tsfname = '%s/%s'%(self._timedir,self._timefile%(run,subrun))
+            if not os.path.isfile(tsfname):
+                self.info('Waiting for time stamp file %s'%tsfname)
+                continue
+            if os.stat(tsfname).st_size == 0:
+                self.info('Waiting for time stamp info')
+                continue
+            ts_file = open(tsfname)
+            ts_lines = ts_file.readlines()
+            bgn_line = ts_lines[0].split('"')
+            end_line = ts_lines[-1].split('"')
+            tbegin=datetime.datetime.strptime(bgn_line[1], "%a %b %d %H:%M:%S %Z %Y")
+            tend=datetime.datetime.strptime(end_line[3], "%a %b %d %H:%M:%S %Z %Y")
 
             # Report starting
             self.info('Getting beam data: run=%d, subrun=%d' % (run,subrun))
@@ -129,8 +146,27 @@ class ds_beamdaq(ds_project_base):
             status = 0
             
             fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
-            
+           
+            # check that info was created and look for beam events
+            # if beam events, check for beam file 
             self.info('Parse info file %s and check created files'%fname)
+            if not os.path.isfile(fname):
+                # change status?
+                self.error('%s not created'%fname)
+            info_file=open(fname)
+            for line in info_file:
+                if "events" in line:
+                    wds=line.split()
+                    if int(wds[2]) > 0:
+                        beamfname = '%s/beam_%s_%07i_%05i.dat'%(self._infodir,wds[0],run,subrun)
+                        if not os.path.isfile(beamfname):
+                            # change to appropriate status
+                            self.error('%s not created'%beamfname)
+                            return
+                        if os.stat(beamfname).st_size == 0:
+                            # change to appropriate status
+                            self.error('%s is empty'%beamfname)
+                            return
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
