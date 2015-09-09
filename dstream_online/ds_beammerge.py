@@ -12,6 +12,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+import subprocess
 
 ## @class ds_beammerge
 #  @brief Merge beam and detector data
@@ -30,6 +31,8 @@ class ds_beammerge(ds_project_base):
         super(ds_beammerge,self).__init__()
 
         self._nruns    = None
+        self._logdir   = ''
+        self._logfile  = ''
         self._infodir  = ''
         self._infofile = ''
         self._outdir  = ''
@@ -54,18 +57,20 @@ class ds_beammerge(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns    = int(resource['NRUNS'])
+            self._logdir   = resource['LOGDIR']
+            self._logfile  = resource['LOGFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
             self._beamdir  = resource['BEAMDIR']
             self._beamfile = resource['BEAMFILE']
-            self._detdir  = resource['DETDIR']
-            self._detfile = resource['DETFILE']
-            self._outdir  = resource['OUTDIR']
-            self._outfile = resource['OUTFILE']
+            self._detdir   = resource['DETDIR']
+            self._detfile  = resource['DETFILE']
+            self._outdir   = resource['OUTDIR']
+            self._outfile  = resource['OUTFILE']
             self._parent_project = resource['PARENT_PROJECT']
 
         ctr = self._nruns
-
+        self.info('***************** %s'%(self._infofile%(1,1)))
         for x in self.get_xtable_runs([self._project, self._parent_project], 
                                       [            1,                    0]):
             # Counter decreases by 1
@@ -94,10 +99,12 @@ class ds_beammerge(ds_project_base):
 
             cmd+=' -d %s/%s'%(self._detdir,self._detfile%(run,subrun))
             cmd+=' -o %s/%s'%(self._outdir,self._outfile%(run,subrun))
+            cmd+=' > %s/%s'%(self._logdir,self._logfile%(run,subrun))
 
             cmd='bdaq_merge '+cmd
 
             self.info('Run cmd: %s'%cmd)
+            subprocess.call( cmd, shell = True )
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
@@ -125,7 +132,9 @@ class ds_beammerge(ds_project_base):
 
             resource = self._api.get_resource(self._project)
 
-            self._nruns = int(resource['NRUNS'])
+            self._nruns    = int(resource['NRUNS'])
+            self._beamdir  = resource['BEAMDIR']
+            self._beamfile = resource['BEAMFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
 
@@ -139,10 +148,24 @@ class ds_beammerge(ds_project_base):
             subrun = int(x[1])
             status = 0
             
-            fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
-            
-            self.info('Parse info file %s and check created files'%fname)
+            self.info('Parse into log file and check number events')
+            logfname='%s/%s'%(self._logdir,self._logfile%(run,subrun))
+            if not os.path.isfile(logfname):
+                # change status
+                self.error('% not created'%logfname)
+                continue
+            if os.stat(logfname).st_size == 0:
+                # change status
+                self.error('%s is empty'%logfname)
+                continue
+            log_file = open(logfname)
+            last_line = log_file.readlines()[-1].split()
+            log_num_evts = int(last_line[0])
+            if not log_num_evts > 0:
+                self.error('No events written')
+                continue
 
+            
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
