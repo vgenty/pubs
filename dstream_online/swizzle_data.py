@@ -120,7 +120,7 @@ class swizzle_data(ds_project_base):
             if not run>1408: continue
 
             if not os.path.isfile(in_file):
-                self.error('Could not find file %s. Assigning status 404')
+                self.error('Could not find file %s. Assigning status 404' % in_file)
                 status = 404
 
             else:
