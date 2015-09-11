@@ -49,8 +49,25 @@ class ds_clean(ds_project_base):
         self._nruns = int(resource['NRUNS'])
         self._in_dir = '%s' % (resource['DIR'])
         self._name_pattern = resource['NAME_PATTERN']
-        self._parent_project = resource['PARENT_PROJECT']
         self._disk_frac_limit = int(resource['USED_DISK_FRAC_LIMIT'].strip("%"))
+
+        try:
+            self._parent_project = resource['PARENT_PROJECT'].split(':')
+
+        except Exception:
+            self.error('Failed to load parent projects...')
+            return False
+
+        #this constructs the list of projects and their status codes
+        #we want the project to be status 1, while the dependent projects to
+        # be status 0
+        self._project_list = [self._project, ]
+        self._project_requirement = [ 1, ]
+
+        for x in xrange( len(self._parent_project) ):
+            self._project_list.append( self._parent_project[x] )
+            self._project_requirement.append( 0 )
+
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -79,8 +96,10 @@ class ds_clean(ds_project_base):
         ctr = self._nruns
         #we want the last argument of this list get_xtable_runs call to be False
         #that way the list is old files first to newew files last and clean up that way
-        target_runs = self.get_xtable_runs([self._project, self._parent_project], 
-                                           [            1,                    0],False)
+        #target_runs = self.get_xtable_runs([self._project, self._parent_project], 
+        #                                   [            1,                    0],False)
+
+        target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
         self.info('Found %d runs to be processed (from project %s)...' % (len(target_runs),self._parent_project))
         for x in target_runs:
 
