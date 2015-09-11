@@ -87,7 +87,7 @@ daemon_texts.append(daemon_text)
 for iprojname in projectnames:
 
     if iprojname not in template_params:
-        print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
+        #print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
         continue    
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project

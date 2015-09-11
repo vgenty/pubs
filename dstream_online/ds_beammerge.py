@@ -148,18 +148,24 @@ class ds_beammerge(ds_project_base):
             subrun = int(x[1])
             status = 0
             
-            fname='%s/%s'%(self._infodir,self._infofile%(run,subrun))
-            
-            self.info('Parse info file %s and check created files'%fname)
-            info_file=open(fname)
-            for line in info_file:
-                if "events" in line:
-                    wds=line.split()
-                    if int(wds[2]) > 0:
-                        if not os.path.isfile('%s/%s'%(self._beamdir,self._beamfile%(wds[0],run,subrun))):
-                            self.error('%s not created'%(self._beamfile%(wds[0],run,subrun)))
-                            return
+            self.info('Parse into log file and check number events')
+            logfname='%s/%s'%(self._logdir,self._logfile%(run,subrun))
+            if not os.path.isfile(logfname):
+                # change status
+                self.error('% not created'%logfname)
+                continue
+            if os.stat(logfname).st_size == 0:
+                # change status
+                self.error('%s is empty'%logfname)
+                continue
+            log_file = open(logfname)
+            last_line = log_file.readlines()[-1].split()
+            log_num_evts = int(last_line[0])
+            if not log_num_evts > 0:
+                self.error('No events written')
+                continue
 
+            
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = run,
