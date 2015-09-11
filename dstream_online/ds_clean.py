@@ -22,7 +22,7 @@ from dstream import ds_status
 class ds_clean(ds_project_base):
 
     # Define project name as class attribute
-    _project = 'ds_clean'
+    #_project = 'ds_clean'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, project_name ):
