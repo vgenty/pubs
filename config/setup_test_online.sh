@@ -95,7 +95,25 @@ case `uname -n` in
 		#setup uboonedaq_datatypes v6_13_06 -q e7:debug;
 		#we should setup the uboonedaq_datatypes by hand on near1, but instead
 		#let it be setup as a dependency of the uboonecode version
-		setup uboonecode v04_19_00 -q prof:e7;
+		setup uboonecode v04_22_00 -q prof:e7;
+		setup pyqtgraph;
+                export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;
+
+		# for password log file
+		export FW_SEARCH_PATH=/home/uboonepro/.sql_access_test/:$FW_SEARCH_PATH
+		;;
+
+            (ubdaq-prod-near2*)
+                #
+	            # This is not guaranteed to work (Kazu June-02-2015)
+                #
+	        setup sam_web_client;
+		setup ifdhc v1_8_2 -q e7:p279:prof;
+		#setup uboonedaq_datatypes v6_13_06 -q e7:debug;
+		#we should setup the uboonedaq_datatypes by hand on near2, but instead
+		#let it be setup as a dependency of the uboonecode version
+		setup uboonecode v04_22_00 -q prof:e7;
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;
