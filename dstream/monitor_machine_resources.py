@@ -18,6 +18,17 @@ from dstream import ds_api
 # function that decides if to send out an email
 def disk_usage_alert(proj,max_disk,emails):
 
+    try:
+        import datetime
+    except ImportError:
+        return 'failed import of datetime'
+
+    # if we are at a round 5-minute interval
+    timenow = datetime.datetime.now()
+    
+    if ( (timenow.minute%5) != 0):
+        return
+
     last_entry = proj[-1]
     
     log_time = last_entry.get_log_time()
@@ -31,9 +42,9 @@ def disk_usage_alert(proj,max_disk,emails):
 
     if (lastDISK > max_disk):
         
-        pub_smtp(receiver = self._info._email,
+        pub_smtp(receiver = emails,
                  subject  = 'PUBS ALERT: Disk usage on %s above %i percent!' %(pub_env.kSERVER_NAME, max_disk) ,
-                 text     = 'Current disk usage is at %.02f. Please take action and clear disk space!'%(lastDISK))
+                 text     = 'Current disk usage is at %.02f percent. Please take action and clear disk space!'%(lastDISK))
 
     return
 
