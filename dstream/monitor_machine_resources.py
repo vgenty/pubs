@@ -8,12 +8,46 @@ import time, os, sys
 # pub_dbi package include
 from pub_dbi import DBException, pubdb_conn_info
 # pub_util import
-from pub_util import pub_logger, pub_env
+from pub_util import pub_logger, pub_env, pub_smtp
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_api
+
+# function that decides if to send out an email
+def disk_usage_alert(proj,max_disk,emails):
+
+    try:
+        import datetime
+    except ImportError:
+        return 'failed import of datetime'
+
+    # if we are at a round 5-minute interval
+    timenow = datetime.datetime.now()
+    
+    if ( (timenow.minute%5) != 0):
+        return
+
+    last_entry = proj[-1]
+    
+    log_time = last_entry.get_log_time()
+    log_dict = last_entry.get_log_dict()
+
+    lastDISK = 0
+
+    for key in log_dict:
+        if (str(key) == 'DISK_USAGE_DATA'):
+            lastDISK = float(log_dict[key])*100
+
+    if (lastDISK > max_disk):
+        
+        pub_smtp(receiver = emails,
+                 subject  = 'PUBS ALERT: Disk usage on %s above %i percent!' %(pub_env.kSERVER_NAME, max_disk) ,
+                 text     = 'Current disk usage is at %.02f percent. Please take action and clear disk space!'%(lastDISK))
+
+    return
+
 # function to be used to plot machine resources saved to logger
 def plot_resource_usage(proj,outpath):
 
@@ -187,6 +221,8 @@ class monitor_machine_resources(ds_project_base):
 
         self._data_dir = ''
         self._experts  = ''
+        self._email_disk_percent = ''
+        self._email_disk_users   = ''
         self.get_resource()
 
     ## @brief method to retrieve the project resource information if not yet done
@@ -196,6 +232,8 @@ class monitor_machine_resources(ds_project_base):
 
         self._data_dir = '%s' % (resource['DATADIR'])
         self._experts = resource['EXPERTS']
+        self._email_disk_percent = int(resource['EMAILDISKPERCENT'])
+        self._email_disk_users = resource['EMAILDISKUSERS']
         
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -230,6 +268,8 @@ class monitor_machine_resources(ds_project_base):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):
             self.error('No plot produced...')
+
+        disk_usage_alert(project,self._email_disk_percent,self._email_disk_users)
 
         
 

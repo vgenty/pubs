@@ -28,13 +28,19 @@ class swizzle_data(ds_project_base):
 
 
     # Define project name as class attribute
-    _project = 'swizzle_data'
+    #_project = 'swizzle_data'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self):
+    def __init__(self, project_name):
 
+        self._project = project_name
         # Call base class ctor
-        super(swizzle_data,self).__init__()
+        super(swizzle_data,self).__init__( project_name)
+
+        # self.info('Running cleaning project %s'%self._project)
+        if (self._project==''):
+            self.error('Missing project name argument')
+            return
 
         self._nruns = None
         self._out_dir = ''
@@ -120,7 +126,7 @@ class swizzle_data(ds_project_base):
             if not run>1408: continue
 
             if not os.path.isfile(in_file):
-                self.error('Could not find file %s. Assigning status 404')
+                self.error('Could not find file %s. Assigning status 404' % in_file)
                 status = 404
 
             else:
@@ -411,7 +417,7 @@ class swizzle_data(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = swizzle_data()
+    test_obj = swizzle_data(sys.argv[1])
 
     test_obj.process_newruns()
 

@@ -479,7 +479,7 @@ class ds_reader(pubdb_reader):
         return result
 
     ## @brief Fetch DAQ run start/end time stamp
-    def run_timestamp(self,run,subrun):
+    def run_timestamp(self,run_table,run,subrun):
 
         try:
             run    = int(run)
@@ -490,7 +490,7 @@ class ds_reader(pubdb_reader):
             self._logger.error('Run/SubRun must be positive integers!')
             return (None,None)
 
-        query = 'SELECT TimeStart, TimeStop FROM GetRunTimeStamp(%d,%d)' % (run,subrun)
+        query = 'SELECT TimeStart, TimeStop FROM GetRunTimeStamp(\'%s\',%d,%d)' % (str(run_table),run,subrun)
 
         if not self.execute(query): return (None,None)
 
