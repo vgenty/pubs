@@ -220,16 +220,16 @@ class transfer( ds_project_base ):
    
 
         in_file = os.path.basename(file_arg)
-    # We do a samweb.fileLocate on basename of in_file. This project's parent must be transfer-root-to-dropbox.
+        # We do a samweb.fileLocate on basename of in_file. This project's parent must be check_on_tape, because
+        # we presume the existence of the file in SAM and at enstore:/pnfs/uboone.
         transfer = 0
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
         loc = samweb.locateFile(filenameorid=in_file)
-        jsonOb = extractor_dict.getmetadata(file_arg)
-        size_in = jsonOb['file_size']
+        size_in = samweb.getMetadata(filenameorid=in_file)['file_size']
         samcode = 12
 
-
         if not ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
+            self.error('No enstore or pnfs in loc[0]["full_path"]')
             return (transfer, samcode)
 
 
@@ -237,7 +237,7 @@ class transfer( ds_project_base ):
 
         pnnl_machine = "dtn2.pnl.gov"
         pnnl_dir = 'pic/projects/microboone/data/'
-        ddir = str(jsonOb['runs'][0][0]) # Run number
+        ddir = str(samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
         cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + ddir
         proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
         # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
