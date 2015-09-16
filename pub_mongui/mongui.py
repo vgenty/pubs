@@ -27,7 +27,7 @@ from pub_dbi import pubdb_conn_info
 #to-do: it takes like 5 seconds to loop through projects and do all the necessary queries to build their pie charts...
 #this definitely should be faster.
 
-my_template = 'pubs_diagram_082615.png'
+my_template = 'pubs_diagram_111615.png'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 
 
