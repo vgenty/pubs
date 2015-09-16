@@ -12,7 +12,7 @@ transfer_root_to_dropbox 0.125 0.665 50
 reg_root_to_sam 0.350 0.665 50
 transfer_binary_to_dropbox 0.595 0.665 50
 verify_binary_dropbox 0.890 0.665 50
-veirfy_root_dropbox 0.125 0.855 50
+verify_root_dropbox 0.125 0.855 50
 clean_binary_evb 0.575 0.855 50
 clean_binary_near1 0.725 0.855 50
 clean_binary_json_near1 0.895 0.855 50
