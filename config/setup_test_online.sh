@@ -113,7 +113,10 @@ case `uname -n` in
 		#setup uboonedaq_datatypes v6_13_06 -q e7:debug;
 		#we should setup the uboonedaq_datatypes by hand on near2, but instead
 		#let it be setup as a dependency of the uboonecode version
-		setup uboonecode v04_22_00 -q prof:e7;
+		setup uboonecode v04_22_00 -q debug:e7;
+		#setup mrb
+		#source ~kirby/swizzle_db_devel/local*/setup
+		#mrbslp
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;

@@ -13,7 +13,7 @@ from pub_util import pub_smtp
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from samweb_client import *
+import samweb_cli
 import traceback
 
 pnfs_prefixes = {
@@ -142,21 +142,45 @@ class verify_dropbox( ds_project_base ):
             #Note that this has the sequence number hard coded as number 0
             RefStatus = self._api.get_status( ds_status(self._ref_project, run, subrun, 0))
             near1_checksum = RefStatus._data
-            pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( in_file )
-            near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
 
-            if near1_adler32_1 == pnfs_adler32_1:
-                statusCode = 0
-            else:
-                subject = 'Checksum different in run %d, subrun %d between %s and PNFS' % ( run, subrun, self._ref_project )
-                text = '%s\n' % subject
-                text += 'Run %d, subrun %d\n' % ( run, subrun )
-                text += 'Converted %s checksum: %s\n' % ( self._ref_project, near1_adler32_1 )
-                text += 'Converted PNFS checksum: %s\n' % ( pnfs_adler32_1 )
+            try:
+                pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( in_file )
+                near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
 
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                statusCode = 1000
-                self._data = '%s:%s;PNFS:%s' % ( self._ref_project, near1_adler32_1, pnfs_adler32_1 )
+                if near1_adler32_1 == pnfs_adler32_1:
+                    statusCode = 0
+                else:
+                    subject = 'Checksum different in run %d, subrun %d between %s and PNFS' % ( run, subrun, self._ref_project )
+                    text = '%s\n' % subject
+                    text += 'Run %d, subrun %d\n' % ( run, subrun )
+                    text += 'Converted %s checksum: %s\n' % ( self._ref_project, near1_adler32_1 )
+                    text += 'Converted PNFS checksum: %s\n' % ( pnfs_adler32_1 )
+                    
+                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+                    statusCode = 1000
+                    self._data = '%s:%s;PNFS:%s' % ( self._ref_project, near1_adler32_1, pnfs_adler32_1 )
+
+            except LookupError:
+
+                self.warning("Could not find file in the dropbox %s" % in_file)
+                self.warning("Gonna go looking on tape %s" % in_file_name)
+                samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                meta = {}
+
+                try:
+                    meta = samweb.getMetadata(filenameorid=in_file_name)
+                    checksum_info = meta['checksum'][0].split(':')
+                    if checksum_info[0] == 'enstore':
+                        self._data = checksum_info[1]
+                        statusCode = 0
+                    else:
+                        statusCode = 10
+
+                except samweb_cli.exceptions.FileNotFound:
+                    subject = 'Failed to locate file %s at SAM' % in_file
+                    text = 'File %s is not found at SAM!' % in_file
+                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+                    statusCode = 100
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,

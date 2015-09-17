@@ -61,10 +61,15 @@ class transfer( ds_project_base ):
         self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
+        self._max_wait = int(resource['MAX_WAIT'])
+        exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
 
     ## @brief Transfer files to dropbox
     def transfer_file( self ):
 
+        proc_list=[]
+        done_list=[]
+        run_id=[]
         # Attempt to connect DB. If failure, abort
         if not self.connect():
             self.error('Cannot connect to DB! Aborting...')
@@ -98,8 +103,8 @@ class transfer( ds_project_base ):
             out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
 
             # construct ifdh object
-            ih = ifdh.ifdh()
-
+            #ih = ifdh.ifdh()
+            #we're gonna use subprocess to parallelize these transfers and construct an ifdh command by hand
 
             if os.path.isfile( in_file ) and (os.path.isfile( in_json ) or ("pnnl" in self._project)):
                 self.info('Found %s' % (in_file) )
@@ -107,39 +112,153 @@ class transfer( ds_project_base ):
 
                 try:
                     if "pnnl" not in self._project:
-                        resi = ih.cp(( in_file, out_file ))
-                        resj = ih.cp(( in_json, out_json ))
+                        #resi = ih.cp(( in_file, out_file ))
+                        #cmd = ['ifdh', 'cp', in_file, out_file, "';'",'ifdh','cp', in_json, out_json]
+                        cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
+                        #cmd = ['ifdh', 'cp', in_file, out_file]
+                        #cmd = 'ifdh cp %s %s \";\" %s %s' % (in_file, out_file,in_json, out_json)
+                        print cmd
+                        proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
+                        done_list.append(False)
+                        run_id.append((run,subrun))
+                        self.info('Started transfer for (run,subrun)=%s @ %s' % (run_id[-1], time.strftime('%Y-%m-%d %H:%M:%s')))
+                        status_code=3
+                        status = ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = status_code )
+                        self.log_status( status )
+
+                        # if not parallelized, wait till proc is done
+                        if not self._parallelize:
+                            time_spent = 0
+                            while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
+                                time.sleep(1)
+                                time_spent +=1
+
+                                if time_spent > self._max_wait:
+                                    self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
+                                    proc_list[-1].kill()
+                                    status = ds_status( project = self._project,
+                                                        run     = run_id[-1][0],
+                                                        subrun  = run_id[-1][1],
+                                                        seq     = 0,
+                                                        status  = 555 )
+                                    self.log_status( status )
+                                    time.sleep(5)
+
+                                    if proc_list[-1].poll() is None:
+                                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
+                                        subprocess.call(['kill','-9',str(proc_list[-1].pid)])
+                                        status = ds_status( project = self._project,
+                                                            run     = run_id[-1][0],
+                                                            subrun  = run_id[-1][1],
+                                                            seq     = 0,
+                                                            status  = 666 )
+                                        self.log_status( status )
+                                        break
+
+                            self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+                            status = ds_status( project = self._project,
+                                                run     = run_id[-1][0],
+                                                subrun  = run_id[-1][1],
+                                                seq     = 0,
+                                                status  = 0 )
+                            self.log_status( status )
+
+                        else:
+                            time.sleep(5)
 
                     # If this project is xfer'ing data to PNNL, we use gsiftp-to-sshftp in pnnl_transfer().
                     else: 
 
                         (resi, resj) = self.pnnl_transfer(in_file)
+                        if resi == 0 and resj == 0:
+                            status_code = 0
+                        else:
+                            status_code = 101
+                            
+                        status = ds_status( project = self._project,
+                                            run     = run_id[-1][0],
+                                            subrun  = run_id[-1][1],
+                                            seq     = 0,
+                                            status  = status_code )
+                        self.log_status( status )
 
-                    if resi == 0 and resj == 0:
-                        status = 0
-                    else:
-                        status = 101
                 except:
+                    self.error('Caught the exception and setting the status back to 1 for (run,subrun) = (%s, %s)' % (x[0],x[1]))
                     status = 1
+                    status = ds_status( project = self._project,
+                                        run     = int(x[0]),
+                                        subrun  = int(x[1]),
+                                        seq     = 0,
+                                        status  = status )
+                    self.log_status( status )
 
             else:
                 status = 100
+                status = ds_status( project = self._project,
+                                    run     = int(x[0]),
+                                    subrun  = int(x[1]),
+                                    seq     = 0,
+                                    status  = status )
+                self.log_status( status )
 
             # Pretend I'm doing something
             time.sleep(1)
 
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
-
-            # Log status
-            self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break
+
+        if not self._parallelize:
+            return
+
+        finished = False
+        time_spent = 0
+        while not finished:
+            finished = True
+            time.sleep(1)
+            time_spent += 1
+            active_counter = 0
+            for x in xrange(len(proc_list)):
+                if done_list[x]: continue
+                if not proc_list[x].poll() is None:
+                    self.info('Finished copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    status = ds_status( project = self._project,
+                                        run     = run_id[x][0],
+                                        subrun  = run_id[x][1],
+                                        seq     = 0,
+                                        status  = 0 )
+                    self.log_status( status )
+                    done_list[x] = True
+                else:
+                    active_counter += 1
+                    finished = False
+            if time_spent%10:
+                self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
+            if time_spent > self._max_wait:
+                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
+                for x in xrange(len(proc_list)):
+                    proc_list[x].kill()
+
+                    status_code = 101
+                    status = ds_status( project = self._project,
+                                        run     = run_id[x][0],
+                                        subrun  = run_id[x][1],
+                                        seq     = 0,
+                                        status  = status_code )
+                    self.log_status( status )
+
+                    # hard kill if still alive
+                    time.sleep(5)
+                    if proc_list[x].poll() is None:
+                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
+                        subprocess.call(['kill','-9',str(proc_list[x].pid)])
+                break
+        self.info('All finished @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
 
     ## @brief Validate the dropbox
     def validate_outfile( self ):
@@ -166,8 +285,10 @@ class transfer( ds_project_base ):
             self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 2
-            out_file = '%s' % ( self._outfile_format % (run,subrun) )
-            out_json = '%s.json' %( self._outfile_format % (run,subrun) )
+            #out_file = '%s' % ( self._outfile_format % (run,subrun) )
+            #out_json = '%s.json' %( self._outfile_format % (run,subrun) )
+            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
 
             # construct ifdh object
             ih = ifdh.ifdh()
@@ -337,5 +458,5 @@ if __name__ == '__main__':
 
     obj.transfer_file()
 
-    # if "pnnl" not in self._project:
+    #if "pnnl" not in proj_name:
     #    obj.validate_outfile()
