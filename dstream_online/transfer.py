@@ -113,7 +113,6 @@ class transfer( ds_project_base ):
                 try:
                     if "pnnl" not in self._project:
                         cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
-                        print cmd
                         proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
                         done_list.append(False)
                         run_id.append((run,subrun))
