@@ -16,6 +16,9 @@ def ubdaq_handler_smc():
 def near1_handler():
     return (True,'')
 
+def near2_handler():
+    return (True,'')
+
 def near1_logger():
 
     result = {}
@@ -113,6 +116,9 @@ def near1_logger():
     print "**** RESULT IS %i in LENGTH ****"%len(result)
 
     return result
+
+def near2_logger():
+    return near1_logger()
 
 def evb_handler():
     return (True,'')

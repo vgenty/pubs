@@ -118,8 +118,8 @@ case `uname -n` in
 		#source ~kirby/swizzle_db_devel/local*/setup
 		#mrbslp
 		setup pyqtgraph;
-                export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
-                export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;
+                export PUB_DAEMON_LOG_MODULE=dstream_online.near2_logger;
+                export PUB_DAEMON_HANDLER_MODULE=dstream_online.near2_handler;
 
 		# for password log file
 		export FW_SEARCH_PATH=/home/uboonepro/.sql_access_test/:$FW_SEARCH_PATH

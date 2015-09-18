@@ -64,3 +64,10 @@ def getDISKusage(dirpath):
         return  1.-float(freeBytes)/float(totlBytes)    
     return 0
 
+def getNetworkUsage(port):
+
+    return
+    # use ifconfig command to measure the network
+    # transfer speeds.
+    
+    
