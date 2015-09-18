@@ -63,20 +63,23 @@ def plot_resource_usage(proj,outpath):
     except ImportError:
         return 'failed import'
 
-    tCPU  = []
-    CPU   = []
-    tRAM  = []
-    RAM   = []
-    tDISK = []
-    DISK  = []
-    tPROJ = []
-    NPROJ = []
+    tCPU  = [] # cpu-usage times
+    CPU   = [] # cpu-usage %
+    tRAM  = [] # RAM-usage times
+    RAM   = [] # RAM-usage %
+    tDISK = [] # DISK-usage times
+    DISK  = [] # DISK-usage %
+    tDLOC = [] # LOCAL DATA-usage times
+    DLOC  = [] # LOCAL DATA-usage %
+    tPROJ = [] # number of projects running times
+    NPROJ = [] # number of projects running
 
     lastDISK = -100
+    lastDLOC = -100
     lastRAM  = -100
     lastCPU  = -100
 
-    servername = pub_env.kSERVER_NAME#proj[0]._server
+    servername = pub_env.kSERVER_NAME
 
     # number of entries scanned
     cntr = 0
@@ -100,11 +103,15 @@ def plot_resource_usage(proj,outpath):
             # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_DATA'):
-                    #if ( cntr%100 == 0 ):
                     if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastDISK = float(log_dict[key])*100
                         tDISK.append(time)
                         DISK.append(float(log_dict[key])*100)
+                if (str(key) == 'DISK_USAGE_DATALOCAL'):
+                    if ( (abs(float(log_dict[key])*100-lastDLOC) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
+                        lastDLOC = float(log_dict[key])*100
+                        tDLOC.append(time)
+                        DLOC.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
                     if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastRAM = float(log_dict[key])
@@ -121,6 +128,7 @@ def plot_resource_usage(proj,outpath):
     datesCPU  = dts.date2num(tCPU)
     datesRAM  = dts.date2num(tRAM)
     datesDISK = dts.date2num(tDISK)
+    datesDLOC = dts.date2num(tDLOC)
 
             
     # example for multi-axes (i.e. >= 3) plot here:
@@ -135,9 +143,11 @@ def plot_resource_usage(proj,outpath):
     if (len(datesCPU) == len(CPU)):
         cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK)):
-        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage', markersize=7)
+        diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage @ ', markersize=7)
     if (len(datesRAM) == len(RAM)):
         ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
+    if (len(datesDLOC) == len(DLOC)):
+        diskPlot = ax.plot_date(datesDLOC,DLOC, fmt='o--', color='r',label='DISK usage @', markersize=7)
 
 
     years    = dts.YearLocator()   # every year
