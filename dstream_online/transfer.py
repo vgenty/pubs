@@ -112,11 +112,7 @@ class transfer( ds_project_base ):
 
                 try:
                     if "pnnl" not in self._project:
-                        #resi = ih.cp(( in_file, out_file ))
-                        #cmd = ['ifdh', 'cp', in_file, out_file, "';'",'ifdh','cp', in_json, out_json]
                         cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
-                        #cmd = ['ifdh', 'cp', in_file, out_file]
-                        #cmd = 'ifdh cp %s %s \";\" %s %s' % (in_file, out_file,in_json, out_json)
                         print cmd
                         proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
                         done_list.append(False)
@@ -168,7 +164,7 @@ class transfer( ds_project_base ):
                             self.log_status( status )
 
                         else:
-                            time.sleep(5)
+                            time.sleep(1)
 
                     # If this project is xfer'ing data to PNNL, we use gsiftp-to-sshftp in pnnl_transfer().
                     else: 

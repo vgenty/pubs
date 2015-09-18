@@ -52,6 +52,7 @@ class check_tape( ds_project_base ):
         self._parent_project = resource['PARENT_PROJECT']
         self._infile_format = resource['INFILE_FORMAT']
         self._experts = resource['EXPERTS']
+        exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
 
 
     ## @brief check file location
@@ -68,7 +69,7 @@ class check_tape( ds_project_base ):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
+        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0], self._sort_new_to_old ):
 
             # Counter decreases by 1
             ctr -= 1
