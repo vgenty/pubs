@@ -106,7 +106,7 @@ class transfer( ds_project_base ):
             #ih = ifdh.ifdh()
             #we're gonna use subprocess to parallelize these transfers and construct an ifdh command by hand
 
-            if os.path.isfile( in_file ) and (os.path.isfile( in_json ) or ("pnnl" in self._project)):
+            if (os.path.isfile( in_file ) and (os.path.isfile( in_json )) or ("pnnl" in self._project)):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
 
