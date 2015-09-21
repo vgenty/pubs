@@ -71,11 +71,14 @@ def plot_resource_usage(proj,outpath):
     DISK  = [] # DISK-usage %
     tDLOC = [] # LOCAL DATA-usage times
     DLOC  = [] # LOCAL DATA-usage %
+    tHOME = [] # HOME-usage times
+    HOME  = [] # HOME-usage %
     tPROJ = [] # number of projects running times
     NPROJ = [] # number of projects running
 
     lastDISK = -100
     lastDLOC = -100
+    lastHOME = -100
     lastRAM  = -100
     lastCPU  = -100
 
@@ -112,6 +115,11 @@ def plot_resource_usage(proj,outpath):
                         lastDLOC = float(log_dict[key])*100
                         tDLOC.append(time)
                         DLOC.append(float(log_dict[key])*100)
+                if (str(key) == 'DISK_USAGE_HOME'):
+                    if ( (abs(float(log_dict[key])*100-lastHOME) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
+                        lastHOME = float(log_dict[key])*100
+                        tHOME.append(time)
+                        HOME.append(float(log_dict[key])*100)
                 if (str(key) == 'RAM_PERCENT'):
                     if ( (abs(float(log_dict[key]) - lastRAM) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastRAM = float(log_dict[key])
@@ -129,6 +137,7 @@ def plot_resource_usage(proj,outpath):
     datesRAM  = dts.date2num(tRAM)
     datesDISK = dts.date2num(tDISK)
     datesDLOC = dts.date2num(tDLOC)
+    datesHOME = dts.date2num(tHOME)
 
             
     # example for multi-axes (i.e. >= 3) plot here:
@@ -147,7 +156,9 @@ def plot_resource_usage(proj,outpath):
     if (len(datesRAM) == len(RAM)):
         ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
     if (len(datesDLOC) == len(DLOC)):
-        diskPlot = ax.plot_date(datesDLOC,DLOC, fmt='o--', color='r',label='DISK usage @ /datalocal/', markersize=7)
+        diskPlot = ax.plot_date(datesDLOC,DLOC, fmt='*--', color='m',label='DISK usage @ /datalocal/', markersize=7)
+    if (len(datesHOME) == len(HOME)):
+        diskPlot = ax.plot_date(datesHOME,HOME, fmt='^--', color='c',label='DISK usage @ /home/', markersize=7)
 
 
     years    = dts.YearLocator()   # every year
@@ -182,7 +193,7 @@ def plot_resource_usage(proj,outpath):
     #plt.figure.autofmt_xdate()    
     plt.grid()
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
-    plt.legend(loc=3,fontsize=20,framealpha=0.5)
+    plt.legend(loc=3,fontsize=20,framealpha=0.9)
 
     outpathResource = outpath+"resource_monitoring_%s.png"%(servername)
     plt.savefig(outpathResource)
