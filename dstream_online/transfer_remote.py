@@ -53,6 +53,7 @@ class transfer_remote( ds_project_base ):
         resource = self._api.get_resource( self._project )
 
         self._nruns = int(resource['NRUNS'])
+        self._ndelays = int(resource['NDELAYS'])
         self._out_dir = '%s' % (resource['OUTDIR'])
         self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
@@ -189,7 +190,7 @@ class transfer_remote( ds_project_base ):
         ntry = 0
         delay = 5
         ntry_max = 1 # more than 1 is not demonstrably helping. In fact, it creates lotsa orphaned ssh's. EC, 8-Aug-2015.
-        ndelays = 20
+        ndelays = self._ndelays # 20
         while (ntry != ntry_max):
             self.info('Will launch ' + cmd_gsiftp_to_sshftp)
             info_str = "pnnl_transfer trying " + str(ntry+1) + " (of " + str(ntry_max) + ") times."
