@@ -72,8 +72,8 @@ class GuiUtilsAPI():
         print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
 
       if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
-      elif x[0] > 100: mycolor = [176, 144, 171] #dark magenta
-      else: mycolor = [148, 96, 1] #dark orange
+      elif x[0] > 100: mycolor = [255, 20, 147] #dark magenta
+      else: mycolor = [255, 140, 0] #dark orange
       slices.append( ( (float(x[1])/tot_n), mycolor ) )
     
     return slices
@@ -171,7 +171,7 @@ class GuiUtils():
     #              1000:[18,59,142],
     #              4112:[47,75,101]
     #              }
-    self.colors={ 1:[47, 75, 101] }
+    self.colors={ 1:[0, 255, 255]} #[47, 75, 101] }
     self.update_period = 10 #seconds
     self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 
