@@ -61,8 +61,8 @@ view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 view.show()
 
 #For now, zoom out a little bit so it can fit on my screen ...
-#view.scale(0.8,0.8)
-view.scale(1.2,1.2)
+view.scale(0.8,0.8)
+#view.scale(1.2,1.2)
 
 #Get a list of all projects from the gui DBI
 projectnames = gdbi.getAllProjectNames() 

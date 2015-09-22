@@ -56,9 +56,9 @@ class GuiUtilsAPI():
     #tot_n does not include status == 0
     tot_n = sum([x[1] for x in statuses if x[0]])
 
-    if len(statuses) > len(self.colors):
-      print "Uh oh, more different statuses than colors! Increase number of colors!"
-      return [ (1., 'r') ]
+    #if len(statuses) > len(self.colors):
+    #  print "Uh oh, more different statuses than colors! Increase number of colors!"
+    #  return [ (1., 'r') ]
 
     slices = []
     #one giant green slice for fully completed project
@@ -73,7 +73,7 @@ class GuiUtilsAPI():
 
       if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
       elif x[0] > 100: mycolor = 'm'
-      else mycolor = 'r'
+      else: mycolor = 'r'
       slices.append( ( (float(x[1])/tot_n), mycolor ) )
     
     return slices
