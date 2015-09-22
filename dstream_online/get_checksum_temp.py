@@ -82,6 +82,8 @@ class get_checksum( ds_project_base ):
             in_file_name = self._infile_format % ( run, subrun )
             in_file_holder = '%s/%s' % ( self._in_dir, in_file_name )
             filelist = glob.glob( in_file_holder )
+            if (len(filelist)>1):
+                self.error('ERROR: There is more than one file matching that pattern: %s' % in_file_name)
             if (len(filelist)<1):
                 errorMessage = "Failed to find file%s"%in_file_holder
                 subject = "get_checksum_temp Failed to find file%s"%in_file_holder
@@ -92,9 +94,7 @@ Error message:
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
                 statusCode = 200
             else:
-
                 in_file = filelist[0]
-
                 metadata = {}
                 try:
                     metadata['crc'] = samweb_client.utility.fileEnstoreChecksum( in_file )

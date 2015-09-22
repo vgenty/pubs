@@ -39,6 +39,7 @@ class check_tape( ds_project_base ):
 
         self._nruns = None
         self._parent_project = ''
+        self._in_dir =''
         self._infile_format = ''
         self._experts = ''
         self._data = ''
@@ -50,6 +51,7 @@ class check_tape( ds_project_base ):
 
         self._nruns = int(resource['NRUNS'])
         self._parent_project = resource['PARENT_PROJECT']
+        self._in_dir = resource['INDIR']
         self._infile_format = resource['INFILE_FORMAT']
         self._experts = resource['EXPERTS']
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
@@ -81,7 +83,24 @@ class check_tape( ds_project_base ):
 
             statusCode = 1
 
-            in_file = self._infile_format % ( run, subrun )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = os.path.basename(filelist[0])
             samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
             loc = {}

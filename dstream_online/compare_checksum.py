@@ -13,6 +13,7 @@ from pub_util import pub_smtp
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+import glob
 
 ## @class compare_checksum
 #  @brief yuntse should give a brief comment here

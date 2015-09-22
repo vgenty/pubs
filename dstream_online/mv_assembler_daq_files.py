@@ -75,12 +75,11 @@ class mv_assembler_daq_files(ds_project_base):
 
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
             status_code=1
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -88,14 +87,21 @@ class mv_assembler_daq_files(ds_project_base):
                                     seq     = 0,
                                     status  = status_code )
                 self.log_status( status )                
+                continue
 
             if (len(filelist)>1):
-                self.info('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.info('ERROR: List of files found %s' % filelist)
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
             
             if (len(filelist)>0):
                 in_file = filelist[0]
-
+                in_file_segments = os.path.basename(in_file).split('-')
+                if (len(in_file_segments)<2):
+                    self.error('ERROR: The file %s does not contain the - character' % in_file)
+                    self.error('ERROR: So have no idea what to do.')
+                    break
+                out_file_prefix = in_file_segments[0]
+                out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
                 #cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
                 #cmd = ['rsync', '-v', in_file, out_file]
                 cmd = ['cp', '-v', in_file, out_file]
@@ -208,26 +214,51 @@ class mv_assembler_daq_files(ds_project_base):
             subrun = int(x[1])
             status_code = 2
 
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
             
-#            res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
-            res = subprocess.call(['ls', out_file])
-            if res:
-                self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-                status_code = 102
-            else:
-                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                status_code = 0
+            if (len(filelist)>0):
+                in_file = filelist[0]
+                in_file_segments = os.path.basename(in_file).split('-')
+                if (len(in_file_segments)<2):
+                    self.error('ERROR: The file %s does not contain the - character' % in_file)
+                    self.error('ERROR: So have no idea what to do.')
+                    break
+                out_file_prefix = in_file_segments[0]
+
+                out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
+            
+                #res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
+                res = subprocess.call(['ls', out_file])
+                if res:
+                    self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
+                    status_code = 102
+                else:
+                    self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
+                    status_code = 0
                 
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = status_code )
+                    # Create a status object to be logged to DB (if necessary)
+                    status = ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = subrun,
+                                        seq     = 0,
+                                        status  = status_code )
             
-            # Log status
-            self.log_status( status )
+                    # Log status
+                    self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break

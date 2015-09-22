@@ -13,6 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import datetime
 import subprocess as sub
+import glob
 
 
 
@@ -44,7 +45,7 @@ class swizzle_data(ds_project_base):
 
         self._nruns = None
         self._out_dir = ''
-        self._outfile_format = ''
+        #self._outfile_format = ''
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
@@ -68,7 +69,7 @@ class swizzle_data(ds_project_base):
         self._fcl_file_new  = self._fcl_file.replace(".fcl","_local.fcl")
 
         self._out_dir = '%s' % (resource['OUTDIR'])
-        self._outfile_format = resource['OUTFILE_FORMAT']
+        #self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._log_file =  self._out_dir + "/lar_out_"
@@ -113,8 +114,27 @@ class swizzle_data(ds_project_base):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_file_base_no_ext = os.path.splitext(os.path.basename(in_file))[0]
+            out_file_base = '%s.root' % in_file_base_no_ext
+            out_file = '%s/%s' % (self._out_dir,out_file_base)
 
 #
 #
@@ -315,8 +335,28 @@ class swizzle_data(ds_project_base):
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 1
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_file_base_no_ext = os.path.splitext(os.path.basename(in_file))[0]
+            out_file_base = '%s.root' % in_file_base_no_ext
+            out_file = '%s/%s' % (self._out_dir,out_file_base)
 
             # Get status object
             proj_status = self._api.get_status(ds_status(self._project,
@@ -387,7 +427,27 @@ class swizzle_data(ds_project_base):
 
             status = 1
 
-            out_file = '%s/%s' % (self._out_dir,self._outfile_format % (run,subrun))
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_file_base_no_ext = os.path.splitext(os.path.basename(in_file))[0]
+            out_file_base = '%s.root' % in_file_base_no_ext
+            out_file = '%s/%s' % (self._out_dir,out_file_base)
 
             if os.path.isfile(out_file):
                 os.system('rm %s' % out_file)
