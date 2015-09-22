@@ -144,6 +144,7 @@ class reg_files_to_sam( ds_project_base ):
 
                 # Check if the file already exists at SAM
                 try:
+                    in_file_base=os.path.basename(in_file)
                     samweb.getMetadata(filenameorid=in_file_base)
                     status = 101
                     # Email the experts
@@ -225,7 +226,6 @@ File %s failed to be declared to SAM!
 
             status = 12
 
-            in_file_base = self._infile_format % ( run, subrun )
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):

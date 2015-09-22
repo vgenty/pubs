@@ -20,6 +20,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
 import traceback
+import glob
 
 class check_tape( ds_project_base ):
 
@@ -83,24 +84,7 @@ class check_tape( ds_project_base ):
 
             statusCode = 1
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
-            if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
-                continue
-
-            if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
-
-            in_file = os.path.basename(filelist[0])
+            in_file = self._infile_format % ( run, subrun )
             samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
             loc = {}

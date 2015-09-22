@@ -114,22 +114,29 @@ class ds_clean(ds_project_base):
             multiple_file_status=0
 
             # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
-            in_file_holder = '%s/%s' % ( self._in_dir, in_file_name )
+            in_file_holder = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)>1):
-                self.error('ERROR: There is more than one file matching that pattern: %s' % in_file_name)
+                self.error('ERROR: There is more than one file matching that pattern: %s' % filelist)
+                multiple_file_status=200
             if (len(filelist)<1):
+                self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )     
                 errorMessage = "Failed to find file%s"%in_file_holder
                 subject = "get_checksum_temp Failed to find file%s"%in_file_holder
                 text = """File: %s
 Error message:
 %s
-                """ % ( in_file, errorMessage )
+                """ % ( in_file_holder, errorMessage )
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                statusCode = 200
             else:
-
+                in_file = filelist[0]
                 self.info('Removing %s'%in_file)
 
                 if ":" in in_file:
@@ -140,30 +147,16 @@ Error message:
                         tmp_status=2
                 else:
                     self.info('Looks like the file is local on this node')
-                    list_of_files = glob.glob(in_file)
-                    if len(list_of_files) > 1:
-                        self.info('More than one file matched the pattern')
-                        multiple_file_status=200
-                    elif len(list_of_files) < 1:
-                        self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                        status_code=100
-                        status = ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = status_code )
-                        self.log_status( status )     
-                    else: 
-                        if not os.path.isfile(list_of_files[0]):
-                            self.info("ERROR: os.path.isfile('%s') returned false?!"%list_of_files[0])
-                        self.info('Going to remove the file with rm...')
-                        rm_status=os.system('rm -f %s' % list_of_files[0])
-                        tmp_status=2
+                    if not os.path.isfile(in_file):
+                        self.info("ERROR: os.path.isfile('%s') returned false?!"%in_file)
+                    self.info('Going to remove the file with rm...')
+                    rm_status=os.system('rm -f %s' % in_file)
+                    tmp_status=2
 
                 if rm_status==0:
                     tmp_status=tmp_status + multiple_file_status
                 else:
-                    self.info('Failed to remove the file %s' % list_of_files[0])
+                    self.info('Failed to remove the file %s' % in_file)
                     tmp_status=4
             # Create a status object to be logged to DB (if necessary)
                 status = ds_status( project = self._project,
@@ -207,7 +200,7 @@ Error message:
                 if not os.system('ssh -x %s "ls %s"'%(tuple(in_file.split(":")))):
                     tmp_status=100
             else:
-                if not glob.glob(in_file):
+                if (len(glob.glob(in_file))>0):
                     tmp_status=100
 
             if (tmp_status==100):
