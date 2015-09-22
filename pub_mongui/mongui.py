@@ -169,8 +169,8 @@ def update_gui():
         if iprojname in enabledprojectnames:
             idata = (iprojname, ix, iy, ir, pie_slices )
         else:
-            #Gray out disabled projects
-            idata = (iprojname, ix, iy, ir, [ (1., 0.5) ] )
+            #RED out disabled projects
+            idata = (iprojname, ix, iy, ir, [ (1., 'r') ] )
         
         #To-do: play around with what is being done (removing+adding)
         #to try to speed up this code

@@ -71,7 +71,9 @@ class GuiUtilsAPI():
       if x[0] not in self.colors.keys():
         print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
 
-      mycolor = self.colors[x[0]] if x[0] in self.colors.keys() else 'r'
+      if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
+      elif x[0] > 100: mycolor = 'm'
+      else mycolor = 'r'
       slices.append( ( (float(x[1])/tot_n), mycolor ) )
     
     return slices
@@ -155,20 +157,21 @@ class GuiUtils():
     #r, g, b, c, m, y, k, w    
     #self.colors = { 1:'b', 2:'g', 3: 'w', 4:'w', 100:'y', 102:'m', 65:'r', 101:'c', 404:'k', 999:'w', -9:'y' }
     #empire strikes back color themes!
-    self.colors={ 1:[47,74,101],
-                  2:[18,59,142],
-                  3:[205,180,101],
-                  4:[205,180,101],
-                  100:[235,160,113],
-                  102:[117,21,41],
-                  65:[165,17,26],
-                  101:[144,149,38],
-                  404:[11,20,40],
-                  999:[19,33,71],
-                  -9:[206,211,124],
-                  1000:[18,59,142],
-                  4112:[47,75,101]
-                  }
+    #self.colors={ 1:[47,74,101],
+    #              2:[18,59,142],
+    #              3:[205,180,101],
+    #              4:[205,180,101],
+    #              100:[235,160,113],
+    #              102:[117,21,41],
+    #              65:[165,17,26],
+    #              101:[144,149,38],
+    #              404:[11,20,40],
+    #              999:[19,33,71],
+    #              -9:[206,211,124],
+    #              1000:[18,59,142],
+    #              4112:[47,75,101]
+    #              }
+    self.colors={ 1:[205,180,101] }
     self.update_period = 10 #seconds
     self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 
