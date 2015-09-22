@@ -15,6 +15,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_client.utility
 import traceback
+import glob
 
 class get_checksum( ds_project_base ):
 
@@ -80,35 +81,50 @@ class get_checksum( ds_project_base ):
             statusCode = 1
 
             in_file_name = self._infile_format % ( run, subrun )
-            in_file = '%s/%s' % ( self._in_dir, in_file_name )
+            in_file_holder = '%s/%s' % ( self._in_dir, in_file_name )
+            filelist = glob.glob(in_file_holder)
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )
+                continue
 
-            metadata = {}
-            try:
-                metadata['crc'] = samweb_client.utility.fileEnstoreChecksum( in_file )
-                self._data = metadata['crc']['crc_value']
-                statusCode = 0
-            except Exception:
-                errorMessage = traceback.print_exc()
-                subject = 'Failed to obtain the checksum of the file %s' % in_file
-                text = """File: %s
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+            
+            if (len(filelist)>0):
+                in_file = filelist[0]
+                metadata = {}
+                try:
+                    metadata['crc'] = samweb_client.utility.fileEnstoreChecksum( in_file )
+                    self._data = metadata['crc']['crc_value']
+                    statusCode = 0
+                except Exception:
+                    errorMessage = traceback.print_exc()
+                    subject = 'Failed to obtain the checksum of the file %s' % in_file
+                    text = """File: %s
 Error message:
 %s
                 """ % ( in_file, errorMessage )
 
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-
-                statusCode = 100
-
+                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+                    statusCode = 100
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = statusCode,
-                                data    = self._data )
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = statusCode,
+                                    data    = self._data )
 
             # Log status
-            self.log_status( status )
+                self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break

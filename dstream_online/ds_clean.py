@@ -13,6 +13,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+import glob
 
 ## @class ds_clean
 #  @brief Script for removing old files
@@ -113,51 +114,59 @@ class ds_clean(ds_project_base):
             multiple_file_status=0
 
             # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
-            self.info('Removing %s'%in_file)
+            in_file_holder = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)>1):
+                self.error('ERROR: There is more than one file matching that pattern: %s' % filelist)
+                multiple_file_status=200
+            if (len(filelist)<1):
+                self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )     
+                errorMessage = "Failed to find file%s"%in_file_holder
+                subject = "get_checksum_temp Failed to find file%s"%in_file_holder
+                text = """File: %s
+Error message:
+%s
+                """ % ( in_file_holder, errorMessage )
+                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+            else:
+                in_file = filelist[0]
+                self.info('Removing %s'%in_file)
 
-            if ":" in in_file:
+                if ":" in in_file:
                 #check that out_file is a file before trying to remove 
                 #(hopefully should avoid unintentional rm with bad out_dir/name_pattern combo)
-                if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                    rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
-                    tmp_status=2
-            else:
-                self.info('Looks like the file is local on this node')
-                list_of_files = glob.glob(in_file)
-                if len(list_of_files) > 1:
-                    self.info('More than one file matched the pattern')
-                    multiple_file_status=200
-                elif len(list_of_files) < 1:
-                    self.info('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                    status_code=100
-                    status = ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )     
-                else: 
-                    if not os.path.isfile(list_of_files[0]):
-                        self.info("ERROR: os.path.isfile('%s') returned false?!"%list_of_files[0])
+                    if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
+                        rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
+                        tmp_status=2
+                else:
+                    self.info('Looks like the file is local on this node')
+                    if not os.path.isfile(in_file):
+                        self.info("ERROR: os.path.isfile('%s') returned false?!"%in_file)
                     self.info('Going to remove the file with rm...')
-                    rm_status=os.system('rm -f %s' % list_of_files[0])
+                    rm_status=os.system('rm -f %s' % in_file)
                     tmp_status=2
 
-            if rm_status==0:
-                tmp_status=tmp_status + multiple_file_status
-            else:
-                self.info('Failed to remove the file %s' % list_of_files[0])
-                tmp_status=4
+                if rm_status==0:
+                    tmp_status=tmp_status + multiple_file_status
+                else:
+                    self.info('Failed to remove the file %s' % in_file)
+                    tmp_status=4
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = tmp_status )
+                status = ds_status( project = self._project,
+                                    run     = int(x[0]),
+                                    subrun  = int(x[1]),
+                                    seq     = 0,
+                                    status  = tmp_status )
             
             # Log status
-            self.log_status( status )
+                self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break
@@ -188,10 +197,10 @@ class ds_clean(ds_project_base):
 
             tmp_status=0
             if ":" in in_file:
-                if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
+                if not os.system('ssh -x %s "ls %s"'%(tuple(in_file.split(":")))):
                     tmp_status=100
             else:
-                if os.path.isfile(in_file):
+                if (len(glob.glob(in_file))>0):
                     tmp_status=100
 
             if (tmp_status==100):

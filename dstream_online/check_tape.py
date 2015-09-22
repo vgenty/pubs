@@ -20,6 +20,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
 import traceback
+import glob
 
 class check_tape( ds_project_base ):
 
@@ -39,6 +40,7 @@ class check_tape( ds_project_base ):
 
         self._nruns = None
         self._parent_project = ''
+        self._in_dir =''
         self._infile_format = ''
         self._experts = ''
         self._data = ''
@@ -50,6 +52,7 @@ class check_tape( ds_project_base ):
 
         self._nruns = int(resource['NRUNS'])
         self._parent_project = resource['PARENT_PROJECT']
+        self._in_dir = resource['INDIR']
         self._infile_format = resource['INFILE_FORMAT']
         self._experts = resource['EXPERTS']
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])

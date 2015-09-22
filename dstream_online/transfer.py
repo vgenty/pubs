@@ -16,6 +16,7 @@ import ifdh
 import subprocess as sub
 import samweb_cli, extractor_dict
 import pdb, json
+import glob
 
 ## @class transfer
 #  @brief Transferring files
@@ -43,9 +44,9 @@ class transfer( ds_project_base ):
 
         self._nruns = None
         self._out_dir = ''
-        self._outfile_format = ''
+        #self._outfile_format = ''
         self._in_dir = ''
-        self._meta_dir = ''
+        #self._meta_dir = ''
         self._infile_format = ''
         self._parent_project = ''
 
@@ -56,9 +57,9 @@ class transfer( ds_project_base ):
 
         self._nruns = int(resource['NRUNS'])
         self._out_dir = '%s' % (resource['OUTDIR'])
-        self._outfile_format = resource['OUTFILE_FORMAT']
+        #self._outfile_format = resource['OUTFILE_FORMAT']
         self._in_dir = '%s' % (resource['INDIR'])
-        self._meta_dir = '%s' % (resource['METADIR'])
+        #self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
         self._max_wait = int(resource['MAX_WAIT'])
@@ -79,8 +80,6 @@ class transfer( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        # self.info('Here, self._nruns=%d ... ' % (self._nruns) )
-
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project, self._parent_project],
@@ -88,100 +87,100 @@ class transfer( ds_project_base ):
 
             # Counter decreases by 1
             ctr -= 1
-
+            
             (run, subrun) = (int(x[0]), int(x[1]))
-
+            
             # Report starting
             self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun) )
-
+            
             status = 1
-
+            
             # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % ( self._in_dir, self._infile_format % ( run, subrun ) )
-            in_json = '%s/%s.json' %( self._meta_dir, self._infile_format % ( run, subrun ) )
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
-            out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
 
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_json = '%s.json' % in_file
+            in_file_base = os.path.basename(in_file)
+            out_file = '%s/%s' % ( self._out_dir, in_file_base)
+            out_json = '%s/%s.json' % ( self._out_dir, in_file_base)
+            
             # construct ifdh object
             #ih = ifdh.ifdh()
             #we're gonna use subprocess to parallelize these transfers and construct an ifdh command by hand
-
-            if (os.path.isfile( in_file ) and (os.path.isfile( in_json )):
+            
+            if (os.path.isfile( in_file ) and (os.path.isfile( in_json ))):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
 
                 try:
-                    if "pnnl" not in self._project:
-                        cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
-                        print cmd
-                        proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
-                        done_list.append(False)
-                        run_id.append((run,subrun))
-                        self.info('Started transfer for (run,subrun)=%s @ %s' % (run_id[-1], time.strftime('%Y-%m-%d %H:%M:%s')))
-                        status_code=3
-                        status = ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = status_code )
-                        self.log_status( status )
+                    cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
+                    proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
+                    done_list.append(False)
+                    run_id.append((run,subrun))
+                    self.info('Started transfer for (run,subrun)=%s @ %s' % (run_id[-1], time.strftime('%Y-%m-%d %H:%M:%s')))
+                    status_code=3
+                    status = ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = subrun,
+                                        seq     = 0,
+                                        status  = status_code )
+                    self.log_status( status )
 
                         # if not parallelized, wait till proc is done
-                        if not self._parallelize:
-                            time_spent = 0
-                            while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
-                                time.sleep(1)
-                                time_spent +=1
+                    if not self._parallelize:
+                        time_spent = 0
+                        while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
+                            time.sleep(1)
+                            time_spent +=1
 
-                                if time_spent > self._max_wait:
-                                    self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
-                                    proc_list[-1].kill()
+                            if time_spent > self._max_wait:
+                                self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
+                                proc_list[-1].kill()
+                                status = ds_status( project = self._project,
+                                                    run     = run_id[-1][0],
+                                                    subrun  = run_id[-1][1],
+                                                    seq     = 0,
+                                                    status  = 555 )
+                                self.log_status( status )
+                                time.sleep(5)
+                                
+                                if proc_list[-1].poll() is None:
+                                    self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
+                                    subprocess.call(['kill','-9',str(proc_list[-1].pid)])
                                     status = ds_status( project = self._project,
                                                         run     = run_id[-1][0],
                                                         subrun  = run_id[-1][1],
                                                         seq     = 0,
-                                                        status  = 555 )
+                                                        status  = 666 )
                                     self.log_status( status )
-                                    time.sleep(5)
+                                break
 
-                                    if proc_list[-1].poll() is None:
-                                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
-                                        subprocess.call(['kill','-9',str(proc_list[-1].pid)])
-                                        status = ds_status( project = self._project,
-                                                            run     = run_id[-1][0],
-                                                            subrun  = run_id[-1][1],
-                                                            seq     = 0,
-                                                            status  = 666 )
-                                        self.log_status( status )
-                                        break
-
-                            self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
-                            status = ds_status( project = self._project,
-                                                run     = run_id[-1][0],
-                                                subrun  = run_id[-1][1],
-                                                seq     = 0,
-                                                status  = 0 )
-                            self.log_status( status )
-
-                        else:
-                            time.sleep(1)
-
-                    # If this project is xfer'ing data to PNNL, we use gsiftp-to-sshftp in pnnl_transfer().
-                    else: 
-
-                        (resi, resj) = self.pnnl_transfer(in_file)
-                        if resi == 0 and resj == 0:
-                            status_code = 0
-                        else:
-                            status_code = 101
-                            
+                        self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
                         status = ds_status( project = self._project,
                                             run     = run_id[-1][0],
                                             subrun  = run_id[-1][1],
                                             seq     = 0,
-                                            status  = status_code )
+                                            status  = 0 )
                         self.log_status( status )
 
+                    else:
+                        time.sleep(1)
+                
                 except:
                     self.error('Caught the exception and setting the status back to 1 for (run,subrun) = (%s, %s)' % (x[0],x[1]))
                     status = 1
@@ -193,6 +192,9 @@ class transfer( ds_project_base ):
                     self.log_status( status )
 
             else:
+                self.error('Did not find the files that you told me to look for (run,subrun) = (%s, %s)' % (x[0],x[1]))
+                self.error('Not found: %s' % (in_file) )
+                self.error('Or not found: %s' % (in_json) )
                 status = 100
                 status = ds_status( project = self._project,
                                     run     = int(x[0]),
@@ -281,10 +283,27 @@ class transfer( ds_project_base ):
             self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 2
-            #out_file = '%s' % ( self._outfile_format % (run,subrun) )
-            #out_json = '%s.json' %( self._outfile_format % (run,subrun) )
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
-            out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            if_file_basename = os.path.basename(in_file)
+            out_file = '%s/%s' % ( self._out_dir, in_file_base)
+            out_json = '%s/%s.json' %( self._out_dir, in_file_base)
 
             # construct ifdh object
             ih = ifdh.ifdh()
@@ -311,138 +330,6 @@ class transfer( ds_project_base ):
 
             # Break from loop if counter became 0
             if not ctr: break
-
-    def pnnl_transfer( self, file_arg ):
-
-        # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
-        # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
-        # This requires that uboonepro owns a valid proxy. We should get 2 Gbps throughput with this scenario.
-        # Need more logging to message service ... also let's put all this into a function that we call.
-
-
-        cmd = "voms-proxy-info -all "
-        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-        (out,err) = proc.communicate()
-        goodProxy = False
-
-        for line in out.split('\n'):
-            if "timeleft" in line:
-                if int(line.split(" : ")[1].replace(":","")) > 0:
-                    goodProxy = True
-                    break;
-
-        if not goodProxy:
-            self.error('uboonepro has no proxy.')
-            raise Exception 
-   
-
-        in_file = os.path.basename(file_arg)
-        # We do a samweb.fileLocate on basename of in_file. This project's parent must be check_on_tape, because
-        # we presume the existence of the file in SAM and at enstore:/pnfs/uboone.
-        transfer = 0
-        samweb = samweb_cli.SAMWebClient(experiment="uboone")
-        loc = samweb.locateFile(filenameorid=in_file)
-        size_in = samweb.getMetadata(filenameorid=in_file)['file_size']
-        samcode = 12
-
-        if not ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
-            self.error('No enstore or pnfs in loc[0]["full_path"]')
-            return (transfer, samcode)
-
-
-        full_file = loc[0]["full_path"].replace('enstore:/pnfs/uboone','') + "/" +  in_file
-
-        pnnl_machine = "dtn2.pnl.gov"
-        pnnl_dir = 'pic/projects/microboone/data/'
-        ddir = str(samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
-        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + ddir
-        proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-        # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
-        (out,err) = proc.communicate() 
-        
-        pnnl_loc = pnnl_machine + "/" + pnnl_dir + ddir + "/" + in_file
-        cmd_gsiftp_to_sshftp = "globus-url-copy -rst -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
-
-        # Popen() gymnastics here
-        ntry = 0
-        delay = 5
-        ntry_max = 1 # more than 1 is not demonstrably helping. In fact, it creates lotsa orphaned ssh's. EC, 8-Aug-2015.
-        ndelays = 20
-        while (ntry != ntry_max):
-            self.info('Will launch ' + cmd_gsiftp_to_sshftp)
-            info_str = "pnnl_transfer trying " + str(ntry+1) + " (of " + str(ntry_max) + ") times."
-            self.info (info_str)
-            proc = sub.Popen(cmd_gsiftp_to_sshftp,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-            wait = 0
-            transfer = 0
-            while  proc.poll() is None:
-                wait+=delay
-                if wait > delay*ndelays:
-                    self.error ("pnnl_transfer timed out in awaiting transfer.")
-                    proc.kill()
-                    transfer = 11
-                    break
-                self.info('pnnl_transfer process ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec]')
-                time.sleep (delay)
-            if (transfer != 11):
-                break
-
-            # This rm usually fails for reasons I don't understand. If it succeeded the retry would work.
-            # Commenting it out, since we're setting ntry_max=1 now anyway, EC 8-Aug-2015.
-            # rm the (usually) 0 length file.
-            #cmd_rm = "ssh chur558@" + pnnl_machine + " rm -f "  + "/" + pnnl_dir + ddir + "/" + in_file
-            #proc = sub.Popen(cmd_rm,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-            #self.info("pnnl_transfer process: Attempting to remove " + pnnl_dir + ddir + "/" + in_file)
-            #time.sleep(5) # give it 5 seconds, then kill it if not done.
-            #if proc.poll() is None:
-            #    proc.kill()
-            #    self.error("pnnl_transfer process: " + cmd_rm + " failed.")
-
-            ntry+=1
-            ndelays+=10 # extend time period to force timeout for next effort.
-
-
-
-
-        size_out = 0
-        if not transfer:
-            (out,err) = proc.communicate()
-            transfer = proc.returncode
-                # also grep the out for indication of success at end.
-
-            if not transfer:
-#                self.info('out is ' + out)
-                li = out.split(" ")
-                mind = max(ind for ind, val in enumerate(li) if val == 'bytes') - 1
-                size_out = int(li[mind])
-                transfer = 10
-
-                if size_out == size_in:
-                    transfer = 0
-
-
-# end file lives in enstore
-
-
-        if not transfer:
-            try:
-                # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
-                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + ddir + "/" + in_file
-                samadd = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc_withcolon)
-                samloc  = samweb.locateFile(filenameorid=in_file)
-                if len(samloc)>0:
-                    samcode = 0
-                    self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
-                    self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
-                    self.info('Transfer and samaddFile are successful. Full SAM location for file is now ' + str(samloc))
-            except:
-                self.error('pnnl_transfer finished with a problem on ' + in_file + ' during addFile or locFile. samadd/samloc is: ' + str(samadd)+"/"+str(samloc))
-        else:
-            self.error('pnnl_transfer finished with a problem on ' + in_file)
-                
-        return (transfer, samcode)
-
-
 
 
 # A unit test section

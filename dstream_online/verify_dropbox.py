@@ -15,6 +15,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_cli
 import traceback
+import glob
 
 pnfs_prefixes = {
    "/pnfs/cdfen": "srm://cdfdca1.fnal.gov:8443/srm/managerv2?SFN=",
@@ -90,6 +91,7 @@ class verify_dropbox( ds_project_base ):
 
         self._nruns = None
         self._in_dir = ''
+        self._out_dir = ''
         self._infile_format = ''
         self._parent_project = ''
         self._experts = ''
@@ -103,6 +105,7 @@ class verify_dropbox( ds_project_base ):
         self._nruns = int(resource['NRUNS'])
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
+        self._out_dir = '%s' % (resource['OUTDIR'])
         self._parent_project = resource['PARENT_PROJECT']
         self._ref_project = resource['REF_PROJECT']
         self._experts = resource['EXPERTS']
@@ -135,16 +138,33 @@ class verify_dropbox( ds_project_base ):
             self.info('Calculating the file checksum: run=%d, subrun=%d ...' % (run,subrun))
 
             statusCode = 1
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
 
-            in_file_name = self._infile_format % ( run, subrun )
-            in_file = '%s/%s' % ( self._in_dir, in_file_name )
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_file_name = os.path.basename(in_file)
+            out_file = '%s/%s' % ( self._out_dir, in_file_name )
 
             #Note that this has the sequence number hard coded as number 0
             RefStatus = self._api.get_status( ds_status(self._ref_project, run, subrun, 0))
             near1_checksum = RefStatus._data
 
             try:
-                pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( in_file )
+                pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
                 near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
 
                 if near1_adler32_1 == pnfs_adler32_1:
@@ -162,7 +182,7 @@ class verify_dropbox( ds_project_base ):
 
             except LookupError:
 
-                self.warning("Could not find file in the dropbox %s" % in_file)
+                self.warning("Could not find file in the dropbox %s" % out_file)
                 self.warning("Gonna go looking on tape %s" % in_file_name)
                 samweb = samweb_cli.SAMWebClient(experiment="uboone")
                 meta = {}

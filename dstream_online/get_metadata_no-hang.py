@@ -18,6 +18,7 @@ import samweb_client.utility
 import extractor_dict
 import pdb
 import subprocess
+import glob
 
 
 ## @Class dstream_online.get_metadata
@@ -46,7 +47,7 @@ class get_metadata( ds_project_base ):
         self._project = arg
 
         self._nruns = None
-        self._out_dir = ''
+#        self._out_dir = ''
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
@@ -70,7 +71,7 @@ class get_metadata( ds_project_base ):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-        self._out_dir = '%s' % (resource['OUTDIR'])
+#        self._out_dir = '%s' % (resource['OUTDIR'])
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
@@ -103,45 +104,52 @@ class get_metadata( ds_project_base ):
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 1
-            
-            # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
 
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
 
-#
-# Looks fine now, but if there are new troubles: run this project with NRUNS=1
-#
-            if os.path.isfile(in_file):
-                self.info('Found %s' % (in_file))
-#                shutil.copyfile(in_file,out_file)
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
 
-                if in_file.strip().split('.')[-1] == "ubdaq":
-                    status, jsonData = self.get_ubdaq_metadata( in_file, run, subrun )
+            in_file = filelist[0]
+            out_file = '%s.json' % in_file
+            self.info('Found %s' % (in_file))
 
-                else:
+            if in_file.strip().split('.')[-1] == "ubdaq":
+                status, jsonData = self.get_ubdaq_metadata( in_file, run, subrun )
+            else:
+                try:
+                    jsonData = extractor_dict.getmetadata( in_file )
+                    status = 3
+                    self.info('Successfully extract metadata from the swizzled file.')
+                except:
+                    status = 100
+                    self.error('Failed extracting metadata from the swizzled file.')
+                    
+            if not status == 100:
+                with open(out_file, 'w') as ofile:
+                    json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
+                    # To Eric: what are you doing here?
                     try:
-                        jsonData = extractor_dict.getmetadata( in_file )
-                        status = 3
-                        self.info('Successfully extract metadata from the swizzled file.')
-                    except:
-                        status = 100
-                        self.error('Failed extracting metadata from the swizzled file.')
-
-                if not status == 100:
-                    with open(out_file, 'w') as ofile:
-                        json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-                        # To Eric: what are you doing here?
-                        try:
-                            samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
                             # samweb.validateFileMetadata(json_file) # this throws/raises exception
-                            status = 2
-                        except:
-                            self.error( "Problem with samweb metadata: ", jsonData)
-                            self.error( sys.exc_info()[0])
-                            status=100
+                        status = 2
+                    except:
+                        self.error( "Problem with samweb metadata: ", jsonData)
+                        self.error( sys.exc_info()[0])
+                        status=100
  
-
             else:
                 status = 1000
                 self.error('Did not find the input file %s' % in_file )
@@ -187,8 +195,25 @@ class get_metadata( ds_project_base ):
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 1
-            in_file = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            out_file = '%s.json' % in_file
 
             if os.path.isfile(out_file):
 #                os.system('rm %s' % in_file)
@@ -238,7 +263,25 @@ class get_metadata( ds_project_base ):
 
             status = 1
 
-            out_file = '%s/%s.json' % (self._out_dir,self._infile_format % (run,subrun))
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            out_file = '%s.json' % in_file
 
             if os.path.isfile(out_file):
                 os.system('rm %s' % out_file)

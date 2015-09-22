@@ -1,6 +1,6 @@
-## @namespace dstream_online.transfer
+## @namespace dstream_online.transfer_remote
 #  @ingroup dstream_online
-#  @brief Defines a project transfer
+#  @brief Defines a project transfer_remote
 #  @author echurch,yuntse
 
 # python include
@@ -11,29 +11,27 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-# ifdh
-import ifdh
 import subprocess as sub
 import samweb_cli, extractor_dict
 import pdb, json
 
-## @class transfer
+## @class transfer_remote
 #  @brief Transferring files
 #  @details
 #  This process mv's a file to a dropbox directory for SAM to whisk it away...
 #  Status codes:
 #    2: Copied the file to dropbox
 
-class transfer( ds_project_base ):
+class transfer_remote( ds_project_base ):
 
     # Define project name as class attribute
-    _project = 'transfer'
+    _project = 'transfer_remote'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super( transfer, self ).__init__( arg )
+        super( transfer_remote, self ).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -61,6 +59,7 @@ class transfer( ds_project_base ):
         self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
+        exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
 
     ## @brief Transfer files to dropbox
     def transfer_file( self ):
@@ -79,7 +78,7 @@ class transfer( ds_project_base ):
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project, self._parent_project],
-                                      [1, 0]):
+                                      [1, 0],self._sort_new_to_old):
 
             # Counter decreases by 1
             ctr -= 1
@@ -127,60 +126,6 @@ class transfer( ds_project_base ):
                                 run     = int(x[0]),
                                 subrun  = int(x[1]),
                                 seq     = 0,
-                                status  = status )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
-
-    ## @brief Validate the dropbox
-    def validate_outfile( self ):
-
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-            self.error('Cannot connect to DB! Aborting...')
-            return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
-        # Fetch runs from DB and process for # runs specified for this instance.
-        ctr = self._nruns
-        for x in self.get_runs( self._project, 2 ):
-
-            # Counter decreases by 1
-            ctr -=1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
-
-            status = 2
-            out_file = '%s' % ( self._outfile_format % (run,subrun) )
-            out_json = '%s.json' %( self._outfile_format % (run,subrun) )
-
-            # construct ifdh object
-            ih = ifdh.ifdh()
-
-            try:
-                ih.locateFile( out_file )
-                ih.locateFile( out_json )
-                status = 0
-            except:
-                status = 1
-
-            # Pretend I'm doing something
-            time.sleep(1)
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = int(x[2]),
                                 status  = status )
 
             # Log status
@@ -327,7 +272,7 @@ if __name__ == '__main__':
 
     proj_name = sys.argv[1]
 
-    obj = transfer( proj_name )
+    obj = transfer_remote( proj_name )
 
     obj.transfer_file()
 

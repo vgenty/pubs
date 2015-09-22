@@ -16,6 +16,7 @@ from dstream import ds_status
 import samweb_cli
 import json
 import traceback
+import glob
 
 
 ## @class dummy_nubin_xfer
@@ -49,7 +50,7 @@ class reg_files_to_sam( ds_project_base ):
 
         self._nruns = None
         self._in_dir = ''
-        self._meta_dir = ''
+        #self._meta_dir = ''
         self._infile_format = ''
         self._parent_project = []
         self._project_list = [ self._project, ]
@@ -62,7 +63,7 @@ class reg_files_to_sam( ds_project_base ):
         
         self._nruns = int(resource['NRUNS'])
         self._in_dir = '%s' % (resource['INDIR'])
-        self._meta_dir = '%s' % (resource['METADIR'])
+        #self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._experts = resource['EXPERTS']
 
@@ -108,9 +109,25 @@ class reg_files_to_sam( ds_project_base ):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file_base = self._infile_format % ( run, subrun )
-            in_file = '%s/%s' % ( self._in_dir, in_file_base )
-            in_json = '%s/%s.json' %( self._meta_dir, in_file_base )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_json = '%s.json' % in_file
 
             self.info('Declaring ' + in_file + ' to SAM: using ' + in_json  )
             
@@ -127,6 +144,7 @@ class reg_files_to_sam( ds_project_base ):
 
                 # Check if the file already exists at SAM
                 try:
+                    in_file_base=os.path.basename(in_file)
                     samweb.getMetadata(filenameorid=in_file_base)
                     status = 101
                     # Email the experts
@@ -208,7 +226,25 @@ File %s failed to be declared to SAM!
 
             status = 12
 
-            in_file_base = self._infile_format % ( run, subrun )
+            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
+            filelist = glob.glob( in_file_holder )
+            if (len(filelist)<1):
+                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )                
+                continue
+
+            if (len(filelist)>1):
+                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('ERROR: List of files found %s' % filelist)
+
+            in_file = filelist[0]
+            in_file_base = os.path.basename(in_file)
             samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
             # Check if the file already exists at SAM
