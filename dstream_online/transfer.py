@@ -87,6 +87,7 @@ class transfer( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
+        self.info('Start transfer_file @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
         #
         # Process Postpone first
         #

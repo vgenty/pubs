@@ -39,6 +39,7 @@ class ds_clean(ds_project_base):
             return
 
         self._nruns = None
+        self._min_run = 0
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
@@ -67,6 +68,9 @@ class ds_clean(ds_project_base):
             self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
+
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
 
         if 'REMOVE_POSTPONE_STATUS' in resource:
             exec('self._remove_postpone = bool(%s)' % resource['REMOVE_POSTPONE_STATUS'])
@@ -145,10 +149,13 @@ class ds_clean(ds_project_base):
         self.info('Found %d runs to be processed (from project %s)...' % (len(target_runs),self._parent_project))
         for x in target_runs + postpone_status_runs:
 
+            (run, subrun) = (int(x[0]), int(x[1]))
+
+            if run < self._min_run: 
+                continue
+
             # Counter decreases by 1
             ctr -=1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
 
             tmp_status = 1
             rm_status = 1
@@ -288,10 +295,12 @@ Error message:
         ctr = self._nruns
         for x in self.get_runs(self._project,100,False):
 
+            (run, subrun) = (int(x[0]), int(x[1]))
+
+            if run < self._min_run: continue
+
             # Counter decreases by 1
             ctr -=1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
 
             # Report starting
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
