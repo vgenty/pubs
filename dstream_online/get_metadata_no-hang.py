@@ -137,7 +137,7 @@ class get_metadata( ds_project_base ):
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -148,8 +148,8 @@ class get_metadata( ds_project_base ):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             out_file = '%s.json' % in_file
@@ -335,19 +335,19 @@ class get_metadata( ds_project_base ):
     def check_proc(self, proc):
 
         killstat = 0
-        delay = 5
-        ndelays = 10
+        killtime = 50
+        sleepunit = 0.5
         wait = 0
         while  proc.poll() is None:
-            wait+=delay
-            if wait > delay*ndelays:
-                self.error ("dumpEventHeaders, pid " + str(proc.pid)+ " still alive after " + str(delay*ndelays) +  " seconds. We will now kill it.")
+            if wait > killtime:
+                self.error ("dumpEventHeaders, pid " + str(proc.pid)+ " still alive after " + str(killtime) +  " seconds. We will now kill it.")
                 proc.kill()
                 killstat = 11
                 break
-            self.info('dumpEventHeaders, pid ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec].')
-            time.sleep (delay)
-
+            if int(wait) and int(wait)%5 == 0:
+                self.info('dumpEventHeaders, pid ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec].')
+            time.sleep (sleepunit)
+            wait += sleepunit
         return killstat
 
 
@@ -359,11 +359,11 @@ class get_metadata( ds_project_base ):
             Replace  all the former code that used pythonized C++ objects with a call to uboonedaq_datatypes binary
             dumpEventHeaders and pull the needed values from stdout.
             '''
-
+            self.info('Start extracting daq metadata @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
             status = 1
             #print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
             cmd = "dumpEventHeaders " + in_file + " 1000000 "
-#            pdb.set_trace()
+            #pdb.set_trace()
             proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             check = self.check_proc(proc) # don't proceed to communicate until done or killed.
             (out,err) = proc.communicate() 
@@ -385,7 +385,7 @@ class get_metadata( ds_project_base ):
 
             # print "Load first event in file."
             cmd = "dumpEventHeaders " + in_file + " 1 "
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             check = self.check_proc(proc) # don't proceed to communicate until done or killed.
             (out,err) = proc.communicate() # blocks till done.
             if (not proc.returncode) and (not check):
@@ -402,6 +402,7 @@ class get_metadata( ds_project_base ):
             if status != 100:
                 status = 3
                 self.info('Successfully extract metadata from the ubdaq file.')
+                self.info('Finished extracting metadata @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
         except:
             self.error ("Unexpected error:", sys.exc_info()[0] )
