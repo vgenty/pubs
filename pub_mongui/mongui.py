@@ -58,8 +58,6 @@ scene_xmin, scene_ymin, scene_width, scene_height = 0, 0, pm.width(), pm.height(
 #Make the scene the correct size
 scene = CustomQGraphicsScene(scene_xmin,scene_ymin,scene_width,scene_height)
 
-# scene.setCacheMode(QtGui.QGraphicsView.CacheBackground)
-
 #Make custom (zoomable) view from the scene and show it
 view = CustomQGraphicsView(scene,pm)
 
@@ -129,8 +127,6 @@ myfont = QtGui.QFont()
 myfont.setPointSize(10)
 mytext.setFont(myfont)
 scene.addItem(mytext)
-scene.addText('test text woohoo',QtGui.QFont('Arial',20))
-
 
 def update_gui():
     # ==> timeprofiling: entire update_gui function takes 1.2 seconds if you take out the daemon text stuff

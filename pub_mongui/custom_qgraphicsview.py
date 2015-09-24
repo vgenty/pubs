@@ -12,6 +12,7 @@ class CustomQGraphicsView(QtGui.QGraphicsView):
         QtGui.QGraphicsView.__init__(self,scene)
         self.background_pixmap = background_pixmap
         self._ignore_resize = False
+        self.resize(self.background_pixmap.width(),self.background_pixmap.height())
 
     def __del__(self):
         pass
