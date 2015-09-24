@@ -98,6 +98,7 @@ class ds_daemon(object):
              not self._log_lifetime == rhs._log_lifetime or
              not self._runsync_time == rhs._runsync_time or
              not self._update_time == rhs._update_time or
+             not self._cleanup_time == rhs._cleanup_time or
              not self._email == rhs._email or
              not self._enable == rhs._enable) :
             return False
