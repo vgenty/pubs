@@ -35,8 +35,12 @@ class ds_beamdaq(ds_project_base):
         self._istest   = None
         self._fcldir   = ''
         self._fclfile  = ''
+        self._fclnew    = ''
         self._infodir  = ''
         self._infofile = ''
+        self._logdir   = ''
+        self._logfile  = ''
+        self._beampath = ''
         self._timedir  = ''
         self._timefile = ''
 
@@ -59,9 +63,13 @@ class ds_beamdaq(ds_project_base):
             self._fclfile  = resource['FCLFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
+            self._logdir   = resource['LOGDIR']
+            self._logfile  = resource['LOGFILE']
+            self._beampath = resource['BEAMPATH']
             if self._istest == 1:
             	self._timedir  = resource['TIMEDIR']
             	self._timefile = resource['TIMEFILE']
+            self._fclnew   = self._fclfile.replace(".fcl","_local.fcl")
 
         ctr = self._nruns
         for x in self.get_runs(self._project,1):
@@ -90,12 +98,26 @@ class ds_beamdaq(ds_project_base):
             else:
                 # Read timestamp from DB
                 timestamp = self._api.run_timestamp('MainRun',run,subrun)
-                tbegin=datetime.datetime.strptime(timestamp[0], "%a %b %d %H:%M:%S %Z %Y")
-                tend=datetime.datetime.strptime(timestamp[1], "%a %b %d %H:%M:%S %Z %Y")
+                #tbegin=datetime.datetime.strptime(timestamp[0], "%a %b %d %H:%M:%S %Z %Y")
+                #tend=datetime.datetime.strptime(timestamp[1], "%a %b %d %H:%M:%S %Z %Y")
+                tbegin=timestamp[0]
+                tend=timestamp[1]
 
             # Report starting
             self.info('Getting beam data: run=%d, subrun=%d' % (run,subrun))
             self.info('  t0=%s, t1=%s' % (tbegin,tend))
+
+            # Put parameters into fhicl
+            fcl_file=open('%s/%s'%(self._fcldir,self._fclfile),'r')
+            fcl_new =open(self._fclnew,'w')
+            fcl_tmp = fcl_file.read()
+            fcl_tmp = fcl_tmp.replace('BEAM_PATH',self._beampath)
+            fcl_tmp = fcl_tmp.replace('INFO_PATH',self._infodir)
+            fcl_tmp = fcl_tmp.replace('LOG_FILE','%s/%s'%(self._logdir,self._logfile%(run,subrun)))
+            fcl_tmp = fcl_tmp.replace('vxx_yy_zz',os.environ["LARSOFT_VERSION"])
+            fcl_new.write(fcl_tmp)
+            fcl_file.close()
+            fcl_new.close()
 
             cmd='bdaq_get --run-number %i --subrun-number %i --begin-time %i %i --end-time %i %i -f %s/%s'%(run,subrun,int(tbegin.strftime("%s")),0,int(tend.strftime("%s"))+1,0,self._fcldir,self._fclfile)
             self.info('Run cmd: %s'%cmd)

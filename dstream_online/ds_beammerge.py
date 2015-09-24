@@ -30,17 +30,21 @@ class ds_beammerge(ds_project_base):
         # Call base class ctor
         super(ds_beammerge,self).__init__()
 
-        self._nruns    = None
-        self._logdir   = ''
-        self._logfile  = ''
-        self._infodir  = ''
-        self._infofile = ''
-        self._outdir  = ''
-        self._outfile = ''
-        self._beamdir  = ''
-        self._beamfile = ''
-        self._detdir  = ''
-        self._detfile = ''
+        self._nruns     = None
+        self._fcldir    = ''
+        self._fclfile   = ''
+        self._fclnew    = ''
+        self._logdir    = ''
+        self._logfile   = ''
+        self._infodir   = ''
+        self._infofile  = ''
+        self._beampath  = ''
+        self._detdir    = ''
+        self._detfile   = ''
+        self._boutdir   = ''
+        self._boutfile  = ''
+        self._mergedir  = ''
+        self._mergefile = ''
         self._parent_project = ''
 
     ## @brief access DB and retrieves new runs
@@ -57,20 +61,23 @@ class ds_beammerge(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns    = int(resource['NRUNS'])
+            self._fcldir   = resource['FCLDIR']
+            self._fclfile  = resource['FCLFILE']
             self._logdir   = resource['LOGDIR']
             self._logfile  = resource['LOGFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
-            self._beamdir  = resource['BEAMDIR']
-            self._beamfile = resource['BEAMFILE']
+            self._beampath = resource['BEAMPATH']
             self._detdir   = resource['DETDIR']
             self._detfile  = resource['DETFILE']
-            self._outdir   = resource['OUTDIR']
-            self._outfile  = resource['OUTFILE']
+            self._boutdir  = resource['BOUTDIR']
+            self._boutfile = resource['BOUTFILE']
+            self._mergedir = resource['MERGEDIR']
+            self._mergefile= resource['MERGEFILE']
             self._parent_project = resource['PARENT_PROJECT']
+            self._fclnew   = self._fclfile.replace(".fcl","_local.fcl")
 
         ctr = self._nruns
-        self.info('***************** %s'%(self._infofile%(1,1)))
         for x in self.get_xtable_runs([self._project, self._parent_project], 
                                       [            1,                    0]):
             # Counter decreases by 1
@@ -90,18 +97,29 @@ class ds_beammerge(ds_project_base):
                     wds=line.split()
                     if (int(wds[2])>0):
                         self.info('Merging %i %s events'%(int(wds[2]),wds[0]))
-                        cmd+=' -b %s/%s'%(self._beamdir,self._beamfile%(wds[0],run,subrun))
                         nfiles+=1
 
             if (nfiles==0):
                 self.info('No beam events to merge!')
                 return
 
-            cmd+=' -d %s/%s'%(self._detdir,self._detfile%(run,subrun))
-            cmd+=' -o %s/%s'%(self._outdir,self._outfile%(run,subrun))
+            # Put path to beam files and version into fhicl
+            fcl_file=open('%s/%s'%(self._fcldir,self._fclfile),'r')
+            fcl_new =open(self._fclnew,'w')
+            fcl_tmp = fcl_file.read()
+            fcl_tmp = fcl_tmp.replace('BEAM_PATH',self._beampath)
+            fcl_tmp = fcl_tmp.replace('vxx_yy_zz',os.environ["LARSOFT_VERSION"])
+            fcl_new.write(fcl_tmp)
+            fcl_file.close()
+            fcl_new.close()
+
+            cmd+=' -c %s'%(self._fclnew)
+            cmd+=' -s %s/%s'%(self._detdir,self._detfile%(run,subrun))
+            cmd+=' -o %s/%s'%(self._mergedir,self._mergefile%(run,subrun))
+            cmd+=' -T %s/%s'%(self._boutdir,self._boutfile%(run,subrun))
             cmd+=' > %s/%s'%(self._logdir,self._logfile%(run,subrun))
 
-            cmd='bdaq_merge '+cmd
+            cmd='lar '+cmd
 
             self.info('Run cmd: %s'%cmd)
             subprocess.call( cmd, shell = True )
@@ -133,8 +151,6 @@ class ds_beammerge(ds_project_base):
             resource = self._api.get_resource(self._project)
 
             self._nruns    = int(resource['NRUNS'])
-            self._beamdir  = resource['BEAMDIR']
-            self._beamfile = resource['BEAMFILE']
             self._infodir  = resource['INFODIR']
             self._infofile = resource['INFOFILE']
 

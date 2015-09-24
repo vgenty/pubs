@@ -26,7 +26,7 @@ class mv_assembler_daq_files(ds_project_base):
     _out_dir = ''
     _infile_foramt  = ''
     _outfile_format = ''
-    _parallelize = False
+    _parallelize = 0
     _max_wait = 600
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
@@ -45,13 +45,15 @@ class mv_assembler_daq_files(ds_project_base):
             return False
         try:
             resource = self._api.get_resource(self._project)
-#            self._nruns = int(resource['NRUNS'])
-            self._nruns = 2
+            self._nruns = int(resource['NRUNS'])
             self._out_dir = '%s' % (resource['OUTDIR'])
             self._in_dir = '%s' % (resource['INDIR'])
             self._infile_format = resource['INFILE_FORMAT']
             self._outfile_format = resource['OUTFILE_FORMAT']
-            exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
+            #exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
+
+            if 'PARALLELIZE' in resource:
+                self._parallelize = int(resource['PARALLELIZE'])
             self._max_wait = int(resource['MAX_WAIT'])
         except Exception:
             return False
@@ -60,7 +62,10 @@ class mv_assembler_daq_files(ds_project_base):
 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
-
+        if self._parallelize:
+            self.info('Starting a parallel (%d) transfer process for %d runs...' % (self._parallelize,self._nruns))
+        else:
+            self.info('Starting a sequential transfer process for %d runs...' % self._nruns)
         ctr = self._nruns
         proc_list=[]
         done_list=[]
@@ -120,7 +125,7 @@ class mv_assembler_daq_files(ds_project_base):
 
                 self.log_status( status )
 
-            # if not parallelized, wait till proc is done
+                # if not parallelized, wait till proc is done
                 if not self._parallelize:
                     time_spent = 0
                     while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
@@ -137,7 +142,7 @@ class mv_assembler_daq_files(ds_project_base):
                                 subprocess.call(['kill','-9',str(proc_list[-1].pid)])
                                 break
 
-                    self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
+                    self.info('Finished sequential copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
                     status = ds_status( project = self._project,
                                         run     = run_id[-1][0],
                                         subrun  = run_id[-1][1],
@@ -145,9 +150,54 @@ class mv_assembler_daq_files(ds_project_base):
                                         status  = 2 )
                     self.log_status( status )
 
-            # if parallelized, just sleep 5 sec and go next run
+                # if parallelized, wait till at least processes go down to specified number
                 else:
-                    time.sleep(5)
+                    active_counter = self._parallelize
+                    time_spent = 0
+                    while 1:
+                        active_counter = 0
+                        for x in xrange(len(proc_list)):
+                            if done_list[x]: continue
+                            if not proc_list[x].poll() is None:
+                                self.info('Finished parallel copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
+                                status_code = 2
+                                status = ds_status( project = self._project,
+                                                    run     = run_id[x][0],
+                                                    subrun  = run_id[x][1],
+                                                    seq     = 0,
+                                                    status  = status_code )
+                                self.log_status( status )
+                                done_list[x] = True
+                            else:
+                                active_counter += 1
+
+                        if active_counter <= self._parallelize:
+                            break
+
+                        time.sleep(5)
+                        time_spent+=5
+                        if time_spent == 5: continue
+
+                        if time_spent%10:
+                            self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
+                        if time_spent > self._max_wait:
+                            self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
+                            for x in xrange(len(proc_list)):
+                                proc_list[x].kill()
+
+                                status_code = 101
+                                status = ds_status( project = self._project,
+                                                    run     = run_id[x][0],
+                                                    subrun  = run_id[x][1],
+                                                    seq     = 0,
+                                                    status  = status_code )
+                                self.log_status( status )
+
+                                # hard kill if still alive
+                                time.sleep(5)
+                                if proc_list[x].poll() is None:
+                                    self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
+                                    subprocess.call(['kill','-9',str(proc_list[x].pid)])
 
             if not ctr: break
         
