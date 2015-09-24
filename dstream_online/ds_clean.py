@@ -64,12 +64,12 @@ class ds_clean(ds_project_base):
 
         try:
             self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)',(self._nruns_to_postpone,kSTATUS_POSTPONE))
+            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
 
         if 'REMOVE_POSTPONE_STATUS' in resource:
-            exec('self._remove_postpone = bool(%s)' % resource[REMOVE_POSTPONE_STATUS])
+            exec('self._remove_postpone = bool(%s)' % resource['REMOVE_POSTPONE_STATUS'])
 
         #this constructs the list of projects and their status codes
         #we want the project to be status 1, while the dependent projects to
@@ -125,6 +125,7 @@ class ds_clean(ds_project_base):
                                         subrun  = int(x[1]),
                                         seq     = 0,
                                         status  = kSTATUS_POSTPONE )
+                    self.log_status(status)
                 else:
                     postpone_status_runs.append(x)
                 ctr_postpone += 1
@@ -136,6 +137,9 @@ class ds_clean(ds_project_base):
         #that way the list is old files first to newew files last and clean up that way
         #target_runs = self.get_xtable_runs([self._project, self._parent_project], 
         #                                   [            1,                    0],False)
+
+        for p in self._project_list:
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % p)
 
         target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
         self.info('Found %d runs to be processed (from project %s)...' % (len(target_runs),self._parent_project))

@@ -11,6 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from ds_online_env import *
 # ifdh
 import ifdh
 import subprocess as sub
@@ -67,7 +68,7 @@ class transfer( ds_project_base ):
 
         try:
             self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)',(self._nruns_to_postpone,kSTATUS_POSTPONE))
+            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
 
@@ -104,6 +105,7 @@ class transfer( ds_project_base ):
                                     subrun  = int(x[1]),
                                     seq     = 0,
                                     status  = kSTATUS_POSTPONE )
+                self.log_status(status)
                 ctr_postpone += 1
                 if ctr_postpone > self._nruns_to_postpone: break
                 

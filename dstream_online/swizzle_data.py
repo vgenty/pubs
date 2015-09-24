@@ -100,7 +100,7 @@ class swizzle_data(ds_project_base):
         if self._nruns is None:
             self.get_resource()
 
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        #self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -113,28 +113,18 @@ class swizzle_data(ds_project_base):
 
             # if sampling scale is set, skip some
             if self._sampling_scale and (subrun % self._sampling_scale):
-                self.info('Sampling scale (%d) Skipping (run,subrun) = (%d,%d)' % (run,subrun))
-                status_code=kSTATUS_POSTPONE
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )
+                self.info('Sampling scale (%d) Skipping (run,subrun) = (%d,%d)' % (self._sampling_scale,run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_POSTPONE) )
                 continue
             
             self._log_file_local = self._log_file +  str(run) + "_" + str(subrun) + ".txt"
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
-                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
-                continue
+
             status = 1
             
             # Check input file exists. Otherwise report error

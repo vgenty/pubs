@@ -78,7 +78,7 @@ class reg_files_to_sam( ds_project_base ):
 
         try:
             self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)',(self._nruns_to_postpone,kSTATUS_POSTPONE))
+            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
 
@@ -119,9 +119,12 @@ class reg_files_to_sam( ds_project_base ):
                                     subrun  = int(x[1]),
                                     seq     = 0,
                                     status  = kSTATUS_POSTPONE )
+                self.log_status(status)
                 ctr_postpone += 1
                 if ctr_postpone > self._nruns_to_postpone: break
 
+        for p in self._project_list:
+            self._api.commit('DROP TABLE IF EXISTS temp%s;' % p)
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs(self._project_list,
