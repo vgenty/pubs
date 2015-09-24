@@ -21,7 +21,9 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.x = data[1]
         self.y = data[2]
         self.r = data[3]
-        self.slices = data[4]
+        self.total_files = data[4]
+        self.slices = data[5]
+
         self.n_history_updates = 0
         self.history = {}
         #Descripton is set separately
@@ -35,7 +37,8 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.x = data[1]
         self.y = data[2]
         self.r = data[3]
-        self.slices = data[4]
+        self.total_files = data[4]
+        self.slices = data[5]
         self.was_updated = True
         self.generatePicture()
 
@@ -55,6 +58,7 @@ class PieChartItem(QtGui.QGraphicsObject):
         p.end()    
 
     def paint(self, p, *args):
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
         p.drawPicture(0,0,self.picture)
     
     def boundingRect(self):
@@ -138,3 +142,9 @@ class PieChartItem(QtGui.QGraphicsObject):
 
     def getRadius(self):
         return self.r
+
+    def getTotalFiles(self):
+        return self.total_files
+
+    def getSlices(self):
+        return self.slices
