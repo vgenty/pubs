@@ -11,6 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from ds_online_env import *
 import datetime
 import subprocess as sub
 import glob
@@ -55,7 +56,7 @@ class swizzle_data(ds_project_base):
         self._log_file_list = []
         self._run_list = []
         self._subrun_list = []
-
+        self._sampling_scale = 0
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -78,6 +79,8 @@ class swizzle_data(ds_project_base):
         self._available_memory = resource['AVAIL_MEMORY']
         self._disk_frac_limit = resource['USED_DISK_FRAC_LIMIT']
         self._proc_lifetime = int(resource['LAR_LIFETIME'])
+        if 'SAMPLING_SCALE' in resource:
+            self._sampling_scale = int(resource['SAMPLING_SCALE'])
         # First update the place-holder version currently in the fcl file
         f = open (self._fcl_file,'r')
         n = open (self._fcl_file_new,'w')
@@ -97,7 +100,7 @@ class swizzle_data(ds_project_base):
         if self._nruns is None:
             self.get_resource()
 
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        #self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -107,6 +110,18 @@ class swizzle_data(ds_project_base):
             ctr -= 1
 
             (run, subrun) = (int(x[0]), int(x[1]))
+
+            # if sampling scale is set, skip some
+            if self._sampling_scale and (subrun % self._sampling_scale):
+                self.info('Sampling scale (%d) Skipping (run,subrun) = (%d,%d)' % (self._sampling_scale,run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_POSTPONE) )
+                if not ctr: break
+                continue
+            
             self._log_file_local = self._log_file +  str(run) + "_" + str(subrun) + ".txt"
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
@@ -117,7 +132,7 @@ class swizzle_data(ds_project_base):
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -128,8 +143,8 @@ class swizzle_data(ds_project_base):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             in_file_base_no_ext = os.path.splitext(os.path.basename(in_file))[0]
@@ -430,7 +445,7 @@ class swizzle_data(ds_project_base):
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -441,8 +456,8 @@ class swizzle_data(ds_project_base):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             in_file_base_no_ext = os.path.splitext(os.path.basename(in_file))[0]
