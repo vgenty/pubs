@@ -13,6 +13,7 @@ from pub_util import pub_smtp
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from ds_online_env import *
 import samweb_client.utility
 import traceback
 import glob
@@ -39,7 +40,8 @@ class get_checksum( ds_project_base ):
         self._parent_project = ''
         self._experts = ''
         self._data = ''
-
+        self._nruns_to_postpone = 0
+        
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -51,6 +53,11 @@ class get_checksum( ds_project_base ):
         self._parent_project = resource['PARENT_PROJECT']
         self._experts = resource['EXPERTS']
 
+        try:
+            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
+            self.info('Will process %d runs to be postponed (status=%d)',(self._nruns_to_postpone,kSTATUS_POSTPONE))
+        except KeyError,ValueError:
+            pass
 
     ## @brief calculate the checksum of a file
     def calculate_checksum( self ):
@@ -64,7 +71,29 @@ class get_checksum( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        #self.info('Here, self._nruns=%d ... ' % (self._nruns))
+
+
+        #
+        # Process Postpone first
+        #
+        ctr_postpone = 0
+        for parent in [self._parent_project]:
+            if ctr_postpone >= self._nruns_to_postpone: break
+            if parent == self._project: continue
+        
+            postpone_name_list = [self._project, parent]
+            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
+            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
+            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
+            for x in target_runs:
+                status = ds_status( project = self._project,
+                                    run     = int(x[0]),
+                                    subrun  = int(x[1]),
+                                    seq     = 0,
+                                    status  = kSTATUS_POSTPONE )
+                ctr_postpone += 1
+                if ctr_postpone > self._nruns_to_postpone: break
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns

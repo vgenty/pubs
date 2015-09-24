@@ -11,6 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from ds_online_env import *
 from ROOT import *
 import datetime, json
 import samweb_cli
@@ -60,6 +61,7 @@ class get_metadata( ds_project_base ):
         self._jeevt = -12
         self._jsevt = -12
         self._jver = -12
+        self._nruns_to_postpone = 0
         self._pubsver = "v6_00_00" #Kirby - I think this should actually be the assembler version
 # since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
 # and it's stored based on that, but the storage location is independent of the pubs version 
@@ -75,6 +77,11 @@ class get_metadata( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
+        try:
+            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
+            self.info('Will process %d runs to be postponed (status=%d)',(self._nruns_to_postpone,kSTATUS_POSTPONE))
+        except KeyError,ValueError:
+            pass
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -89,6 +96,27 @@ class get_metadata( ds_project_base ):
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
+
+        #
+        # Process Postpone first
+        #
+        ctr_postpone = 0
+        for parent in [self._parent_project]:
+            if ctr_postpone >= self._nruns_to_postpone: break
+            if parent == self._project: continue
+            
+            postpone_name_list = [self._project, parent]
+            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
+            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
+            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
+            for x in target_runs:
+                status = ds_status( project = self._project,
+                                    run     = int(x[0]),
+                                    subrun  = int(x[1]),
+                                    seq     = 0,
+                                    status  = kSTATUS_POSTPONE )
+                ctr_postpone += 1
+                if ctr_postpone > self._nruns_to_postpone: break
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
