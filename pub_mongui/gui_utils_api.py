@@ -53,8 +53,8 @@ class GuiUtilsAPI():
 
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0
-    tot_n = sum([x[1] for x in statuses if x[0]])
+    #tot_n does not include status == 0, or 1000 now
+    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
 
     #if len(statuses) > len(self.colors):
     #  print "Uh oh, more different statuses than colors! Increase number of colors!"
@@ -62,12 +62,12 @@ class GuiUtilsAPI():
 
     slices = []
     #one giant green slice for fully completed project
-    if len(statuses) == 1 and statuses[0][0] == 0:
+    if len(statuses) == 1 and statuses[0][0] in [ 0, 1000 ]:
       return [ ( 1., 'g' ) ]
 
     for x in statuses:
-      #Don't care about status == 0
-      if not x[0]: continue
+      #Don't care about status == 0 or 1000
+      if x[0] in [ 0, 1000 ]: continue
       #if x[0] not in self.colors.keys():
       #  print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
 
