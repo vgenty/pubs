@@ -31,7 +31,7 @@ import time
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
 
-my_template = 'pubs_diagram_111615.png'
+my_template = 'pubs_diagram_092515.png'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 
 # GUI DB interface:
