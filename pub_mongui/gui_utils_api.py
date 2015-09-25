@@ -68,8 +68,8 @@ class GuiUtilsAPI():
     for x in statuses:
       #Don't care about status == 0
       if not x[0]: continue
-      if x[0] not in self.colors.keys():
-        print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
+      #if x[0] not in self.colors.keys():
+      #  print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
 
       if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
       elif x[0] > 100: mycolor = 'r'
@@ -115,7 +115,13 @@ class GuiUtilsAPI():
     #Returns [enabled or disabled, running or dead]
     max_daemon_log_lag = 600 #seconds
     is_enabled = self.dbi.daemon_info(servername)._enable
+
+    #If you just use list_daemon_log(servername) you get an ENORMOUS list back
+    #Use the list_daemon_log(servername, starttime, endtime) (those are datetime stamps)
     d_logs = self.dbi.list_daemon_log(servername)
+    #starttime = datetime.datetime.today()# - datetime.timedelta(seconds=max_daemon_log_lag)
+    #d_logs = self.dbi.list_daemon_log(servername,start=starttime)
+    #print d_logs
     #this should maybe just be time_since = take the LAST log in d_logs, then get logtime
     #taking advantage of fact that d_logs is time ordered
     time_since_log_update = self.my_utils.getTimeSinceInSeconds(d_logs[-1]._logtime)
