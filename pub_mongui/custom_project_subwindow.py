@@ -55,6 +55,8 @@ class CustomProjectSubwindow():
         leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
         colorcounter = 0
         for status, values in history.iteritems():
+            #ignore status 0 and 1000 (0 shouldn't be in here anyway)
+            if status in [ 0, 1000 ]: continue
             data = np.array(values)
             xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
             #add multiple plots by just calling p1.plot() a bunch of times
