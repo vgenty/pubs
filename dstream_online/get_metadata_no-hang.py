@@ -43,7 +43,7 @@ class get_metadata( ds_project_base ):
 
         if not arg:
             self.error('No project name specified!')
-            raise Exception
+            raise DSException
 
         self._project = arg
 
@@ -62,11 +62,17 @@ class get_metadata( ds_project_base ):
         self._jsevt = -12
         self._jver = -12
         self._nruns_to_postpone = 0
-        self._pubsver = "v6_00_00" #Kirby - I think this should actually be the assembler version
-# since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
-# and it's stored based on that, but the storage location is independent of the pubs version 
-#        self._pubsver = "untagged" # once PUBS is ups-ified, grab its version and shove that here?
+        self._pubsver = "v6_00_00"
+        #Kirby - I think this should actually be the assembler version
+        # since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
+        # and it's stored based on that, but the storage location is independent of the pubs version 
 
+        self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_file,
+                             kSWIZZLED_METADATA : self.process_swizzled_file }
+        self._metadata_type = kMAXTYPE_METADATA        
+        self._max_proc_time = 50
+        self._parallelize = 0
+        
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
 
@@ -83,6 +89,26 @@ class get_metadata( ds_project_base ):
         except KeyError,ValueError:
             pass
 
+        if not 'METADATA_TYPE' in resource or not is_valid_metadata_type(resource['METADATA_TYPE']):
+            raise DSException('Invalid metadata type or not specified...')
+
+        self._metadata_type = int(resource['METADATA_TYPE'])
+        
+        if not self._metadata_type in self._action_map:
+            raise DSException('Specified action type not supported! (%d)' % self._metadata_type)
+
+        if 'PARALLELIZE' in resource:
+            self._parallelize = int(resource['PARALLELIZE'])
+        if 'MAX_PROC_TIME' in resource:
+            self._max_proc_time = int(resource['MAX_PROC_TIME'])
+
+    def get_action(self):
+
+        if not self._metadata_type in self._action_map:
+            raise DSException('Specified action type not supported! (%d)' % self._metadata_type)
+
+        return self._action_map[self._metadata_type]
+    
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
 
@@ -119,6 +145,11 @@ class get_metadata( ds_project_base ):
                 ctr_postpone += 1
                 if ctr_postpone > self._nruns_to_postpone: break
 
+        action = self.get_action()
+
+        runid_v   = []
+        infile_v  = []
+        outfile_v = []
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project,self._parent_project],
@@ -151,28 +182,55 @@ class get_metadata( ds_project_base ):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 self.error('List of files found %s' % filelist)
 
-            in_file = filelist[0]
-            out_file = '%s.json' % in_file
-            self.info('Found %s' % (in_file))
+            infile_v.append(filelist[0])
+            outfile_v.append('%s.json' % infile_v[-1])
+            runid_v.append((run,subrun))
 
-            if in_file.strip().split('.')[-1] == "ubdaq":
-                status, jsonData = self.get_ubdaq_metadata( in_file, run, subrun )
-            else:
-                try:
-                    jsonData = extractor_dict.getmetadata( in_file )
-                    status = 3
-                    self.info('Successfully extract metadata from the swizzled file.')
-                except:
-                    status = 100
-                    self.error('Failed extracting metadata from the swizzled file.')
+            if ctr <= 0: break
+            
+
+        status_v = action(infile_v)
+
+        if not len(status_v) == len(runid_v):
+            raise DSException('Logic error: status vector from %s must match # of run ids!' % str(action))
+
+        for i in xrange(len(status_v)):
+
+            run,subrun = runid_v[i]
+
+            # Create a status object to be logged to DB (if necessary)
+            status = ds_status( project = self._project,
+                                run     = run,
+                                subrun  = subrun,
+                                seq     = 0,
+                                status  = status )
+            
+            # Log status
+            self.log_status( status)
+        
+    def process_swizzled_file(self,in_file_v):
+        
+        status_v = []
+
+        for in_file in in_file_v:
+
+            statue=0
+            try:
+                jsonData = extractor_dict.getmetadata( in_file )
+                status = 3
+                self.info('Successfully extract metadata from the swizzled file.')
+            except:
+                status = 100
+                self.error('Failed extracting metadata from the swizzled file.')
                     
             if not status == 100:
-                with open(out_file, 'w') as ofile:
+                
+                with open('%s.json' % in_file, 'w') as ofile:
                     json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
                     # To Eric: what are you doing here?
                     try:
                         samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                            # samweb.validateFileMetadata(json_file) # this throws/raises exception
+                        # samweb.validateFileMetadata(json_file) # this throws/raises exception
                         status = 2
                     except:
                         self.error( "Problem with samweb metadata: ", jsonData)
@@ -183,21 +241,191 @@ class get_metadata( ds_project_base ):
                 status = 1000
                 self.error('Did not find the input file %s' % in_file )
 
-            # Pretend I'm doing something
-            time.sleep(1)
+            status_v.append(status)
 
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
+        return status_v
             
-            # Log status
-            self.log_status( status )
+    def process_ubdaq_files(self,in_file_v):
 
-            # Break from loop if counter became 0
-            if not ctr: break
+        cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
+        
+        proc_v   = [None]*len(in_file_v)
+        retval_v = [None]*len(in_file_v)
+        cout_v   = [None]*len(in_file_v)
+        cerr_v   = [None]*len(in_file_v)
+        for i in xrange(len(in_file_v)):
+
+            in_file = in_file_v[i]
+            
+            cmd = cmd_template % (in_file,in_file)
+            status = 0
+            proc_v[i]=subprocess.Popen(cmd,shell=True,stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+
+            if not self._parallelize:
+
+                time_slept = 0
+                p = proc_v[i]
+                while p.poll() is None and time_slept < self._max_proc_time:
+
+                    time_slept += 0.5
+                    time.sleep(0.5)
+
+                if p.poll() is None:
+                    p.kill()
+                    time.sleep(5)
+                    if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
+                    status_v[i] = 100
+                else:
+                    status_v[i] = 3
+                    (out,err)   = p.communicate()
+                    cout_v[i]   = append(out)
+                    cerr_v[i]   = append(err)
+                    retval_v[i] = append(p.poll())
+            else:
+                active_ctr = 0
+                time_slept = 0
+                while 1:
+                    if time_slept > self._max_proc_time:
+                        # kill the 1st one
+                        for i in xrange(len(proc_v)):
+                            p = proc_v[i]
+                            if not p or not p.poll() is None: continue
+                            p.kill()
+                            time.sleep(1)
+                            if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
+                            status_v[i] = 100
+                            break    
+                    for p in proc_v:
+                        if p and p.poll() is None: active_ctr +=1
+                    if active_ctr < self._parallelize:
+                        break
+                    time.sleep(0.5)
+                    time_slept += 0.5
+
+                    if int(time_slept)%5 == 0:
+                        self.info('Parallel processing %d/%d runs...' % (active_ctr,len(in_file_v)))
+
+        if self._parallelize:
+
+            active_ctr = 1
+            time_slept = 0
+            while active_ctr:
+                if time_slept > self._max_proc_time:
+                    # kill the 1st one
+                    for i in xrange(len(proc_v)):
+                        p = proc_v[i]
+                        if not p or not p.poll() is None: continue
+                        p.kill()
+                        time.sleep(1)
+                        if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
+                        status_v[i] = 100
+                        break    
+
+                for p in proc_v:
+                    if p and p.poll() is None: active_ctr +=1
+                time.sleep(0.5)
+                time_slept += 0.5
+
+                if int(time_slept)%5 == 0:
+                    self.info('Parallel processing %d/%d runs...' % (active_ctr,len(in_file_v)))
+
+            for i in xrange(len(in_file_v)):
+                if status[i]: continue
+                p = proc_v[i]
+                status_v[i] = 3
+                (out,err)   = p.communicate()
+                cout_v[i]   = append(out)
+                cerr_v[i]   = append(err)
+                retval_v[i] = append(p.poll())
+
+        # Now extract MetaData for successful ones
+        for i in xrange(len(in_file_v)):
+
+            if not status_v[i] == 3:
+                status_v[i] = 100
+                continue
+            if ret_val[i]:
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % ret_val[i])
+                status_v[i] = 100
+                continue
+            in_file = in_file_v[i]
+            out = out_v[i]
+
+            last_event_cout,first_event_cout = out.split('SPLIT_HERE')
+            run = subrun = 0
+            ver = -12
+            sevt = eevt = -12
+            stime = etime = -12
+            try:
+                for line in last_event_cout.split('\n'):
+                    
+                    if "run_number=" in line and "subrun" not in line :
+                        run = int(line.split('=')[-1])
+                    if "subrun_number=" in line:
+                        subrun = int(line.split('=')[-1])
+                    if "event_number=" in line:
+                        eevt = int(line.split('=')[-1])
+                    if "Localhost Time: (sec,usec)" in line:
+                        etime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+                    if "daq_version_label=" in line:
+                        ver = line.split('=')[-1]
+
+                for line in first_event_cout.split('\n'):
+                    if "event_number=" in line:
+                        sevt = int(line.split('=')[-1])
+                    if "Localhost Time: (sec,usec)" in line:
+                        stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+
+                status_v[i] = 3
+                self.info('Successfully extract metadata from the ubdaq file.')
+
+            except:
+                self.error ("Unexpected error:", sys.exc_info()[0] )
+                status_v[i] = 100
+                self.error('Failed extracting metadata from the ubdaq file.')
+                continue
+
+
+            fsize = os.path.getsize(in_file)
+            crc = 12
+
+            try:
+                crc = samweb_client.utility.fileEnstoreChecksum(in_file)['crc_value']
+            except:
+                pass
+
+            # run number and subrun number in the metadata seem to be funny,
+            # and currently we are using the values in the file name.
+            # Also add ub_project.name/stage/version, and data_tier by hand
+            jsonData = { 'file_name': os.path.basename(in_file), 
+                         'file_type': "data", 
+                         'file_size': fsize, 
+                         'file_format': "binaryraw-uncompressed", 
+                         'runs': [ [run,  subrun, 'test'] ], 
+                         'first_event': sevt, 
+                         'start_time': stime, 
+                         'end_time': etime, 
+                         'last_event':eevt, 
+                         'group': 'uboone', 
+                         "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, 
+                         "application": {  "family": "online",  "name": "assembler", "version": ver }, 
+                         "data_tier": "raw", "event_count": eevt - sevt + 1 ,
+                         "ub_project.name": "online", 
+                         "ub_project.stage": "assembler", 
+                         "ub_project.version": self._pubsver }
+
+            fout = open('%s.json' % in_file, 'w')
+            json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
+            try:
+                samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                # samweb.validateFileMetadata(json_file) # this throws/raises exception
+                status_v[i] = 2
+            except:
+                self.error( "Problem with samweb metadata: ", jsonData)
+                self.error( sys.exc_info()[0])
+                status_v[i] = 100
+
+        return status_v
 
     ## @brief access DB and retrieves processed run for validation
     def validate(self):
@@ -330,119 +558,6 @@ class get_metadata( ds_project_base ):
 
             # Break from loop if counter became 0
             if not ctr: break
-
-
-    def check_proc(self, proc):
-
-        killstat = 0
-        killtime = 50
-        sleepunit = 0.5
-        wait = 0
-        while  proc.poll() is None:
-            if wait > killtime:
-                self.error ("dumpEventHeaders, pid " + str(proc.pid)+ " still alive after " + str(killtime) +  " seconds. We will now kill it.")
-                proc.kill()
-                killstat = 11
-                break
-            if int(wait) and int(wait)%5 == 0:
-                self.info('dumpEventHeaders, pid ' + str(proc.pid) + ' active for ' + str(wait) + ' [sec].')
-            time.sleep (sleepunit)
-            wait += sleepunit
-        return killstat
-
-
-    ## @brief Get the metadata from a .ubdaq file
-    def get_ubdaq_metadata( self, in_file, run, subrun ):
-
-        try:
-            ''' 
-            Replace  all the former code that used pythonized C++ objects with a call to uboonedaq_datatypes binary
-            dumpEventHeaders and pull the needed values from stdout.
-            '''
-            self.info('Start extracting daq metadata @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-            status = 1
-            #print "Load last event in file. If The desired run number is larger than nevts in file, it opens the last evt"
-            cmd = "dumpEventHeaders " + in_file + " 1000000 "
-            #pdb.set_trace()
-            proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            check = self.check_proc(proc) # don't proceed to communicate until done or killed.
-            (out,err) = proc.communicate() 
-            if (not proc.returncode) and (not check):
-                for line in out.split('\n'):
-                    if "run_number=" in line and "subrun" not in line :
-                        self._jrun = int(line.split('=')[-1])
-                    if "subrun_number=" in line:
-                        self._jsubrun = int(line.split('=')[-1])
-                    if "event_number=" in line:
-                        self._jeevt = int(line.split('=')[-1])
-                    if "Localhost Time: (sec,usec)" in line:
-                        self._jetime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-                    if "daq_version_label=" in line:
-                        self._jver = line.split('=')[-1]
-            else:
-                status = 100
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
-
-            # print "Load first event in file."
-            cmd = "dumpEventHeaders " + in_file + " 1 "
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            check = self.check_proc(proc) # don't proceed to communicate until done or killed.
-            (out,err) = proc.communicate() # blocks till done.
-            if (not proc.returncode) and (not check):
-                for line in out.split('\n'):
-                    if "event_number=" in line:
-                        self._jsevt = int(line.split('=')[-1])
-                    if "Localhost Time: (sec,usec)" in line:
-                        self._jstime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
-            
-            else:
-                status = 100
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % proc.returncode)
-
-            if status != 100:
-                status = 3
-                self.info('Successfully extract metadata from the ubdaq file.')
-                self.info('Finished extracting metadata @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-
-        except:
-            self.error ("Unexpected error:", sys.exc_info()[0] )
-            # print "Give some null properties to this meta data"
-            # print "Give this file a status 100"
-            status = 100
-            self.error('Failed extracting metadata from the ubdaq file.')
-
-        fsize = os.path.getsize(in_file)
-        crc = 12
-
-        try:
-            crc = samweb_client.utility.fileEnstoreChecksum(in_file)['crc_value']
-        except:
-            pass
-
-        # run number and subrun number in the metadata seem to be funny,
-        # and currently we are using the values in the file name.
-        # Also add ub_project.name/stage/version, and data_tier by hand
-        jsonData = { 'file_name': os.path.basename(in_file), 
-                     'file_type': "data", 
-                     'file_size': fsize, 
-                     'file_format': "binaryraw-uncompressed", 
-                     'runs': [ [run,  subrun, 'test'] ], 
-                     'first_event': self._jsevt, 
-                     'start_time': self._jstime, 
-                     'end_time': self._jetime, 
-                     'last_event': self._jeevt, 
-                     'group': 'uboone', 
-                     "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, 
-                     "application": {  "family": "online",  "name": "assembler", "version": self._jver }, 
-                     "data_tier": "raw", "event_count": self._jeevt - self._jsevt + 1 ,
-                     "ub_project.name": "online", 
-                     "ub_project.stage": "assembler", 
-                     "ub_project.version": self._pubsver }
-        # jsonData={'file_name': os.path.basename(in_file), 'file_type': "data", 'file_size': fsize, 'file_format': "binaryraw-uncompressed", 'runs': [ [self._jrun,  self._jsubrun, 'physics'] ], 'first_event': self._jsevt, 'start_time': self._jstime, 'end_time': self._jetime, 'last_event': self._jeevt, 'group': 'uboone', "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, "application": {  "family": "online",  "name": "assembler", "version": "v6_00_00" } }
-#, "params": { "MicroBooNE_MetaData": {'bnb.horn_polarity':"forward", 'numi.horn1_polarity':"forward",'numi.horn2_polarity':"forward", 'detector.pmt':"off", 'trigger.name':"open" } }
-#                print jsonData
-
-        return status, jsonData
 
     # def get_ubdaq_metadata()
 
