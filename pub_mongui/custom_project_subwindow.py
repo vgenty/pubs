@@ -13,6 +13,7 @@ class CustomProjectSubwindow():
         self.pname = piechartitem.getName()
         self.pdesc = piechartitem.getDescript()
         self.colors = GuiUtils().getColors()
+        self.update_period = GuiUtils().getUpdatePeriod()
 
         # Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
@@ -48,16 +49,19 @@ class CustomProjectSubwindow():
     def AddHistoryPlot(self):
         p1 = self.win.addPlot(row=1,col=0)
         p1.setLabel('top','# Run/Subruns for Project %s'%self.pname)
-        p1.setLabel('bottom','Time Since Starting GUI, in Units Of %d Seconds'%GuiUtils().getUpdatePeriod())
+        p1.setLabel('bottom','Time Since Starting GUI [Seconds]'%self.update_period)
         p1.showGrid(x=True,y=True)
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
+        colorcounter = 0
         for status, values in history.iteritems():
             data = np.array(values)
+            xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
             #add multiple plots by just calling p1.plot() a bunch of times
-            mycolor = self.colors[status] if status in self.colors.keys() else 'r'
-            curve = p1.plot(data,pen=mycolor,name='Status %d'%status)
+            #mycolor = self.colors[status] if status in self.colors.keys() else 'r'
+            curve = p1.plot(xvals,data,name='Status %d'%status,pen=(colorcounter,20))#,pen=mycolor)
             leg.addItem(curve,'Status %d'%status)
+            colorcounter += 1
         leg.setParentItem(p1)
             
 
