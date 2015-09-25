@@ -49,7 +49,7 @@ class CustomProjectSubwindow():
     def AddHistoryPlot(self):
         p1 = self.win.addPlot(row=1,col=0)
         p1.setLabel('top','# Run/Subruns for Project %s'%self.pname)
-        p1.setLabel('bottom','Time Since Starting GUI [Seconds]'%self.update_period)
+        p1.setLabel('bottom','Time Since Starting GUI [Seconds]')
         p1.showGrid(x=True,y=True)
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
