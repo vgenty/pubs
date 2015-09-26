@@ -40,7 +40,7 @@ def disk_usage_alert(proj,max_disk,emails):
 
     # check /data/ disk usage
     lastDISK = 0
-    for key in log_dict:
+    for key in last_log_dict:
         if (str(key) == 'DISK_USAGE_DATA'):
             lastDISK   = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
@@ -55,7 +55,7 @@ def disk_usage_alert(proj,max_disk,emails):
 
     # check /datalocal/ disk usage
     lastDISK = 0
-    for key in log_dict:
+    for key in last_log_dict:
         if (str(key) == 'DISK_USAGE_DATALOCAL'):
             lastDISK = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
@@ -68,7 +68,7 @@ def disk_usage_alert(proj,max_disk,emails):
 
     # check /home/ disk-usage
     lastDISK = 0
-    for key in log_dict:
+    for key in last_log_dict:
         if (str(key) == 'DISK_USAGE_HOME'):
             lastDISK = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
@@ -322,7 +322,7 @@ def plot_resource_usage(proj,outpath):
         datesRDLOC  = dts.date2num(rateTDLOC)
         plt.plot(datesRDLOC,rateDLOC,'o--',color='m',label='Rate @ /datalocal/')
 
-
+        
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Disk Filling/Draining Rate [ MB/sec ]',fontsize=20)
     #ax.set_ylim([-2,2])
