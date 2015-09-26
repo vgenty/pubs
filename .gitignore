@@ -12,6 +12,8 @@
 *.dat
 *.log
 *.info
+*.txt
+*.doc
 *.pdf
 *~
 *.pcm

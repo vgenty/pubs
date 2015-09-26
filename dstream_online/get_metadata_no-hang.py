@@ -102,6 +102,8 @@ class get_metadata( ds_project_base ):
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
 
+        self._ref_project = resource['REF_PROJECT']
+
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -395,12 +397,18 @@ class get_metadata( ds_project_base ):
 
 
             fsize = os.path.getsize(in_file)
-            crc = 12
 
-            try:
-                crc = samweb_client.utility.fileEnstoreChecksum(in_file)['crc_value']
-            except:
-                pass
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+
+            if not ref_status._status == 0:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = 1
+                continue
+
+            if not ref_status._data:
+                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = 101
+                continue
 
             # run number and subrun number in the metadata seem to be funny,
             # and currently we are using the values in the file name.
@@ -415,7 +423,7 @@ class get_metadata( ds_project_base ):
                          'end_time': etime, 
                          'last_event':eevt, 
                          'group': 'uboone', 
-                         "crc": { "crc_value":crc,  "crc_type":"adler 32 crc type" }, 
+                         "crc": { "crc_value":ref_status._data,  "crc_type":"adler 32 crc type" }, 
                          "application": {  "family": "online",  "name": "assembler", "version": ver }, 
                          "data_tier": "raw", "event_count": eevt - sevt + 1 ,
                          "ub_project.name": "online", 

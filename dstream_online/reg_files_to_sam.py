@@ -167,46 +167,53 @@ class reg_files_to_sam( ds_project_base ):
             if os.path.isfile( in_file ) and os.path.isfile( in_json ):
                 self.info('Found %s' % (in_file) )
                 self.info('Found %s' % (in_json) )
-                json_dict = json.load( open( in_json ) )
-
-                # native SAM python call, instead of a system call
-                # make sure you've done get-cert
-                # Perhaps we want a try block for samweb?
-                samweb = samweb_cli.SAMWebClient(experiment="uboone")
-
-                # Check if the file already exists at SAM
+                json_dict = None
                 try:
-                    in_file_base=os.path.basename(in_file)
-                    samweb.getMetadata(filenameorid=in_file_base)
-                    status = 101
-                    # Email the experts
-                    subject = 'File %s Existing at SAM' % in_file_base
-                    text = """
+                    json_dict = json.load( open( in_json ) )
+                except ValueError:
+                    self.error('Failed loading json file: %s' % in_json)
+                    status = 103
+                    json_dict=None
+
+                if json_dict:
+                    # native SAM python call, instead of a system call
+                    # make sure you've done get-cert
+                    # Perhaps we want a try block for samweb?
+                    samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                
+                    # Check if the file already exists at SAM
+                    try:
+                        in_file_base=os.path.basename(in_file)
+                        samweb.getMetadata(filenameorid=in_file_base)
+                        status = 101
+                        # Email the experts
+                        subject = 'File %s Existing at SAM' % in_file_base
+                        text = """
 File %s has already exists at SAM!
                     """ % in_file_base
 
-                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+                        pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
-                except samweb_cli.exceptions.FileNotFound:
-                    # metadata already validated in get_assembler_metadata_file.py
-                    try:
-                        samweb.declareFile(md=json_dict)
-                        status = 2
-                    except Exception as e:
-#                        print "Unexpected error: samweb declareFile problem: "
-                        self.error( "Unexpected error: samweb declareFile problem: ")
-                        self.error( "%s" % e)
-                        subject = "samweb declareFile problem: %s" % in_file_base
-                        text = """
+                    except samweb_cli.exceptions.FileNotFound:
+                        # metadata already validated in get_assembler_metadata_file.py
+                        try:
+                            samweb.declareFile(md=json_dict)
+                            status = 2
+                        except Exception as e:
+                            #                        print "Unexpected error: samweb declareFile problem: "
+                            self.error( "Unexpected error: samweb declareFile problem: ")
+                            self.error( "%s" % e)
+                            subject = "samweb declareFile problem: %s" % in_file_base
+                            text = """
 File %s failed to be declared to SAM!
 %s
                         """ % ( in_file_base, traceback.print_exc() )
 
-                        pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+                            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
-                        # print "Give some null properties to this meta data"
-                        self.error( "Give this file a status 102")
-                        status = 102
+                            # print "Give some null properties to this meta data"
+                            self.error( "Give this file a status 102")
+                            status = 102
 
             else:
                 status = 100

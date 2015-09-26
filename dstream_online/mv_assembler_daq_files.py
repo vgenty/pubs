@@ -290,10 +290,16 @@ class mv_assembler_daq_files(ds_project_base):
                 out_file_prefix = in_file_segments[0]
 
                 out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
+
+                size_diff = -1
+                try:
+                    size_diff = os.path.getsize(in_file) - os.path.getsize(out_file)
+                except Exception:
+                    size_diff = -1
             
                 #res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
-                res = subprocess.call(['ls', out_file])
-                if res:
+                #res = subprocess.call(['ls', out_file])
+                if size_diff:
                     self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
                     status_code = 102
                 else:
