@@ -51,11 +51,12 @@ def pub_smtp(sender=kSMTP_ACCT, smtp_domain=kSMTP_SRVR, passwd=kSMTP_PASS,
     try:
         server.sendmail(sender, recipients, msg.as_string())
         server.quit()
-    except smtplib.SMTPRecipientsRefused as e:
-        msg=''
-        for x in e.recipients.keys():
-            msg += 'Recipient: %s...\n' % x
-            msg += e.recipients[x][1]
+    #except smtplib.SMTPRecipientsRefused, smtplib.SMTPDataError as e:
+    except Exception as e:
+        msg='Failed to send email to %s' % recipients
+        #for x in e.recipients.keys():
+        #    msg += 'Recipient: %s...\n' % x
+        #    msg += e.recipients[x][1]
         raise BaseException(msg)
     except smtplib.SMTPSenderRefused as e:
         raise BaseException('SMTP sender auth. failure! Email cannot be sent...')

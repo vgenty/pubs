@@ -67,8 +67,8 @@ class get_metadata( ds_project_base ):
         # since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
         # and it's stored based on that, but the storage location is independent of the pubs version 
 
-        self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_file,
-                             kSWIZZLED_METADATA : self.process_swizzled_file }
+        self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_files,
+                             kSWIZZLED_METADATA : self.process_swizzled_files }
         self._metadata_type = kMAXTYPE_METADATA        
         self._max_proc_time = 50
         self._parallelize = 0
@@ -92,7 +92,7 @@ class get_metadata( ds_project_base ):
         if not 'METADATA_TYPE' in resource or not is_valid_metadata_type(resource['METADATA_TYPE']):
             raise DSException('Invalid metadata type or not specified...')
 
-        self._metadata_type = int(resource['METADATA_TYPE'])
+        exec('self._metadata_type = int(%s)' % resource['METADATA_TYPE'])
         
         if not self._metadata_type in self._action_map:
             raise DSException('Specified action type not supported! (%d)' % self._metadata_type)
@@ -203,12 +203,12 @@ class get_metadata( ds_project_base ):
                                 run     = run,
                                 subrun  = subrun,
                                 seq     = 0,
-                                status  = status )
+                                status  = status_v[i] )
             
             # Log status
             self.log_status( status)
         
-    def process_swizzled_file(self,in_file_v):
+    def process_swizzled_files(self,in_file_v):
         
         status_v = []
 
@@ -227,15 +227,16 @@ class get_metadata( ds_project_base ):
                 
                 with open('%s.json' % in_file, 'w') as ofile:
                     json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
+                    status=2
                     # To Eric: what are you doing here?
-                    try:
-                        samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                    #try:
+                    #    samweb = samweb_cli.SAMWebClient(experiment="uboone")
                         # samweb.validateFileMetadata(json_file) # this throws/raises exception
-                        status = 2
-                    except:
-                        self.error( "Problem with samweb metadata: ", jsonData)
-                        self.error( sys.exc_info()[0])
-                        status=100
+                    #    status = 2
+                    #except:
+                    #    self.error( "Problem with samweb metadata: ", jsonData)
+                    #    self.error( sys.exc_info()[0])
+                    #    status=100
  
             else:
                 status = 1000
@@ -248,7 +249,7 @@ class get_metadata( ds_project_base ):
     def process_ubdaq_files(self,in_file_v):
 
         cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
-        
+        status_v = [None]*len(in_file_v)
         proc_v   = [None]*len(in_file_v)
         retval_v = [None]*len(in_file_v)
         cout_v   = [None]*len(in_file_v)
@@ -278,9 +279,9 @@ class get_metadata( ds_project_base ):
                 else:
                     status_v[i] = 3
                     (out,err)   = p.communicate()
-                    cout_v[i]   = append(out)
-                    cerr_v[i]   = append(err)
-                    retval_v[i] = append(p.poll())
+                    cout_v[i]   = out
+                    cerr_v[i]   = err
+                    retval_v[i] = p.poll()
             else:
                 active_ctr = 0
                 time_slept = 0
@@ -295,21 +296,26 @@ class get_metadata( ds_project_base ):
                             if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
                             status_v[i] = 100
                             break    
+                    active_ctr = 0
+                    remaining_ctr = 0
                     for p in proc_v:
+                        if not p: remaining_ctr +=1
                         if p and p.poll() is None: active_ctr +=1
                     if active_ctr < self._parallelize:
                         break
-                    time.sleep(0.5)
-                    time_slept += 0.5
+                    time.sleep(0.2)
+                    time_slept += 0.2
 
                     if int(time_slept)%5 == 0:
-                        self.info('Parallel processing %d/%d runs...' % (active_ctr,len(in_file_v)))
+                        self.info('Parallel processing %d runs (%d/%d left)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
 
         if self._parallelize:
 
-            active_ctr = 1
+            active_ctr = 0
             time_slept = 0
             while active_ctr:
+                active_ctr = 0
+                remaining_ctr = 0
                 if time_slept > self._max_proc_time:
                     # kill the 1st one
                     for i in xrange(len(proc_v)):
@@ -322,21 +328,23 @@ class get_metadata( ds_project_base ):
                         break    
 
                 for p in proc_v:
-                    if p and p.poll() is None: active_ctr +=1
-                time.sleep(0.5)
-                time_slept += 0.5
+                    if p:
+                        if p.poll() is None: active_ctr +=1
+                        else: remaining_ctr +=1
+                time.sleep(0.2)
+                time_slept += 0.2
 
                 if int(time_slept)%5 == 0:
-                    self.info('Parallel processing %d/%d runs...' % (active_ctr,len(in_file_v)))
+                    self.info('Parallel processing %d runs (%d/%d done)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
 
             for i in xrange(len(in_file_v)):
-                if status[i]: continue
+                if status_v[i]: continue
                 p = proc_v[i]
                 status_v[i] = 3
                 (out,err)   = p.communicate()
-                cout_v[i]   = append(out)
-                cerr_v[i]   = append(err)
-                retval_v[i] = append(p.poll())
+                cout_v[i]   = out
+                cerr_v[i]   = err
+                retval_v[i] = p.poll()
 
         # Now extract MetaData for successful ones
         for i in xrange(len(in_file_v)):
@@ -344,12 +352,12 @@ class get_metadata( ds_project_base ):
             if not status_v[i] == 3:
                 status_v[i] = 100
                 continue
-            if ret_val[i]:
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % ret_val[i])
+            if retval_v[i]:
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % retval_v[i])
                 status_v[i] = 100
                 continue
             in_file = in_file_v[i]
-            out = out_v[i]
+            out = cout_v[i]
 
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
             run = subrun = 0
@@ -377,12 +385,12 @@ class get_metadata( ds_project_base ):
                         stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
 
                 status_v[i] = 3
-                self.info('Successfully extract metadata from the ubdaq file.')
+                self.info('Successfully extract metadata from the ubdaq file (%d/%d) @ %s' % (i,len(in_file_v),time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except:
                 self.error ("Unexpected error:", sys.exc_info()[0] )
                 status_v[i] = 100
-                self.error('Failed extracting metadata from the ubdaq file.')
+                self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
                 continue
 
 
@@ -416,14 +424,15 @@ class get_metadata( ds_project_base ):
 
             fout = open('%s.json' % in_file, 'w')
             json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
-            try:
-                samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                # samweb.validateFileMetadata(json_file) # this throws/raises exception
-                status_v[i] = 2
-            except:
-                self.error( "Problem with samweb metadata: ", jsonData)
-                self.error( sys.exc_info()[0])
-                status_v[i] = 100
+            status_v[i] = 2
+            #try:
+            #    #samweb = samweb_cli.SAMWebClient(experiment="uboone")
+            #     samweb.validateFileMetadata(json_file) # this throws/raises exception
+            #    status_v[i] = 2
+            #except:
+            #    self.error( "Problem with samweb metadata: ", jsonData)
+            #    self.error( sys.exc_info()[0])
+            #    status_v[i] = 100
 
         return status_v
 
@@ -455,7 +464,7 @@ class get_metadata( ds_project_base ):
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -466,8 +475,8 @@ class get_metadata( ds_project_base ):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             out_file = '%s.json' % in_file
@@ -477,9 +486,6 @@ class get_metadata( ds_project_base ):
                 status = 0
             else:
                 status = 100
-
-            # Pretend I'm doing something
-            time.sleep(1)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -523,7 +529,7 @@ class get_metadata( ds_project_base ):
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
             filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -534,17 +540,14 @@ class get_metadata( ds_project_base ):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             out_file = '%s.json' % in_file
 
             if os.path.isfile(out_file):
                 os.system('rm %s' % out_file)
-
-            # Pretend I'm doing something
-            time.sleep(1)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -568,9 +571,12 @@ if __name__ == '__main__':
 
     test_obj = get_metadata( proj_name )
 
+    test_obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
     test_obj.process_newruns()
 
 #    test_obj.error_handle()
 
     test_obj.validate()
 
+    test_obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

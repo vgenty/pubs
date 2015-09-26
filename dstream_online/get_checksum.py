@@ -145,16 +145,16 @@ Error message:
 
                     pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
                     statusCode = 100
-            # Create a status object to be logged to DB (if necessary)
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = statusCode,
-                                    data    = self._data )
+                # Create a status object to be logged to DB (if necessary)
+                    status = ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = subrun,
+                                        seq     = 0,
+                                        status  = statusCode,
+                                        data    = self._data )
 
-            # Log status
-                self.log_status( status )
+                    # Log status
+                    self.log_status( status )
 
             # Break from loop if counter became 0
             if not ctr: break

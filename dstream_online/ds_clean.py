@@ -42,10 +42,8 @@ class ds_clean(ds_project_base):
         self._min_run = 0
         self._in_dir = ''
         self._infile_format = ''
-        self._parent_project = ''
-        self._nruns_to_postpone = 0
-        self._remove_postpone = False
-
+        self._parent_project = []
+        self._parent_status = []
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
 
@@ -58,22 +56,15 @@ class ds_clean(ds_project_base):
 
         try:
             self._parent_project = resource['PARENT_PROJECT'].split(':')
-
+            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            if not len(self._parent_project) == len(self._parent_status):
+                raise ValueError
         except Exception:
             self.error('Failed to load parent projects...')
             return False
 
-        try:
-            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
-        except KeyError,ValueError:
-            pass
-
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
-
-        if 'REMOVE_POSTPONE_STATUS' in resource:
-            exec('self._remove_postpone = bool(%s)' % resource['REMOVE_POSTPONE_STATUS'])
 
         #this constructs the list of projects and their status codes
         #we want the project to be status 1, while the dependent projects to
@@ -81,10 +72,8 @@ class ds_clean(ds_project_base):
         self._project_list = [self._project ]
         self._project_requirement = [ kSTATUS_INIT ]
 
-        for x in xrange( len(self._parent_project) ):
-            self._project_list.append( self._parent_project[x] )
-            self._project_requirement.append( 0 )
-
+        self._project_list += self._parent_project
+        self._project_requirement += self._parent_status
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -109,32 +98,6 @@ class ds_clean(ds_project_base):
             self.info('Only %i%% of disk space used (%s), skip cleaning until %i%% is reached.'%(disk_frac_used, self._in_dir, self._disk_frac_limit))
             return
 
-        #
-        # Process Postpone first
-        #
-        ctr_postpone = 0
-        postpone_status_runs = []
-        for parent in self._project_list:
-            if ctr_postpone >= self._nruns_to_postpone: break
-            if parent == self._project: continue
-            
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
-            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
-            for x in target_runs:
-                if not self._remove_postpone:
-                    status = ds_status( project = self._project,
-                                        run     = int(x[0]),
-                                        subrun  = int(x[1]),
-                                        seq     = 0,
-                                        status  = kSTATUS_POSTPONE )
-                    self.log_status(status)
-                else:
-                    postpone_status_runs.append(x)
-                ctr_postpone += 1
-                if ctr_postpone > self._nruns_to_postpone: break
-        
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         #we want the last argument of this list get_xtable_runs call to be False
@@ -146,8 +109,8 @@ class ds_clean(ds_project_base):
             self._api.commit('DROP TABLE IF EXISTS temp%s' % p)
 
         target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
-        self.info('Found %d runs to be processed (from project %s)...' % (len(target_runs),self._parent_project))
-        for x in target_runs + postpone_status_runs:
+        self.info('Found %d runs to be processed (from project %s ... requirement %s)' % (len(target_runs),self._parent_project,self._parent_status))
+        for x in target_runs:
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
@@ -168,33 +131,14 @@ class ds_clean(ds_project_base):
                 self.error('ERROR: There is more than one file matching that pattern: %s' % filelist)
                 multiple_file_status=200
             if (len(filelist)<1):
-                if x in target_runs:
-                    self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                    status_code=100
-                    status = ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )     
-                    errorMessage = "Failed to find file%s"%in_file_holder
-                    subject = "get_checksum_temp Failed to find file%s"%in_file_holder
-                    text = """File: %s
-Error message:
-%s
-                    """ % ( in_file_holder, errorMessage )
-                    pub_smtp( os.environ['PUB_SMTP_ACCT'],
-                              os.environ['PUB_SMTP_SRVR'],
-                              os.environ['PUB_SMTP_PASS'],
-                              self._experts, subject, text )
-                else:
-                    self.info('Clearing postpone status (run,subrun) = (%d,%d)' % (run,subrun))
-                    self.log_status( ds_status( project = self._project,
-                                                run = run,
-                                                subrun = subrun,
-                                                seq = 0,
-                                                status = 2 ) )
-                    
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                status_code=100
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = status_code )
+                self.log_status( status )     
             else:
                 in_file = filelist[0]
                 self.info('Removing %s'%in_file)
@@ -324,13 +268,14 @@ Error message:
 # A unit test section
 if __name__ == '__main__':
 
-    if (len(sys.argv)==2):
-        test_obj = ds_clean(sys.argv[1])
-        
-        test_obj.process_newruns()
-        
-        test_obj.error_handle()
-        
-        test_obj.validate()
-    else:
-        test_obj = ds_clean()
+    test_obj = ds_clean(sys.argv[1])
+    
+    test_obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+    
+    test_obj.process_newruns()
+    
+    test_obj.error_handle()
+    
+    test_obj.validate()
+    
+    test_obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

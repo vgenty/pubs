@@ -98,6 +98,7 @@ class verify_dropbox( ds_project_base ):
         self._experts = ''
         self._data = ''
         self._nruns_to_postpone = 0
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -118,7 +119,23 @@ class verify_dropbox( ds_project_base ):
 
     ## @brief calculate the checksum of a file
     def compare_dropbox_checksum( self ):
+        
+        # Attempt to connect DB. If failure, abort
+        if not self.connect():
+            self.error('Cannot connect to DB! Aborting...')
+            return
+            
+        # If resource info is not yet read-in, read in.
+        if self._nruns is None:
+            self.get_resource()
 
+        runlist_v = self.get_xtable_runs( [self._project, self._parent_project], [1, 0] )
+
+        self.compare_dropbox_checksum_from_runlist(runlist_v)
+
+    ## @brief calculate the checksum of a file
+    def compare_dropbox_checksum_from_runlist( self, runlist_v ):
+        
         # Attempt to connect DB. If failure, abort
         if not self.connect():
             self.error('Cannot connect to DB! Aborting...')
@@ -127,8 +144,6 @@ class verify_dropbox( ds_project_base ):
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
             self.get_resource()
-
-        #self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         #
         # Process Postpone first
@@ -151,10 +166,17 @@ class verify_dropbox( ds_project_base ):
                 self.log_status(status)
                 ctr_postpone += 1
                 if ctr_postpone > self._nruns_to_postpone: break
+
+        
                 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_xtable_runs( [self._project, self._parent_project], [1, 0] ):
+
+        # Array to hold a file location error
+        locate_error_msg=''
+        # Array to hold a checksum error
+        checksum_error_msg=''
+        for x in runlist_v:
 
             # Counter decreases by 1
             ctr -= 1
@@ -166,9 +188,10 @@ class verify_dropbox( ds_project_base ):
 
             statusCode = 1
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            #filelist = glob.glob( in_file_holder )
+            filelist=['NoiseRun-0002770-00261.ubdaq']
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -179,8 +202,8 @@ class verify_dropbox( ds_project_base ):
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.error('List of files found %s' % filelist)
 
             in_file = filelist[0]
             in_file_name = os.path.basename(in_file)
@@ -191,45 +214,39 @@ class verify_dropbox( ds_project_base ):
             near1_checksum = RefStatus._data
 
             try:
-                pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
-                near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
-
-                if near1_adler32_1 == pnfs_adler32_1:
+                samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                meta = samweb.getMetadata(filenameorid=in_file_name)
+                checksum_info = meta['checksum'][0].split(':')
+                #self.warning("Found on tape %s" % in_file_name)
+                if checksum_info[0] == 'enstore':
+                    self._data = checksum_info[1]
                     statusCode = 0
                 else:
-                    subject = 'Checksum different in run %d, subrun %d between %s and PNFS' % ( run, subrun, self._ref_project )
-                    text = '%s\n' % subject
-                    text += 'Run %d, subrun %d\n' % ( run, subrun )
-                    text += 'Converted %s checksum: %s\n' % ( self._ref_project, near1_adler32_1 )
-                    text += 'Converted PNFS checksum: %s\n' % ( pnfs_adler32_1 )
-                    
-                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                    statusCode = 1000
-                    self._data = '%s:%s;PNFS:%s' % ( self._ref_project, near1_adler32_1, pnfs_adler32_1 )
+                    statusCode = 10
 
-            except LookupError:
-
-                self.warning("Could not find file in the dropbox %s" % out_file)
-                self.warning("Gonna go looking on tape %s" % in_file_name)
-                samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                meta = {}
+            except samweb_cli.exceptions.FileNotFound:
+                locate_error_msg = 'File %s is not found at SAM!' % in_file
+                statusCode = 1
 
                 try:
-                    meta = samweb.getMetadata(filenameorid=in_file_name)
-                    checksum_info = meta['checksum'][0].split(':')
-                    if checksum_info[0] == 'enstore':
-                        self._data = checksum_info[1]
+                    pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
+                    near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
+
+                    if near1_adler32_1 == pnfs_adler32_1:
                         statusCode = 0
                     else:
-                        statusCode = 10
+                        self.error('Found checksum disagreement @ (run,subrun) = (%d,%d)' % (run,subrun))
+                        checksum_error_msg += 'Run %d, subrun %d\n' % ( run, subrun )
+                        checksum_error_msg += 'Converted %s checksum: %s\n' % ( self._ref_project, near1_adler32_1 )
+                        checksum_error_msg += 'Converted PNFS checksum: %s\n\n' % ( pnfs_adler32_1 )
+                        statusCode = 1000
+                        self._data = '%s:%s;PNFS:%s' % ( self._ref_project, near1_adler32_1, pnfs_adler32_1 )
 
-                except samweb_cli.exceptions.FileNotFound:
-                    subject = 'Failed to locate file %s at SAM' % in_file
-                    text = 'File %s is not found at SAM!' % in_file
-                    pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                    statusCode = 100
+                except LookupError:
+                    self.warning("Checksum check on dCache failed for %s" % out_file)
 
             # Create a status object to be logged to DB (if necessary)
+            self.info('Finished: (run, subrun) = (%d,%d) status = %d' % (run,subrun,statusCode))
             status = ds_status( project = self._project,
                                 run     = run,
                                 subrun  = subrun,
@@ -242,6 +259,22 @@ class verify_dropbox( ds_project_base ):
 
             # Break from loop if counter became 0
             if not ctr: break
+
+        # Report checksum error
+        if checksum_error_msg:
+            subject = 'Checksum different between %s and PNFS' % self._ref_project
+            pub_smtp( os.environ['PUB_SMTP_ACCT'], 
+                      os.environ['PUB_SMTP_SRVR'], 
+                      os.environ['PUB_SMTP_PASS'], 
+                      self._experts, subject, checksum_error_msg )
+            
+        if locate_error_msg:
+            subject = 'Failed to locate file %s at SAM' % in_file
+            pub_smtp( os.environ['PUB_SMTP_ACCT'], 
+                      os.environ['PUB_SMTP_SRVR'], 
+                      os.environ['PUB_SMTP_PASS'], 
+                      self._experts, subject, locate_error_msg )
+
 
     ## @brief check the checksum is in the table
     def check_db( self ):
@@ -309,7 +342,30 @@ Checksum is not in database
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]
-
+        
     obj = verify_dropbox( proj_name )
+        
+    obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    obj.compare_dropbox_checksum()
+    if len(sys.argv) == 2:
+        
+        obj.compare_dropbox_checksum()
+        
+    elif len(sys.argv) == 3:
+
+        runlist = open(sys.argv[2],'r').read()
+        runid_v = []
+        for line in runlist.split('\n'):
+            words = line.split()
+            if len(words) < 4:
+                continue
+
+            runid_v.append(int(words[0]),int(words[1]),int(words[2]),int(words[3]))
+            
+        obj.info('Run list fetched from txt file: %d entries' % len(runid_v))
+        
+        obj.compare_dropbox_checksum_from_runlist(runid_v)
+        
+    obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
+

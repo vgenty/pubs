@@ -1,6 +1,6 @@
 import commands,os
 #import psutil
-from get_machine_info import getRAMusage, getCPUusage, getDISKusage
+from dstream.get_machine_info import getRAMusage, getCPUusage, getDISKusage
 
 def ubdaq_logger_smc():
     lines = [x for x in commands.getoutput('df').split('\n') if len(x.split())==5]

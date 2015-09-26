@@ -233,10 +233,6 @@ class transfer( ds_project_base ):
                                     status  = status )
                 self.log_status( status )
 
-            # Pretend I'm doing something
-            time.sleep(1)
-
-
             # Break from loop if counter became 0
             if not ctr: break
 
@@ -264,6 +260,7 @@ class transfer( ds_project_base ):
                 else:
                     active_counter += 1
                     finished = False
+            if finished: break
             if time_spent%10:
                 self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
             if time_spent > self._max_wait:
@@ -344,9 +341,6 @@ class transfer( ds_project_base ):
                 status = 0
             except:
                 status = 1
-
-            # Pretend I'm doing something
-            time.sleep(1)
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,

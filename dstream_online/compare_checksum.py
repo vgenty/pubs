@@ -71,7 +71,8 @@ class compare_checksum( ds_project_base ):
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
 
-        for x in self.get_xtable_runs( [self._project, self._ref_project, self._parent_project],                                       [1, 0, 0] ):
+        for x in self.get_xtable_runs( [self._project, self._ref_project, self._parent_project],                                       
+                                       [1, 0, 0] ):
 
             # Counter decreases by 1
             ctr -=1
@@ -105,7 +106,7 @@ class compare_checksum( ds_project_base ):
 
 
             # Pretend I'm doing something
-            time.sleep(0.5)
+            #time.sleep(0.5)
 
             # Report finishing
             now_str  = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -119,10 +120,10 @@ class compare_checksum( ds_project_base ):
                                 seq     = seq,
                                 status  = statusCode,
                                 data    = self._data )
-            
+
             # Log status
             self.log_status( status )
-
+            #self.info('Logged status: run=%d, subrun=%d @ %s' % ( run, subrun, now_str ))
             # Break from loop if counter became 0
             if not ctr: break
 

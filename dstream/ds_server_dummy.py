@@ -1,7 +1,7 @@
 import commands
 from pub_util import pub_watch
 from ds_messenger import daemon_messenger as d_msg
-from get_machine_info import getRAMusage, getCPUusage, getDISKusage
+from dstream.get_machine_info import getRAMusage, getCPUusage, getDISKusage
 import os
 
 def dummy_logger():

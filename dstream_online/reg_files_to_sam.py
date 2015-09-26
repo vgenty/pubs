@@ -211,9 +211,6 @@ File %s failed to be declared to SAM!
             else:
                 status = 100
 
-            # Pretend I'm doing something
-            time.sleep(1)
-
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
@@ -286,9 +283,6 @@ File %s failed to be declared to SAM!
             except samweb_cli.exceptions.FileNotFound:
                 status = 1
 
-            # Pretend I'm doing something
-            time.sleep(1)
-
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
                                 run     = int(x[0]),
@@ -322,9 +316,13 @@ if __name__ == '__main__':
 
     obj = reg_files_to_sam( proj_name )
 
+    obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
     obj.declare_to_sam()
 
     obj.validate_sam()
+
+    obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
     # May insert SAM dataset definition here
 
