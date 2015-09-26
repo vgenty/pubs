@@ -294,6 +294,22 @@ class ds_reader(pubdb_reader):
                     log_array[-1].add_log(tmp[0],tmp[1])
 
         return tuple(log_array)
+
+    ## @brief Fetch a distinct list of status for a given project
+    def list_distinct_status(self,project):
+        project=str(project)
+        if not self.project_exist(project):
+            self._logger.error('Project %s does not exist!' % project)
+
+        query = 'SELECT DISTINCT Status FROM %s;' % project
+
+        self.execute(query)
+
+        result=[]
+        for x in self:
+            result.append(x)
+
+        return result
     
     ## @brief Fetch project information. Return is a ds_project data holder instance.
     def project_info(self,project,field_name=None):
