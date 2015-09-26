@@ -31,17 +31,23 @@ def disk_usage_alert(proj,max_disk,emails):
         return
 
     last_entry = proj[-1]
+    second_entry = proj[-2]
     
-    log_time = last_entry.get_log_time()
-    log_dict = last_entry.get_log_dict()
+    last_log_time = last_entry.get_log_time()
+    last_log_dict = last_entry.get_log_dict()
+
+    second_log_dict = second_entry.get_log_dict()
 
     # check /data/ disk usage
     lastDISK = 0
     for key in log_dict:
         if (str(key) == 'DISK_USAGE_DATA'):
-            lastDISK = float(log_dict[key])*100
+            lastDISK   = float(last_log_dict[key])*100
+            secondDISK = float(second_log_dict[key])*100
 
-    if (lastDISK > max_disk):
+    # check:
+    #     above disk-limit     and    positive slope!!
+    if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
         
         pub_smtp(receiver = emails,
                  subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
@@ -51,9 +57,10 @@ def disk_usage_alert(proj,max_disk,emails):
     lastDISK = 0
     for key in log_dict:
         if (str(key) == 'DISK_USAGE_DATALOCAL'):
-            lastDISK = float(log_dict[key])*100
+            lastDISK = float(last_log_dict[key])*100
+            secondDISK = float(second_log_dict[key])*100
 
-    if (lastDISK > max_disk):
+    if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
         
         pub_smtp(receiver = emails,
                  subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
@@ -63,9 +70,10 @@ def disk_usage_alert(proj,max_disk,emails):
     lastDISK = 0
     for key in log_dict:
         if (str(key) == 'DISK_USAGE_HOME'):
-            lastDISK = float(log_dict[key])*100
+            lastDISK = float(last_log_dict[key])*100
+            secondDISK = float(second_log_dict[key])*100
 
-    if (lastDISK > max_disk):
+    if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
         
         pub_smtp(receiver = emails,
                  subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
