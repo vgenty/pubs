@@ -14,6 +14,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_api
+from dstream.get_machine_info import getDISKSize
 
 # function that decides if to send out an email
 def disk_usage_alert(proj,max_disk,emails):
@@ -34,8 +35,8 @@ def disk_usage_alert(proj,max_disk,emails):
     log_time = last_entry.get_log_time()
     log_dict = last_entry.get_log_dict()
 
+    # check /data/ disk usage
     lastDISK = 0
-
     for key in log_dict:
         if (str(key) == 'DISK_USAGE_DATA'):
             lastDISK = float(log_dict[key])*100
@@ -43,8 +44,32 @@ def disk_usage_alert(proj,max_disk,emails):
     if (lastDISK > max_disk):
         
         pub_smtp(receiver = emails,
-                 subject  = 'PUBS ALERT: Disk usage on %s above %i percent!' %(pub_env.kSERVER_NAME, max_disk) ,
-                 text     = 'Current disk usage is at %.02f percent. Please take action and clear disk space!'%(lastDISK))
+                 subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
+                 text     = 'Current disk usage on %s @ path %s is at %.02f percent. Please take action and clear disk space!'%(pub_env.kSERVER_NAME, '/data/', lastDISK))
+
+    # check /datalocal/ disk usage
+    lastDISK = 0
+    for key in log_dict:
+        if (str(key) == 'DISK_USAGE_DATALOCAL'):
+            lastDISK = float(log_dict[key])*100
+
+    if (lastDISK > max_disk):
+        
+        pub_smtp(receiver = emails,
+                 subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
+                 text     = 'Current disk usage on %s @ path %s is at %.02f percent. Please take action and clear disk space!'%(pub_env.kSERVER_NAME, '/datalocal/', lastDISK))
+
+    # check /home/ disk-usage
+    lastDISK = 0
+    for key in log_dict:
+        if (str(key) == 'DISK_USAGE_HOME'):
+            lastDISK = float(log_dict[key])*100
+
+    if (lastDISK > max_disk):
+        
+        pub_smtp(receiver = emails,
+                 subject  = 'PUBS ALERT: Disk usage is above %i percent!' %( max_disk) ,
+                 text     = 'Current disk usage on %s @ path %s is at %.02f percent. Please take action and clear disk space!'%(pub_env.kSERVER_NAME, '/home/', lastDISK))
 
     return
 
@@ -69,12 +94,18 @@ def plot_resource_usage(proj,outpath):
     RAM   = [] # RAM-usage %
     tDISK = [] # DISK-usage times
     DISK  = [] # DISK-usage %
+    rDISK = [] # DISK rate of filling/draining
     tDLOC = [] # LOCAL DATA-usage times
     DLOC  = [] # LOCAL DATA-usage %
+    rDLOC = [] # LOCAL rate of filling/draining
     tHOME = [] # HOME-usage times
     HOME  = [] # HOME-usage %
+    rHOME = [] # HOME rate of filling/draining
     tPROJ = [] # number of projects running times
     NPROJ = [] # number of projects running
+    rTHOME = [] # times for rates
+    rTDISK = []
+    rTDLOC = []
 
     lastDISK = -100
     lastDLOC = -100
@@ -103,19 +134,29 @@ def plot_resource_usage(proj,outpath):
             time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
             NPROJ.append(x._proj_ctr)
             tPROJ.append(time)
+
             # keep track of last entry for each curve
             for key in log_dict:
                 if (str(key) == 'DISK_USAGE_DATA'):
+                    if (cntr%spacing >= 0):
+                        rDISK.append(float(log_dict[key])*100)
+                        rTDISK.append(time)
                     if ( (abs(float(log_dict[key])*100-lastDISK) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastDISK = float(log_dict[key])*100
                         tDISK.append(time)
                         DISK.append(float(log_dict[key])*100)
                 if (str(key) == 'DISK_USAGE_DATALOCAL'):
+                    if (cntr%spacing >= 0):
+                        rDLOC.append(float(log_dict[key])*100)
+                        rTDLOC.append(time)
                     if ( (abs(float(log_dict[key])*100-lastDLOC) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastDLOC = float(log_dict[key])*100
                         tDLOC.append(time)
                         DLOC.append(float(log_dict[key])*100)
                 if (str(key) == 'DISK_USAGE_HOME'):
+                    if (cntr%spacing >= 0):
+                        rHOME.append(float(log_dict[key])*100)
+                        rTHOME.append(time)
                     if ( (abs(float(log_dict[key])*100-lastHOME) > 1) or ((cntr+1)/totentries == 1) or (cntr%spacing == 0) ):
                         lastHOME = float(log_dict[key])*100
                         tHOME.append(time)
@@ -138,7 +179,6 @@ def plot_resource_usage(proj,outpath):
     datesDISK = dts.date2num(tDISK)
     datesDLOC = dts.date2num(tDLOC)
     datesHOME = dts.date2num(tHOME)
-
             
     # example for multi-axes (i.e. >= 3) plot here:
     # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
@@ -177,10 +217,21 @@ def plot_resource_usage(proj,outpath):
     # if the last entry in Disk Usage is above a threshold that indicates that the usage is too high
     # change the background color of the plot
     diskMax = 95
+
     if ( DISK[-1] > diskMax ):
         xlim = plt.xlim()
         ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
-                   label='DISK USAGE ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+                   label='DISK USAGE @ /data/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+
+    if ( DLOC[-1] > diskMax ):
+        xlim = plt.xlim()
+        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                   label='DISK USAGE @ /datalocal/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+
+    if ( HOME[-1] > diskMax ):
+        xlim = plt.xlim()
+        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                   label='DISK USAGE @ /home/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
 
 
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
@@ -198,6 +249,93 @@ def plot_resource_usage(proj,outpath):
     outpathResource = outpath+"resource_monitoring_%s.png"%(servername)
     plt.savefig(outpathResource)
 
+    # --------------------------------------
+    # second plot : save rates of disk-usage
+    # --------------------------------------
+
+    rateTHOME = []
+    rateHOME = []
+    rateTDATA = []
+    rateDATA = []
+    rateTDLOC = []
+    rateDLOC = []
+
+    fig, ax = plt.subplots(1,figsize=(12,8))
+
+    # 1st step is to calculate and smooth the rates
+    if (len(rTHOME) > 10):
+        dsize = getDISKSize('/home/')
+        for i in xrange(10,len(rTHOME)):
+            rhome = 0
+            ct = 0
+            for x in xrange(-10,0):
+                # get the time elapsed between measurements
+                dt = rTHOME[i+x+1]-rTHOME[i+x]
+                dt = dt.seconds + float(dt.microseconds)/1e6
+                dMB = dsize*(rHOME[i+x+1]-rHOME[i+x])/100.
+                rhome += dMB/dt
+                ct += 1
+            rateTHOME.append(rTHOME[i])
+            rateHOME.append(rhome/ct)
+        datesRHOME  = dts.date2num(rateTHOME)
+        plt.plot(datesRHOME,rateHOME,'o--',color='c',label='Rate @ /home/')
+
+    if (len(rTDISK) > 10):
+        dsize = getDISKSize('/data/')
+        for i in xrange(10,len(rTDISK)):
+            rdata = 0
+            ct = 0
+            for x in xrange(-10,0):
+                # get the time elapsed between measurements
+                dt = rTDISK[i+x+1]-rTDISK[i+x]
+                dt = dt.seconds + float(dt.microseconds)/1e6
+                dMB = dsize*(rDISK[i+x+1]-rDISK[i+x])/100.
+                rdata += dMB/dt
+                ct += 1
+            rateTDATA.append(rTDISK[i])
+            rateDATA.append(rdata/ct)
+        datesRDATA  = dts.date2num(rateTDATA)
+        plt.plot(datesRDATA,rateDATA,'o--',color='r',label='Rate @ /data/')
+
+    if (len(rTDLOC) > 10):
+        dsize = getDISKSize('/datalocal/')
+        for i in xrange(10,len(rTDLOC)):
+            rdloc = 0
+            ct = 0
+            for x in xrange(-10,0):
+                # get the time elapsed between measurements
+                dt = rTDLOC[i+x+1]-rTDLOC[i+x]
+                dt = dt.seconds + float(dt.microseconds)/1e6
+                dMB = dsize*(rDLOC[i+x+1]-rDLOC[i+x])/100.
+                rdata += dMB/dt
+                ct += 1
+            rateTDLOC.append(rTDLOC[i])
+            rateDLOC.append(rdloc/ct)
+        datesRDLOC  = dts.date2num(rateTDLOC)
+        plt.plot(datesRDLOC,rateDLOC,'o--',color='m',label='Rate @ /datalocal/')
+
+
+    ax.set_xlabel('Time',fontsize=20)
+    ax.set_ylabel('Disk Filling/Draining Rate [ MB/sec ]',fontsize=20)
+    #ax.set_ylim([-2,2])
+
+    # format the ticks
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
+    
+    plt.grid()
+    plt.title('Disk draining rate on %s'%(servername), fontsize=20)
+    plt.legend(loc=3,fontsize=20,framealpha=0.9)
+
+    outpathResource = outpath+"disk_rate_monitoring_%s.png"%(servername)
+    plt.savefig(outpathResource)
+
+
+    # -------------------------------------------------------
+    #  third plot : number of projects running simulatneously
+    # -------------------------------------------------------
+    
     fig, ax = plt.subplots(1,figsize=(12,8))
     plt.plot(tPROJ[2:],NPROJ[2:],'ro')
     # get max number of projects to set axes accordingly
