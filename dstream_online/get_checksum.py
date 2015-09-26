@@ -204,7 +204,6 @@ Error message:
         for f in in_file_v:
             self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
             cmd = cmd_template % f
-            print cmd
             index,active_ctr = mp.execute(cmd)
 
             if not self._parallelize:
