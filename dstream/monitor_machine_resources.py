@@ -131,6 +131,11 @@ def plot_resource_usage(proj,outpath):
     # interval between which to plots point for variables
     # so that plot is not over-crowded
     spacing = 5
+
+    # current time
+    currentTime = datetime.datetime.now()
+    # max time to scan
+    maxTime = datetime.timedelta(hours=3)
     
     for x in proj:
 
@@ -140,6 +145,9 @@ def plot_resource_usage(proj,outpath):
         if ( (log_time != '') and (log_dict) ):
             # get time in python datetime format
             time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+
+            if ( (currentTime-time) > maxTime): continue
+
             NPROJ.append(x._proj_ctr)
             tPROJ.append(time)
 
@@ -220,7 +228,7 @@ def plot_resource_usage(proj,outpath):
     ax.xaxis.set_major_formatter(daysFmt)
     #ax.xaxis.set_minor_locator(hours)
 
-    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
+    ax.set_xlim([datetime.datetime.now()-maxTime, datetime.datetime.now()])
 
     # if the last entry in Disk Usage is above a threshold that indicates that the usage is too high
     # change the background color of the plot
@@ -315,7 +323,7 @@ def plot_resource_usage(proj,outpath):
                 dt = rTDLOC[i+x+1]-rTDLOC[i+x]
                 dt = dt.seconds + float(dt.microseconds)/1e6
                 dMB = dsize*(rDLOC[i+x+1]-rDLOC[i+x])/100.
-                rdata += dMB/dt
+                rdloc += dMB/dt
                 ct += 1
             rateTDLOC.append(rTDLOC[i])
             rateDLOC.append(rdloc/ct)
@@ -323,14 +331,29 @@ def plot_resource_usage(proj,outpath):
         plt.plot(datesRDLOC,rateDLOC,'o--',color='m',label='Rate @ /datalocal/')
 
         
+    Rmin = -50
+    Rmax = 50
+    rmin = np.amin(np.array(rateDLOC))
+    rmax = np.amax(np.array(rateDLOC))
+    if (rmin < Rmin): Rmin = rmin
+    if (rmax > Rmax): Rmax = rmax
+    rmin = np.amin(np.array(rateDATA))
+    rmax = np.amax(np.array(rateDATA))
+    if (rmin < Rmin): Rmin = rmin
+    if (rmax > Rmax): Rmax = rmax
+    rmin = np.amin(np.array(rateHOME))
+    rmax = np.amax(np.array(rateHOME))
+    if (rmin < Rmin): Rmin = rmin
+    if (rmax > Rmax): Rmax = rmax
+
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Disk Filling/Draining Rate [ MB/sec ]',fontsize=20)
-    #ax.set_ylim([-2,2])
+    ax.set_ylim([Rmin-20,Rmax+20])
 
     # format the ticks
     ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
-    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(hours=3), datetime.datetime.now()])
+    ax.set_xlim([datetime.datetime.now()-maxTime, datetime.datetime.now()])
     
     plt.grid()
     plt.title('Disk draining rate on %s'%(servername), fontsize=20)
