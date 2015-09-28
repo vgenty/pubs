@@ -7,6 +7,8 @@ import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
+from custom_qcombobox import CustomComboBox
+from custom_project_subwindow import CustomStageSubwindow
 #from gui_utils_api import GuiUtilsAPI, GuiUtils
 
 # catch ctrl+C to terminate the program
@@ -74,12 +76,24 @@ projectnames = test_dict.keys()
 # Dictionary of project name --> pie chart item
 proj_dict = {}
 
+# Dictionary of project name --> combobox next to pie chart
+combobox_dict = {}
+
 #Read in the parameters for this template into a dictionary
 #These dictate, based on project name, where to draw on GUI
 template_params = getParams(my_template)
 
-for iprojname in projectnames:
+def openStageSubwindow(stagename):
+    #Loop over projects and see if any have this stagename
+    for projectname in test_dict.keys():
+        try: 
+            test_dict[projectname][str(stagename)]
+        except KeyError:
+            continue
+        newstagesubwindow = scene.openStageSubwindow(stagename,data=test_dict[projectname][str(stagename)])
 
+
+for iprojname in projectnames:
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
     xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
@@ -91,6 +105,24 @@ for iprojname in projectnames:
 
     #Store the piechart in a dictionary to modify it later, based on project name
     proj_dict[iprojname] = ichart
+    butt_x, butt_y = ichart.getCenterPoint()
+    butt_x = 100
+    butt_w, butt_h = 100, 50
+    butt_x -= maxradius
+
+    #Add (and store in a dict) one clickable menu for this project next to the pie chart
+    combobox_dict[iprojname] = QtGui.QComboBox()
+    combobox_dict[iprojname].setGeometry(butt_x,butt_y,butt_w,butt_h)
+
+    #Generate the dropdown menu options (stage names)
+    for stagename in test_dict[iprojname]:
+        combobox_dict[iprojname].addItem(stagename)
+
+    #When the menu item is clicked, call the openSubwindow function with the stagename as an argument
+    combobox_dict[iprojname].activated[str].connect(openStageSubwindow)
+
+    #Add the dropdown menu button to the scene
+    scene.addWidget(combobox_dict[iprojname])
 
 
 def update_gui():
@@ -169,7 +201,7 @@ def update_gui():
         #Draw the new piechart in the place of the old one
         scene.addItem(proj_dict[iprojname])
 
-        #On top of the pie chart, write the number of run/subruns for each stage name
+        #Next to the pie chart, write the number of run/subruns for each stage name
         mytext = QtGui.QGraphicsTextItem()
         mytext.setPos(ix+maxradius,iy-(maxradius/2))
         mytext.setPlainText(str(legendstring))

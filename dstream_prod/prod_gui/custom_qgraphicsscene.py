@@ -1,6 +1,6 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
-from custom_project_subwindow import CustomProjectSubwindow
+from custom_project_subwindow import CustomProjectSubwindow, CustomStageSubwindow
 # from custom_daemon_subwindow import CustomDaemonSubwindow
 
 class CustomQGraphicsScene(QtGui.QGraphicsScene):
@@ -21,10 +21,13 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
     #access to the piechart's info to the top-level script
     def mousePressEvent(self, event):
         item_clicked = self.itemAt(event.scenePos())
+        #print event.scenePos()
         if item_clicked is not None:
             if item_clicked.__module__ == 'custom_piechart_class':
                 self.win = CustomProjectSubwindow(item_clicked)
 
+    def openStageSubwindow(self,stagename='',data=0):
+        self.win = CustomStageSubwindow(stagename,data)
     # def mouseReleaseEvent(self, event):
     #     pass
 

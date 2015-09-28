@@ -79,3 +79,38 @@ class CustomProjectSubwindow():
 
     def __del__(self):
         pass
+
+
+class CustomStageSubwindow():
+
+    def __init__(self, stagename='',data=0):
+        self.myplot = None
+        self.stagename = stagename
+        self.data = list(data)
+        self.win = pg.GraphicsWindow(size=(800,500))
+        # Window title
+        self.win.setWindowTitle(stagename+': Additional Information')
+
+        self.AddStagePlot()
+        # self.AddRandomPlot()
+        # self.timer = pg.QtCore.QTimer()
+        # self.timer.timeout.connect(self.AddRandomPlot)
+        # self.timer.start(1*1000)
+
+    def AddRandomPlot(self):
+        if self.myplot: self.win.removeItem(self.myplot)
+        #Draw a random plot to demonstrate possibilities
+        self.myplot = self.win.addPlot(row=1,col=0)
+        # data = np.random.normal(size=300)
+        curve = self.myplot.plot(data)
+
+    def AddStagePlot(self):
+        #Data is [ 5, 2, 3, 19 ] (length is # of substatuses for this stage)
+        self.myplot = self.win.addPlot(row=1,col=0)
+        self.myplot.setLabel('top','Sub Statuses for Stage %s'%self.stagename)
+        self.myplot.setLabel('bottom','Sub Statuses (last digit of status)')
+        self.myplot.setLabel('left','Counts')
+        curve = self.myplot.plot(x=np.arange(-0.5,len(self.data)+0.5,1),y=self.data,stepMode=True)
+
+    def __del__(self):
+        pass
