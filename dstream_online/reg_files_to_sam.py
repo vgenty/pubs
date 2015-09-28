@@ -17,8 +17,8 @@ from ds_online_env import *
 import samweb_cli
 import json
 import traceback
-import glob
-
+# script module tools
+from scripts import find_run
 
 ## @class dummy_nubin_xfer
 #  @brief A dummy nu bin file xfer project
@@ -141,8 +141,7 @@ class reg_files_to_sam( ds_project_base ):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -262,8 +261,7 @@ File %s failed to be declared to SAM!
 
             status = 12
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100

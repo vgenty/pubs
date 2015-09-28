@@ -4,7 +4,7 @@
 #  @author echurch
 
 # python include
-import time,os,glob
+import time,os
 import subprocess
 # pub_dbi package include
 from pub_dbi import DBException
@@ -12,6 +12,8 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+# script module tools
+from scripts import find_run
 
 ## @class dummy_daq
 #  @brief A fake DAQ process that makes a fake nu bin file.
@@ -81,8 +83,7 @@ class mv_assembler_daq_files(ds_project_base):
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
             status_code=1
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -264,8 +265,7 @@ class mv_assembler_daq_files(ds_project_base):
             subrun = int(x[1])
             status_code = 2
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100

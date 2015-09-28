@@ -15,6 +15,8 @@ from dstream import ds_project_base
 from dstream import ds_status
 from ds_online_env import *
 import glob
+# script module tools
+from scripts import find_run
 
 ## @class ds_clean
 #  @brief Script for removing old files
@@ -125,8 +127,7 @@ class ds_clean(ds_project_base):
             multiple_file_status=0
 
             # Check input file exists. Otherwise report error
-            in_file_holder = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)>1):
                 self.error('ERROR: There is more than one file matching that pattern: %s' % filelist)
                 multiple_file_status=200

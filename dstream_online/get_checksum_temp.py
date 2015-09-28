@@ -15,7 +15,8 @@ from dstream import ds_project_base
 from dstream import ds_status
 import samweb_client.utility
 import traceback
-import glob
+# script module tools
+from scripts import find_run
 
 class get_checksum( ds_project_base ):
 
@@ -79,9 +80,7 @@ class get_checksum( ds_project_base ):
 
             statusCode = 1
 
-            in_file_name = self._infile_format % ( run, subrun )
-            in_file_holder = '%s/%s' % ( self._in_dir, in_file_name )
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)>1):
                 self.error('ERROR: There is more than one file matching that pattern: %s' % in_file_name)
             if (len(filelist)<1):
