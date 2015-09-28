@@ -19,15 +19,15 @@ import samweb_client.utility
 import traceback
 import glob
 
-class get_checksum( ds_project_base ):
+class copy_checksum( ds_project_base ):
 
-    _project = 'get_checksum'
+    _project = 'copy_checksum'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super( get_checksum, self ).__init__( arg )
+        super( copy_checksum, self ).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -38,6 +38,7 @@ class get_checksum( ds_project_base ):
         self._nruns = None
         self._in_dir = ''
         self._infile_format = ''
+        self._ref_project = ''
         self._parent_project = ''
         self._experts = ''
         self._data = ''
@@ -54,8 +55,10 @@ class get_checksum( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
 
-        if 'PARENT_PROJECT' in resource:
-            self._parent_project = resource['PARENT_PROJECT']
+        self._parent_project = resource['PARENT_PROJECT'].split(':')
+
+        self._ref_project = resource['REF_PROJECT']
+
         self._experts = resource['EXPERTS']
 
         try:
@@ -70,7 +73,7 @@ class get_checksum( ds_project_base ):
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
 
     ## @brief calculate the checksum of a file
-    def calculate_checksum( self ):
+    def copy_checksum( self ):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -88,9 +91,7 @@ class get_checksum( ds_project_base ):
         # Process Postpone first
         #
         ctr_postpone = 0
-        parent_list = []
-        if self._parent_project: parent_list.append(self._parent_project)
-        for parent in parent_list:
+        for parent in self._parent_project:
             if ctr_postpone >= self._nruns_to_postpone: break
             if parent == self._project: continue
         
@@ -109,14 +110,10 @@ class get_checksum( ds_project_base ):
                 if ctr_postpone > self._nruns_to_postpone: break
 
         # Fetch runs from DB and process for # runs specified for this instance.
-        runlist=[]
-        if self._parent_project:
-            runlist = self.get_xtable_runs( [self._project, self._parent_project], [1, 0] )
-        else:
-            runlist = self.get_runs(self._project,1)
+        project_list = [self._project] + self._parent_project
+        status_list  = [1] + [0] * len(self._parent_project)
+        runlist= self.get_xtable_runs( project_list, status_list )
         ctr = self._nruns
-        in_file_v = []
-        runid_v = []
         for x in runlist:
             # Break from loop if counter became 0
             if ctr <= 0: break
@@ -148,88 +145,26 @@ class get_checksum( ds_project_base ):
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 self.error('List of files found %s' % filelist)
-
-            in_file_v.append(filelist[0])
-            runid_v.append((run,subrun))
-        
-        mp = self.process_files(in_file_v)
-
-        for i in xrange(len(in_file_v)):
-
-            (out,err) = mp.communicate(i)
-            
-            if err or not out:
-                self.error('Checksum calculculation failed for %s' % in_file_v[i])
-                self.error(err)
                 self.log_status( ds_status( project = self._project,
-                                            run     = runid_v[i][0],
-                                            subrun  = runid_v[i][1],
+                                            run     = run,
+                                            subrun  = subrun,
                                             seq     = 0,
-                                            status  = 101,
-                                            data    = '' ) )
+                                            status  = 101 ) )
                 continue
 
-            statusCode = 1
-            try:
-                metadata=None
-                exec('metadata = %s' % out)
-                self._data = metadata['crc_value']
-                statusCode = 0
-            except Exception:
-                errorMessage = traceback.print_exc()
-                subject = 'Failed to obtain the checksum of the file %s' % in_file
-                text = """File: %s
-Error message:
-%s
-                """ % ( in_file, errorMessage )
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
 
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                statusCode = 100
-                self._data = ''
-                
-            self.log_status( ds_status( project = self._project,
-                                        run     = runid_v[i][0],
-                                        subrun  = runid_v[i][1],
-                                        seq     = 0,
-                                        status  = statusCode,
-                                        data    = self._data ) )
-
-    ## @brief process multiple files checksum calculation
-    def process_files(self, in_file_v):
-
-        mp = ds_multiprocess(self._project)
-
-        cmd_template = 'python -c "import samweb_client.utility;print samweb_client.utility.fileEnstoreChecksum(\'%s\')"'
-
-        for f in in_file_v:
-            self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
-            cmd = cmd_template % f
-            index,active_ctr = mp.execute(cmd)
-
-            if not self._parallelize:
-                mp.communicate(index)
+            if ref_status._status:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
             else:
-                time_slept = 0
-                while active_ctr > self._parallelize:
-                    time.sleep(0.2)
-                    time_slept += 0.2
-                    active_ctr = mp.active_count()
+                self.info('Copying checksum %s for %s' % (ref_status._data,filelist[0]))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = 0,
+                                            data    = ref_status._data ) )
 
-                    if time_slept > self._max_proc_time:
-                        self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
-                        mp.kill()
-                        break
-                    if int(time_slept) and int(time_slept)%3 < 0.3 == 0:
-                        self.info('Waiting for %d/%d process to finish...' % (active_ctr,len(in_file_v)))
-        time_slept=0
-        while mp.active_count():
-            time.sleep(0.2)
-            time_slept += 0.2
-            if time_slept > self._max_proc_time:
-                mp.kill()
-                break
-        return mp
-        
     ## @brief check the checksum is in the table
     def check_db( self ):
         # Attempt to connect DB. If failure, abort
@@ -297,10 +232,10 @@ if __name__ == '__main__':
 
     proj_name = sys.argv[1]
 
-    obj = get_checksum( proj_name )
+    obj = copy_checksum( proj_name )
 
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    obj.calculate_checksum()
+    obj.copy_checksum()
 
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

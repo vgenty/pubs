@@ -16,6 +16,58 @@ from dstream import ds_status
 from dstream import ds_api
 from dstream.get_machine_info import getDISKSize
 
+# function that takes rate information and smooths it
+def smooth_rate(dsize,times,occupancy,n):
+
+    r_times = []
+    rates   = []
+
+    # if the time and occupancy vectors don't agree in length: -> return empty lists
+    if (len(times) != len(occupancy)):
+        return r_times,rates
+
+    # calculate rate at the beginning of the n-element long averaging
+    dt_start  = times[1]-times[0]
+    dt_start  = dt_start.seconds + float(dt_start.microseconds)/1.e6
+    dMB_start = dsize*(occupancy[1]-occupancy[0])/100.
+    r_start   = dMB_start/dt_start
+
+    # calculate the avg. rate for the first n elements
+    rate = 0.
+    for i in xrange(n):
+        dt  = times[n+1]-times[n]
+        dt  = dt.seconds + float(dt.microseconds)/1.e6
+        dMB = dsize*(occupancy[n+1]-occupancy[n])/100.
+        rate += dMB/dt
+    rate /= n
+
+    print 'filling time : %03i w/ rate : %i'%(n,int(rate))
+    r_times.append(times[n])
+    rates.append(rate)
+
+    # now calculate the avrerage rate for the remaining times
+    for i in xrange(n+1,len(times)):
+        rate *= n
+        rate -= r_start
+        # re-calculate the starting rate
+        dt_start  = times[i-n]-times[i-n-1]
+        dt_start  = dt_start.seconds + float(dt_start.microseconds)/1.e6
+        dMB_start = dsize*(occupancy[i-n]-occupancy[i-n-1])/100.
+        r_start   = dMB_start/dt_start
+        # calculate the end_rate to add
+        dt_end  = times[i]-times[i-1]
+        dt_end  = dt_end.seconds + float(dt_end.microseconds)/1.e6
+        dMB_end = dsize*(occupancy[i]-occupancy[i-1])/100.
+        r_end   = dMB_end/dt_end
+        rate += r_end
+        print 'adding rate: %i'%(int(r_end))
+        rate /= n
+        print 'filling time : %03i w/ rate : %i'%(i,int(rate))
+        r_times.append(times[i])
+        rates.append(rate)
+
+    return r_times,rates
+
 # function that decides if to send out an email
 def disk_usage_alert(proj,max_disk,emails):
 
@@ -135,7 +187,7 @@ def plot_resource_usage(proj,outpath):
     # current time
     currentTime = datetime.datetime.now()
     # max time to scan
-    maxTime = datetime.timedelta(hours=3)
+    maxTime = datetime.timedelta(hours=4)
     
     for x in proj:
 
@@ -190,6 +242,8 @@ def plot_resource_usage(proj,outpath):
 
         cntr += 1
 
+    maxTime = datetime.timedelta(hours=3)
+
     datesCPU  = dts.date2num(tCPU)
     datesRAM  = dts.date2num(tRAM)
     datesDISK = dts.date2num(tDISK)
@@ -234,20 +288,23 @@ def plot_resource_usage(proj,outpath):
     # change the background color of the plot
     diskMax = 95
 
-    if ( DISK[-1] > diskMax ):
-        xlim = plt.xlim()
-        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
-                   label='DISK USAGE @ /data/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+    if (len(DISK) > 0):
+        if ( DISK[-1] > diskMax ):
+            xlim = plt.xlim()
+            ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                       label='DISK USAGE @ /data/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
 
-    if ( DLOC[-1] > diskMax ):
-        xlim = plt.xlim()
-        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
-                   label='DISK USAGE @ /datalocal/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+    if (len(DLOC) > 0):
+        if ( DLOC[-1] > diskMax ):
+            xlim = plt.xlim()
+            ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                       label='DISK USAGE @ /datalocal/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
 
-    if ( HOME[-1] > diskMax ):
-        xlim = plt.xlim()
-        ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
-                   label='DISK USAGE @ /home/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
+    if (len(HOME) > 0):
+        if ( HOME[-1] > diskMax ):
+            xlim = plt.xlim()
+            ax.axvspan(xlim[0],xlim[1],color='r',alpha=0.3,lw=0,
+                       label='DISK USAGE @ /home/ ABOVE %i PERCENT -> CALL DM EXPERT'%diskMax)
 
 
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
@@ -278,73 +335,79 @@ def plot_resource_usage(proj,outpath):
 
     fig, ax = plt.subplots(1,figsize=(12,8))
 
+    # number of samples to average over
+    Navg = 7
+
+    print len(rTHOME)
     # 1st step is to calculate and smooth the rates
-    if (len(rTHOME) > 10):
+    if (len(rTHOME) > Navg):
         dsize = getDISKSize('/home/')
-        for i in xrange(10,len(rTHOME)):
+        #datesRHOME, rateHOME = smooth_rate(dsize,rTHOME,rHOME,Navg)
+        for i in xrange(Navg,len(rTHOME)):
             rhome = 0
-            ct = 0
-            for x in xrange(-10,0):
+            for x in xrange(-Navg,0):
                 # get the time elapsed between measurements
                 dt = rTHOME[i+x+1]-rTHOME[i+x]
                 dt = dt.seconds + float(dt.microseconds)/1e6
                 dMB = dsize*(rHOME[i+x+1]-rHOME[i+x])/100.
                 rhome += dMB/dt
-                ct += 1
             rateTHOME.append(rTHOME[i])
-            rateHOME.append(rhome/ct)
+            rateHOME.append(rhome/Navg)
         datesRHOME  = dts.date2num(rateTHOME)
         plt.plot(datesRHOME,rateHOME,'o--',color='c',label='Rate @ /home/')
 
-    if (len(rTDISK) > 10):
+    print len(rTDISK)
+    if (len(rTDISK) > Navg):
         dsize = getDISKSize('/data/')
-        for i in xrange(10,len(rTDISK)):
+        #datesRDATA, rateDATA = smooth_rate(dsize,rTDISK,rDISK,Navg)
+        for i in xrange(Navg,len(rTDISK)):
             rdata = 0
-            ct = 0
-            for x in xrange(-10,0):
+            for x in xrange(-Navg,0):
                 # get the time elapsed between measurements
                 dt = rTDISK[i+x+1]-rTDISK[i+x]
                 dt = dt.seconds + float(dt.microseconds)/1e6
                 dMB = dsize*(rDISK[i+x+1]-rDISK[i+x])/100.
                 rdata += dMB/dt
-                ct += 1
             rateTDATA.append(rTDISK[i])
-            rateDATA.append(rdata/ct)
+            rateDATA.append(rdata/Navg)
         datesRDATA  = dts.date2num(rateTDATA)
         plt.plot(datesRDATA,rateDATA,'o--',color='r',label='Rate @ /data/')
 
-    if (len(rTDLOC) > 10):
+    print len(rTDLOC)
+    if (len(rTDLOC) > Navg):
         dsize = getDISKSize('/datalocal/')
+        #datesRDLOC, rateDLOC = smooth_rate(dsize,rTDLOC,rDLOC,Navg)
         for i in xrange(10,len(rTDLOC)):
             rdloc = 0
-            ct = 0
-            for x in xrange(-10,0):
+            for x in xrange(-Navg,0):
                 # get the time elapsed between measurements
                 dt = rTDLOC[i+x+1]-rTDLOC[i+x]
                 dt = dt.seconds + float(dt.microseconds)/1e6
                 dMB = dsize*(rDLOC[i+x+1]-rDLOC[i+x])/100.
                 rdloc += dMB/dt
-                ct += 1
             rateTDLOC.append(rTDLOC[i])
-            rateDLOC.append(rdloc/ct)
+            rateDLOC.append(rdloc/Navg)
         datesRDLOC  = dts.date2num(rateTDLOC)
         plt.plot(datesRDLOC,rateDLOC,'o--',color='m',label='Rate @ /datalocal/')
 
         
     Rmin = -50
     Rmax = 50
-    rmin = np.amin(np.array(rateDLOC))
-    rmax = np.amax(np.array(rateDLOC))
-    if (rmin < Rmin): Rmin = rmin
-    if (rmax > Rmax): Rmax = rmax
-    rmin = np.amin(np.array(rateDATA))
-    rmax = np.amax(np.array(rateDATA))
-    if (rmin < Rmin): Rmin = rmin
-    if (rmax > Rmax): Rmax = rmax
-    rmin = np.amin(np.array(rateHOME))
-    rmax = np.amax(np.array(rateHOME))
-    if (rmin < Rmin): Rmin = rmin
-    if (rmax > Rmax): Rmax = rmax
+    if (len(rateDLOC) > 0):
+        rmin = np.amin(np.array(rateDLOC))
+        rmax = np.amax(np.array(rateDLOC))
+        if (rmin < Rmin): Rmin = rmin
+        if (rmax > Rmax): Rmax = rmax
+    if (len(rateDATA) > 0):
+        rmin = np.amin(np.array(rateDATA))
+        rmax = np.amax(np.array(rateDATA))
+        if (rmin < Rmin): Rmin = rmin
+        if (rmax > Rmax): Rmax = rmax
+    if (len(rateHOME) > 0):
+        rmin = np.amin(np.array(rateHOME))
+        rmax = np.amax(np.array(rateHOME))
+        if (rmin < Rmin): Rmin = rmin
+        if (rmax > Rmax): Rmax = rmax
 
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Disk Filling/Draining Rate [ MB/sec ]',fontsize=20)
@@ -379,7 +442,8 @@ def plot_resource_usage(proj,outpath):
     ax.set_ylabel('Number of Projects Running',fontsize=20)
     ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
-    ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
+    ax.set_xlim([datetime.datetime.now()-maxTime, datetime.datetime.now()])
+    #ax.set_xlim([datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()])
     ax.set_ylim([0,nmax+1])
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
