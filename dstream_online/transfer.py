@@ -19,6 +19,8 @@ import subprocess as sub
 import samweb_cli, extractor_dict
 import pdb, json
 import glob
+# script module tools
+from scripts import find_run
 
 ## @class transfer
 #  @brief Transferring files
@@ -134,8 +136,7 @@ class transfer( ds_project_base ):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -266,8 +267,7 @@ class transfer( ds_project_base ):
             self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
 
             status = 2
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
