@@ -7,7 +7,7 @@ def getCPUusage(statpath):
     # http://unix.stackexchange.com/questions/27076/how-can-i-receive-top-like-cpu-statistics-from-the-shell
     CPUpercent = 0
     # measure CPU percentage 10 times and average
-    Nchecks = 100
+    Nchecks = 10
     for x in xrange(Nchecks):
         statfile = open(statpath,'r')
         line0 = statfile.readline()
@@ -15,7 +15,7 @@ def getCPUusage(statpath):
         words = line0.split()
         totPre = float ( int(words[1]) + int(words[2]) + int(words[3]) + int(words[4]) )
         idlePre = float(words[4])
-        time.sleep(0.01)
+        time.sleep(0.1)
         statfile = open(statpath,'r')
         line0 = statfile.readline()
         statfile.close()

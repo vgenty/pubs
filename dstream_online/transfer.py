@@ -11,6 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from dstream import ds_multiprocess
 from ds_online_env import *
 # ifdh
 import ifdh
@@ -51,6 +52,8 @@ class transfer( ds_project_base ):
         self._infile_format = ''
         self._parent_project = ''
         self._nruns_to_postpone = 0
+        self._parallelize = 0
+        self._max_proc_time = 120
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -63,9 +66,12 @@ class transfer( ds_project_base ):
         #self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
-        self._max_wait = int(resource['MAX_WAIT'])
-        exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
 
+        if 'PARALLELIZE' in resource:
+            self._parallelize = int(resource['PARALLELIZE'])
+            
+        if 'MAX_PROC_TIME' in resource:
+            self._max_proc_time = int(resource['MAX_PROC_TIME'])
         try:
             self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
             self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
@@ -111,10 +117,12 @@ class transfer( ds_project_base ):
                 if ctr_postpone > self._nruns_to_postpone: break
                 
         # Fetch runs from DB and process for # runs specified for this instance.
+        args_v  = []
+        runid_v = []
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project, self._parent_project],
                                       [1, 0]):
-
+            if ctr <=0: break
             # Counter decreases by 1
             ctr -= 1
             
@@ -152,137 +160,85 @@ class transfer( ds_project_base ):
             # construct ifdh object
             #ih = ifdh.ifdh()
             #we're gonna use subprocess to parallelize these transfers and construct an ifdh command by hand
-            
-            if (os.path.isfile( in_file ) and (os.path.isfile( in_json ))):
-                self.info('Found %s' % (in_file) )
-                self.info('Found %s' % (in_json) )
 
-                try:
-                    cmd = ['ifdh', 'cp','-D', in_file, in_json, self._out_dir]
-                    proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
-                    done_list.append(False)
-                    run_id.append((run,subrun))
-                    self.info('Started transfer for (run,subrun)=%s @ %s' % (run_id[-1], time.strftime('%Y-%m-%d %H:%M:%s')))
-                    status_code=3
-                    status = ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )
-
-                        # if not parallelized, wait till proc is done
-                    if not self._parallelize:
-                        time_spent = 0
-                        while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
-                            time.sleep(1)
-                            time_spent +=1
-
-                            if time_spent > self._max_wait:
-                                self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
-                                proc_list[-1].kill()
-                                status = ds_status( project = self._project,
-                                                    run     = run_id[-1][0],
-                                                    subrun  = run_id[-1][1],
-                                                    seq     = 0,
-                                                    status  = 555 )
-                                self.log_status( status )
-                                time.sleep(5)
-                                
-                                if proc_list[-1].poll() is None:
-                                    self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
-                                    subprocess.call(['kill','-9',str(proc_list[-1].pid)])
-                                    status = ds_status( project = self._project,
-                                                        run     = run_id[-1][0],
-                                                        subrun  = run_id[-1][1],
-                                                        seq     = 0,
-                                                        status  = 666 )
-                                    self.log_status( status )
-                                break
-
-                        self.info('Finished copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
-                        status = ds_status( project = self._project,
-                                            run     = run_id[-1][0],
-                                            subrun  = run_id[-1][1],
-                                            seq     = 0,
-                                            status  = 0 )
-                        self.log_status( status )
-
-                    else:
-                        time.sleep(1)
-                
-                except:
-                    self.error('Caught the exception and setting the status back to 1 for (run,subrun) = (%s, %s)' % (x[0],x[1]))
-                    status = 1
-                    status = ds_status( project = self._project,
-                                        run     = int(x[0]),
-                                        subrun  = int(x[1]),
-                                        seq     = 0,
-                                        status  = status )
-                    self.log_status( status )
-
-            else:
+            if not os.path.isfile( in_file ) or not os.path.isfile( in_json ):
                 self.error('Did not find the files that you told me to look for (run,subrun) = (%s, %s)' % (x[0],x[1]))
                 self.error('Not found: %s' % (in_file) )
                 self.error('Or not found: %s' % (in_json) )
-                status = 100
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = status )
-                self.log_status( status )
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = 100 ) )
+                continue
 
-            # Break from loop if counter became 0
-            if not ctr: break
+            #self.log_status( ds_status( project = self._project,
+            #                            run     = run,
+            #                            subrun  = subrun,
+            #                            seq     = 0,
+            #                            status  = 3 ) )
 
-        if not self._parallelize:
-            return
+            args_v.append((in_file, in_json, self._out_dir))
+            runid_v.append((run,subrun))
 
-        finished = False
-        time_spent = 0
-        while not finished:
-            finished = True
-            time.sleep(1)
-            time_spent += 1
-            active_counter = 0
-            for x in xrange(len(proc_list)):
-                if done_list[x]: continue
-                if not proc_list[x].poll() is None:
-                    self.info('Finished copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
-                    status = ds_status( project = self._project,
-                                        run     = run_id[x][0],
-                                        subrun  = run_id[x][1],
-                                        seq     = 0,
-                                        status  = 0 )
-                    self.log_status( status )
-                    done_list[x] = True
-                else:
-                    active_counter += 1
-                    finished = False
-            if finished: break
-            if time_spent%10:
-                self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
-            if time_spent > self._max_wait:
-                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
-                for x in xrange(len(proc_list)):
-                    proc_list[x].kill()
+        mp = self.process_files(args_v)
 
-                    status_code = 101
-                    status = ds_status( project = self._project,
-                                        run     = run_id[x][0],
-                                        subrun  = run_id[x][1],
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )
+        for i in xrange(len(args_v)):
 
-                    # hard kill if still alive
-                    time.sleep(5)
-                    if proc_list[x].poll() is None:
-                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
-                        subprocess.call(['kill','-9',str(proc_list[x].pid)])
-                break
+            if mp.poll(i):
+                self.info('Failed copy %s @ %s' % (runid_v[i],time.strftime('%Y-%m-%d %H:%M:%S')))
+                self.log_status ( ds_status( project = self._project,
+                                             run     = runid_v[i][0],
+                                             subrun  = runid_v[i][1],
+                                             seq     = 0,
+                                             status  = 555 ) )
+
+            else:
+                self.info('Finished copy %s @ %s' % (runid_v[i],time.strftime('%Y-%m-%d %H:%M:%S')))
+                self.log_status( ds_status( project = self._project,
+                                            run     = runid_v[i][0],
+                                            subrun  = runid_v[i][1],
+                                            seq     = 0,
+                                            status  = 0 ) )
+
         self.info('All finished @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+                
+    def process_files(self,in_filelist_v):
+
+        mp = ds_multiprocess(self._project)
+
+        for i in xrange(len(in_filelist_v)):
+
+            in_file,in_json,out_dir = in_filelist_v[i]
+            cmd = ['ifdh','cp','-D',in_file,in_json,out_dir]
+
+            self.info('Transferring %s @ %s' % (in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
+
+            index,active_ctr = mp.execute(cmd)
+
+            if not self._parallelize:
+                mp.communicate(index)
+            else:
+                time_slept = 0
+                while active_ctr > self._parallelize:
+                    time.sleep(0.2)
+                    time_slept += 0.2
+                    active_ctr = mp.active_count()
+
+                    if time_slept > self._max_proc_time:
+                        self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
+                        mp.kill()
+                        break
+                    if int(time_slept) and int(time_slept)%3 < 0.3 == 0:
+                        self.info('Waiting for %d/%d process to finish...' % (active_ctr,len(in_filelist_v)))
+        time_slept=0
+        while mp.active_count():
+            time.sleep(0.2)
+            time_slept += 0.2
+            if time_slept > self._max_proc_time:
+                mp.kill()
+                break
+        return mp
 
 
     ## @brief Validate the dropbox

@@ -54,7 +54,7 @@ class mv_assembler_daq_files(ds_project_base):
 
             if 'PARALLELIZE' in resource:
                 self._parallelize = int(resource['PARALLELIZE'])
-            self._max_wait = int(resource['MAX_WAIT'])
+            self._max_proc_time = int(resource['MAX_PROC_TIME'])
         except Exception:
             return False
 
@@ -132,8 +132,8 @@ class mv_assembler_daq_files(ds_project_base):
                         time.sleep(1)
                         time_spent +=1
 
-                        if time_spent > self._max_wait:
-                            self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_wait)
+                        if time_spent > self._max_proc_time:
+                            self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_proc_time)
                             proc_list[-1].kill()
                             time.sleep(5)
 
@@ -174,14 +174,13 @@ class mv_assembler_daq_files(ds_project_base):
                         if active_counter <= self._parallelize:
                             break
 
-                        time.sleep(5)
-                        time_spent+=5
-                        if time_spent == 5: continue
+                        time.sleep(0.5)
+                        time_spent+=0.5
 
-                        if time_spent%10:
+                        if time_spent>1 and (int(time_spent*10))%50 == 0:
                             self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
-                        if time_spent > self._max_wait:
-                            self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
+                        if time_spent > self._max_proc_time:
+                            self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_proc_time)
                             for x in xrange(len(proc_list)):
                                 proc_list[x].kill()
 
@@ -209,8 +208,8 @@ class mv_assembler_daq_files(ds_project_base):
         time_spent = 0
         while not finished:
             finished = True
-            time.sleep(1)
-            time_spent += 1
+            time.sleep(0.2)
+            time_spent += 0.2
             active_counter = 0
             for x in xrange(len(proc_list)):
                 if done_list[x]: continue
@@ -227,10 +226,11 @@ class mv_assembler_daq_files(ds_project_base):
                 else:
                     active_counter += 1
                     finished = False
-            if time_spent%10:
+
+            if time_spent > 1 and (int(time_spent*10)) % 50 == 0:
                 self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
-            if time_spent > self._max_wait:
-                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_wait)
+            if time_spent > self._max_proc_time:
+                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_proc_time)
                 for x in xrange(len(proc_list)):
                     proc_list[x].kill()
 
