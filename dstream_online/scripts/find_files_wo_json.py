@@ -3,24 +3,22 @@ import sys
 
 PREFIX = 'NoiseRun'
 SUFFIX = 'ubdaq'
-
+ASS_SUFFIX = 'json'
 def match_file_name(path,outname):
 
     # make sure the path to this directory exists
     if (os.path.isdir(path) == False):
         return -1
 
-    fout = open(outname,'w+')
+    ubdaq_files = [ x for x in os.listdir(path) if x.endswith(SUFFIX) and x.startswith(PREFIX) ]
+    json_files  = [ x for x in os.listdir(path) if x.endswith(SUFFIX) and x.startswith(PREFIX) ]
 
-
-    dircontents = [ x for x in os.listdir(path) if x.endswith(SUFFIX) and x.startswith(PREFIX) ]
+    nojson_files = []
 
     # count number of bad files
     badfiles = 0
-    # count number of good files
-    goodfiles = 0
 
-    for f in dircontents:
+    for f in ubdaq_files:
 
         filepath = path+'/'+f
 
@@ -39,19 +37,21 @@ def match_file_name(path,outname):
             run    = int(words[-2])
             subrunstr = words[-1].split('.')[0]
             subrun = int(subrunstr)
-            while filepath.find('//') >= 0 : filepath = filepath.replace('//','/')
-            fout.write('%07i\t%05i\t%s\n'%(run,subrun,filepath))
-            goodfiles += 1
-        except:
-            print filepath
-            badfiles += 1
-            
-    
-    fout.close()
+            # reaching this point means it's right format. Now ask if json exists
+            json_name = f + '.json'
+            if not json_name in json_files:
+                nojson_files.append(f)
+        except Exception:
+            continue
 
-    # report
-    print 'Found %d files successfully matched with the pattern...' % goodfiles
-    print 'Found %d files w/ right pre/suf-fix but did not match the pattern...' % badfiles
+    print 'Found %d/%d w/o json file...' % (len(nojson_files),len(ubdaq_files))
+
+    fout = open(outname,'w+')
+    for f in nojson_files:
+        while f.find('//') >= 0: f=f.replace('//','/')
+        fout.write('%s\n' % f)
+
+    fout.close()
 
     return 0
 
