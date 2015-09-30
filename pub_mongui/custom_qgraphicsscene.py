@@ -30,9 +30,12 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
     def mouseReleaseEvent(self, event):
         pass
 
-    def openDaemonWindow(self,daemon_warning):
+    def openDaemonWindow(self,daemon_warning, force_recreate = False):
         #This if statement says that if the daemon warning window is already open, don't recreate one; just update text
-        if not self.daemwin:
+        #If you've never opened a daemon window to display a warning before, make one
+        #OR if you've opened a daemon window previously, but force_recreate is set to true, make one
+        if not self.daemwin or force_recreate:
             self.daemwin = CustomDaemonSubwindow(daemon_warning)
+        #Otherwise just update the text on the previously created daemon window (which may have been closed by user)
         else:
             self.daemwin.UpdateText(daemon_warning.toPlainText())

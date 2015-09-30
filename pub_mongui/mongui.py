@@ -33,6 +33,7 @@ import time
 
 my_template = 'pubs_diagram_092515.png'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
+global_update_counter = 0
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
@@ -161,13 +162,12 @@ for iprojname in projectnames:
     #On top of the pie chart, write the number of run/subruns
     #Re-draw the text on top of the pie chart with the project name
     mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(ix,iy)
-    mytext.setPlainText(str(tot_n)+'\nRun/Subruns')
+    mytext.setPos(ix-ir/2,iy+1.1*ir)
+    mytext.setPlainText(str(tot_n))
     mytext.setDefaultTextColor(QtGui.QColor('white'))
-    #mytext.setTextWidth(50)
     myfont = QtGui.QFont()
     myfont.setBold(True)
-    myfont.setPointSize(10)
+    myfont.setPointSize(12)
     mytext.setFont(myfont)
     scene.addItem(mytext)
     #Store the text in a dictionary
@@ -178,7 +178,7 @@ for iprojname in projectnames:
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
 mytext = QtGui.QGraphicsTextItem()
-mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.90)
+mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.92)
 mytext.setPlainText('Legend:\nBlue: Pending Files (Good)\nColorful: Error status.\nGray: Project Disabled')
 mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
@@ -187,6 +187,10 @@ mytext.setFont(myfont)
 scene.addItem(mytext)
 
 def update_gui():
+    global global_update_counter
+    global_update_counter += 1
+    force_recreate_daemonwindow = True if not global_update_counter%100 else False
+  
     # ==> timeprofiling: entire update_gui function takes 1.2 seconds if you take out the daemon text stuff
     # ==> timeprofiling: if you include daemon text stuff, update_gui takes 3.2 seconds
     #todo: put all of this in a separate thread, perhaps
@@ -194,20 +198,14 @@ def update_gui():
     #This is the one DB query that returns all projects and array of different statuses per project
     gdbi.update()
 
-    #Remove the daemon text item from scene
-    #scene.removeItem(daemon_texts[0])
-    #Remove the daemon text item from array storing it globally
-    #daemon_texts.pop(0)
-    #re-draw the daemon text item
     daemon_text_content, daemon_warning_content = gdbi.genDaemonTextAndWarnings()
-    #daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
-    #scene.addItem(daemon_text)
+  
     #Change the text on the already-created daemon text
     daemon_text.setPlainText(daemon_text_content)
     daemon_warning.setPlainText(daemon_warning_content)
     #If there were any warnings, open a window shouting at shifters
     if daemon_warning_content:      
-        dwarnings = scene.openDaemonWindow(daemon_warning)
+        dwarnings = scene.openDaemonWindow(daemon_warning,force_recreate = force_recreate_daemonwindow)
     
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
@@ -222,10 +220,6 @@ def update_gui():
         #then skip it. This can be fixed by adding the project to the GUI params
         if iprojname not in proj_dict.keys():
             continue
-
-        #First, store the corrent data from the piechart, to check if needs to be re-drawn
-        #old_tot_n = proj_dict[iprojname].getTotalFiles()
-        #old_slices = proj_dict[iprojname].getSlices()
 
         #Store the piechart x,y coordinate
         ix, iy = proj_dict[iprojname].getCenterPoint()
@@ -250,34 +244,11 @@ def update_gui():
         #appendHistory should take in [ (status, value), (anotherstatus, anothervalue), ...]
         proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
-        #If nothing has changed about the pie chart, don't bother redrawing it.
-        #if old_tot_n == tot_n and old_slices == pie_slices: continue
-        
-        #Remove the old item from the scene
-        #scene.removeItem(proj_dict[iprojname])
-
-        #Draw the new piechart in the place of the old one
-        #scene.addItem(proj_dict[iprojname])
-
-        #On top of the pie chart, write the number of run/subruns
-        #Re-draw the text on top of the pie chart with the project name
-        # mytext = QtGui.QGraphicsTextItem()
-        # mytext.setPos(ix,iy)
-        projtext_dict[iprojname].setPlainText(str(tot_n)+'\nRun/Subruns')
-        # mytext.setDefaultTextColor(QtGui.QColor('white'))
-        # #mytext.setTextWidth(50)
-        # myfont = QtGui.QFont()
-        # myfont.setBold(True)
-        # myfont.setPointSize(10)
-        # mytext.setFont(myfont)
-        # scene.addItem(mytext)
+        #Below the pie chart, update the written number of run/subruns
+        projtext_dict[iprojname].setPlainText(str(tot_n))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()
-
-#Initial drawing of GUI with real values
-#This is also the function that is called to update the canvas periodically
-#update_gui()
 
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
@@ -285,7 +256,6 @@ timer.start(_update_period*1000.) #Frequency with which to update plots, in mill
 
 #Catch ctrl+C to close things
 signal.signal(signal.SIGINT, signal.SIG_DFL)
-
 
 if __name__ == '__main__':
     import sys

@@ -14,6 +14,7 @@ class CustomProjectSubwindow():
         self.pdesc = piechartitem.getDescript()
         self.colors = GuiUtils().getColors()
         self.update_period = GuiUtils().getUpdatePeriod()
+        self.history_plot = None
 
         # Open an external window
         self.win = pg.GraphicsWindow(size=(500,500))
@@ -26,6 +27,9 @@ class CustomProjectSubwindow():
         #self.AddRandomPlot()
         self.AddHistoryPlot()
 
+        self.timer = pg.QtCore.QTimer()
+        self.timer.timeout.connect(self.AddHistoryPlot)
+        self.timer.start(self.update_period*1000)
         
     def AddTextViewbox(self, intext):
         #Make a text item that is the project description
@@ -47,10 +51,11 @@ class CustomProjectSubwindow():
         curve = p1.plot(data)
 
     def AddHistoryPlot(self):
-        p1 = self.win.addPlot(row=1,col=0)
-        p1.setLabel('top','# Run/Subruns for Project %s'%self.pname)
-        p1.setLabel('bottom','Time Since Starting GUI [Seconds]')
-        p1.showGrid(x=True,y=True)
+        if self.history_plot: self.win.removeItem(self.history_plot)
+        self.history_plot = self.win.addPlot(row=1,col=0)
+        self.history_plot.setLabel('top','# Run/Subruns for Project %s'%self.pname)
+        self.history_plot.setLabel('bottom','Time Since Starting GUI [Seconds]')
+        self.history_plot.showGrid(x=True,y=True)
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
         colorcounter = 0
@@ -59,14 +64,14 @@ class CustomProjectSubwindow():
             if status in [ 0, 1000 ]: continue
             data = np.array(values)
             xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
-            #add multiple plots by just calling p1.plot() a bunch of times
+            #add multiple plots by just calling self.history_plot.plot() a bunch of times
             if status in self.colors.keys(): mycolor = self.colors[status]
             elif status > 100: mycolor = 'r'
             else: mycolor = [255, 140, 0] #dark orange
-            curve = p1.plot(xvals,data,name='Status %d'%status,pen=mycolor)#(colorcounter,20))
+            curve = self.history_plot.plot(xvals,data,name='Status %d'%status,pen=mycolor)#(colorcounter,20))
             leg.addItem(curve,'Status %d'%status)
             colorcounter += 1
-        leg.setParentItem(p1)
+        leg.setParentItem(self.history_plot)
             
 
     def __del__(self):
