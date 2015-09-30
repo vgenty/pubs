@@ -11,6 +11,8 @@ from custom_qcombobox import CustomComboBox
 from custom_project_subwindow import CustomStageSubwindow
 #from gui_utils_api import GuiUtilsAPI, GuiUtils
 
+tmpcolors = ('r','b','g','o','m','y')
+
 # catch ctrl+C to terminate the program
 import signal
 # exponential in piechart radius calculation
@@ -79,12 +81,16 @@ proj_dict = {}
 # Dictionary of project name --> combobox next to pie chart
 combobox_dict = {}
 
+# Dictionary of project name --> Legend text item
+legend_dict = {}
+
 #Read in the parameters for this template into a dictionary
 #These dictate, based on project name, where to draw on GUI
 template_params = getParams(my_template)
 
 def openStageSubwindow(stagename):
     #Loop over projects and see if any have this stagename
+    #note duplicate stagenames across projects are a problem
     for projectname in test_dict.keys():
         try: 
             test_dict[projectname][str(stagename)]
@@ -95,28 +101,80 @@ def openStageSubwindow(stagename):
 
 for iprojname in projectnames:
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
-    xloc, yloc, maxradius = template_params[iprojname]
-    xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
+    ix, iy, max_radius = template_params[iprojname]
+    ix, iy, max_radius = float(ix), float(iy), float(max_radius)
+    xloc, yloc = scene_xmin+scene_width*ix, scene_ymin+scene_height*iy
+    #Create and store the piechart in a dictionary to modify it later, based on project name
+    proj_dict[iprojname] = PieChartItem((iprojname,xloc,yloc, max_radius, 0, [ (1., 'y') ]))
 
-    ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
+    #Fill pie chart with meaningful data:
+    #Compute pie slices from test data
+    stages_dict = test_dict[iprojname]
+    tot_n = 0
+    for stagename, mytuple in stages_dict.iteritems():
+        tot_n += sum(mytuple)
+    counter = 0
+    pie_slices = []
+    legendstring = 'PROJECT = %s\n'%iprojname
+    legendstring += 'Stagename ==> Total Files\n\n'
+    #stages_dict looks like {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
+    for stagename, mytuple in stages_dict.iteritems():
+        ifrac = float(sum(mytuple))/float(tot_n)
+        pie_slices.append( ( ifrac, tmpcolors[counter] ) )
+        legendstring += '%s ==> %d\n'%(stagename,sum(mytuple))
+        counter += 1        
+    ir = max_radius
 
-    #Add the piecharts to the scene (piechart location is stored in piechart object)
-    scene.addItem(ichart)
+    data = (iprojname, xloc, yloc, ir, tot_n, pie_slices )
 
-    #Store the piechart in a dictionary to modify it later, based on project name
-    proj_dict[iprojname] = ichart
-    butt_x, butt_y = ichart.getCenterPoint()
-    butt_x = 100
-    butt_w, butt_h = 100, 50
-    butt_x -= maxradius
+    #update the piechart item with the new data
+    proj_dict[iprojname].updateData(data)
+    
+    #OLD: appendHistory should take in [ (status, value), (anotherstatus, anothervalue), ...]
+    ##CURRENT appendHistory should take in {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
+    proj_dict[iprojname].appendHistory(stages_dict)
+    #If nothing has changed about the pie chart, don't bother redrawing it.
+    #if old_tot_n == tot_n and old_slices == pie_slices: continue
+    
+    # #Remove the old item from the scene
+    # scene.removeItem(proj_dict[iprojname])
+    # #Draw the new piechart in the place of the old one
+    # scene.addItem(proj_dict[iprojname])
+    # #Next to the pie chart, write the number of run/subruns for each stage name
+    legend_dict[iprojname] = QtGui.QGraphicsTextItem()
+    legend_dict[iprojname].setPos(xloc+max_radius,yloc-(max_radius/2))
+    legend_dict[iprojname].setPlainText(str(legendstring))
+    legend_dict[iprojname].setDefaultTextColor(QtGui.QColor('white'))
+    #legend_dict[iprojname].setTextWidth(50)
+    myfont = QtGui.QFont()
+    myfont.setBold(True)
+    myfont.setPointSize(10)
+    legend_dict[iprojname].setFont(myfont)
+    scene.addItem(legend_dict[iprojname])
+
+    #Add the piechart to the scene (piechart location is stored in piechart object)
+    scene.addItem(proj_dict[iprojname])
+
+    #Clickable drop-down menu for each pie chart
+    butt_x, butt_y = proj_dict[iprojname].getCenterPoint()
+    butt_w, butt_h = 50, 30
+    butt_x -= float(max_radius)
+    butt_y += 1.2*float(max_radius)
 
     #Add (and store in a dict) one clickable menu for this project next to the pie chart
     combobox_dict[iprojname] = QtGui.QComboBox()
     combobox_dict[iprojname].setGeometry(butt_x,butt_y,butt_w,butt_h)
 
     #Generate the dropdown menu options (stage names)
+    counter = 0
     for stagename in test_dict[iprojname]:
         combobox_dict[iprojname].addItem(stagename)
+        combobox_dict[iprojname].setItemData(counter,tmpcolors[counter],QtCore.Qt.BackgroundRole)
+        counter += 1
+
+    #Resize combobox to be length of longest item, for aesthetic reasons
+    width = combobox_dict[iprojname].minimumSizeHint().width()
+    combobox_dict[iprojname].setMinimumWidth(width)
 
     #When the menu item is clicked, call the openSubwindow function with the stagename as an argument
     combobox_dict[iprojname].activated[str].connect(openStageSubwindow)
@@ -124,9 +182,7 @@ for iprojname in projectnames:
     #Add the dropdown menu button to the scene
     scene.addWidget(combobox_dict[iprojname])
 
-
 def update_gui():
-    # print "Updating GUI!"
     #Reload data so user can change text file from underneath:
     #Get a list of all projects from the gui DBI
     test_dict = getTestData()
@@ -144,8 +200,8 @@ def update_gui():
             continue
 
         #First, store the corrent data from the piechart, to check if needs to be re-drawn
-        old_tot_n = proj_dict[iprojname].getTotalFiles()
-        old_slices = proj_dict[iprojname].getSlices()
+        # old_tot_n = proj_dict[iprojname].getTotalFiles()
+        # old_slices = proj_dict[iprojname].getSlices()
 
         #Store the piechart x,y coordinate
         ix, iy = proj_dict[iprojname].getCenterPoint()
@@ -160,7 +216,7 @@ def update_gui():
 
         counter = 0
         pie_slices = []
-        tmpcolors = ('r','b','g','o','m','y')
+
         legendstring = 'PROJECT = %s\n'%iprojname
         legendstring += 'Stagename ==> Total Files\n\n'
         #stages_dict looks like {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
@@ -195,27 +251,32 @@ def update_gui():
         #If nothing has changed about the pie chart, don't bother redrawing it.
         #if old_tot_n == tot_n and old_slices == pie_slices: continue
         
-        #Remove the old item from the scene
-        scene.removeItem(proj_dict[iprojname])
+        # #Remove the old item from the scene
+        # scene.removeItem(proj_dict[iprojname])
 
-        #Draw the new piechart in the place of the old one
-        scene.addItem(proj_dict[iprojname])
+        # #Draw the new piechart in the place of the old one
+        # scene.addItem(proj_dict[iprojname])
 
-        #Next to the pie chart, write the number of run/subruns for each stage name
-        mytext = QtGui.QGraphicsTextItem()
-        mytext.setPos(ix+maxradius,iy-(maxradius/2))
-        mytext.setPlainText(str(legendstring))
-        mytext.setDefaultTextColor(QtGui.QColor('white'))
-        #mytext.setTextWidth(50)
-        myfont = QtGui.QFont()
-        myfont.setBold(True)
-        myfont.setPointSize(10)
-        mytext.setFont(myfont)
-        scene.addItem(mytext)
+        # #Next to the pie chart, write the number of run/subruns for each stage name
+        # if not legend_textitem:
+        #     legend_textitem = QtGui.QGraphicsTextItem()
+        #     legend_textitem.setPos(ix+max_radius,iy-(max_radius/2))
+        #     legend_textitem.setPlainText(str(legendstring))
+        #     legend_textitem.setDefaultTextColor(QtGui.QColor('white'))
+        #     #legend_textitem.setTextWidth(50)
+        #     myfont = QtGui.QFont()
+        #     myfont.setBold(True)
+        #     myfont.setPointSize(10)
+        #     legend_textitem.setFont(myfont)
+        #     scene.addItem(legend_textitem)
+        legend_dict[iprojname].setPlainText(str(legendstring))
+
+        scene.update()
 
 #Initial drawing of GUI with real values
 #This is also the function that is called to update the canvas periodically
-update_gui()
+#now this is done in the top of the script
+#update_gui()
 
 timer = QtCore.QTimer()
 timer.timeout.connect(update_gui)
