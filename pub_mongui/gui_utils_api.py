@@ -104,12 +104,12 @@ class GuiUtilsAPI():
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
     #tot_n does not include status == 0
-    tot_n = sum([x[1] for x in statuses if x[0]])
+    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
     return tot_n
 
   def getNRunSubruns(self,projname):
     #don't include status == 0 in any of this
-    return [x for x in self.proj_dict[projname] if x[0]]
+    return [x for x in self.proj_dict[projname] if x[0] not in [ 0, 1000 ]]
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled or disabled, running or dead]
@@ -130,8 +130,6 @@ class GuiUtilsAPI():
   
   def genDaemonTextAndWarnings(self):
     #Add text to bottom left of GUI showing if daemons are running and enabled
-    daemon_text = QtGui.QGraphicsTextItem()
-    daemon_warning = QtGui.QGraphicsTextItem()
     text_content = ''
     warning_content = ''
     for dname in self.my_utils.getRelevantDaemons():
@@ -143,19 +141,8 @@ class GuiUtilsAPI():
             warning_content += 'Daemon %s is NOT RUNNING as of %s!\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
     if warning_content: warning_content += "Tell an expert!"
 
-    daemon_text.setPlainText(text_content)
-    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
-    myfont = QtGui.QFont()
-    myfont.setPointSize(12)
-    daemon_text.setFont(myfont)
-    daemon_warning.setPlainText(warning_content)
-    daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
-    warningfont = QtGui.QFont()
-    warningfont.setPointSize(50)
-    daemon_warning.setFont(warningfont)
-
     #if daemon_warning actually had nothing in it, return no daemon warning
-    return (daemon_text, daemon_warning) if warning_content else (daemon_text, 0)
+    return (text_content,warning_content) if warning_content else (text_content, '')
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions

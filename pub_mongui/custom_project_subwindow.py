@@ -60,8 +60,10 @@ class CustomProjectSubwindow():
             data = np.array(values)
             xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
             #add multiple plots by just calling p1.plot() a bunch of times
-            #mycolor = self.colors[status] if status in self.colors.keys() else 'r'
-            curve = p1.plot(xvals,data,name='Status %d'%status,pen=(colorcounter,20))#,pen=mycolor)
+            if status in self.colors.keys(): mycolor = self.colors[status]
+            elif status > 100: mycolor = 'r'
+            else: mycolor = [255, 140, 0] #dark orange
+            curve = p1.plot(xvals,data,name='Status %d'%status,pen=mycolor)#(colorcounter,20))
             leg.addItem(curve,'Status %d'%status)
             colorcounter += 1
         leg.setParentItem(p1)

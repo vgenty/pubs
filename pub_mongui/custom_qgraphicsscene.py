@@ -12,6 +12,8 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
 
     def __init__(self, x, y, width, height):
         QtGui.QGraphicsScene.__init__(self,x,y,width,height)
+        self.projwin = None
+        self.daemwin = None
 
     def __del__(self):
         pass
@@ -23,10 +25,14 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
         item_clicked = self.itemAt(event.scenePos())
         if item_clicked is not None:
             if item_clicked.__module__ == 'custom_piechart_class':
-                self.win = CustomProjectSubwindow(item_clicked)
+                self.projwin = CustomProjectSubwindow(item_clicked)
 
     def mouseReleaseEvent(self, event):
         pass
 
     def openDaemonWindow(self,daemon_warning):
-        self.win = CustomDaemonSubwindow(daemon_warning)
+        #This if statement says that if the daemon warning window is already open, don't recreate one; just update text
+        if not self.daemwin:
+            self.daemwin = CustomDaemonSubwindow(daemon_warning)
+        else:
+            self.daemwin.UpdateText(daemon_warning.toPlainText())
