@@ -9,35 +9,93 @@ from dstream.ds_api import ds_reader
 from pub_dbi import pubdb_conn_info
 
 import datetime
+import time
+import copy
 import math
+
+import threading
 
 class GuiUtilsAPI():
 
   # Class that handles the API instance to the database (since more than
   #just the main GUI window will use it, as well as a few utility functions
   #that are independent of the database. '''
-  
+  #Note: the database connection is done in a separate thread!
+  class myQueryThread(threading.Thread):
+    def __init__(self, threadID, name, threadlock):
+      threading.Thread.__init__(self)
+      self.threadID = threadID
+      self.name = name
+      self.proj_dict = {}
+      self.projects = None
+      self.relevant_daemons = GuiUtils().getRelevantDaemons()
+      self.threadLock = threadlock
+      self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
+      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
+
+      # DB interface:
+      self.dbi = ds_reader(pubdb_conn_info.reader_info())
+    
+      #Establish a connection to the database through the DBI
+      try:
+        self.dbi.connect()
+      except:
+        print "Unable to connect to database in query thread... womp womp :("
+
+    def run(self):
+      self.threadLock.acquire()
+
+      self.proj_dict = self.dbi.list_status()
+      self.projects = self.dbi.list_projects()
+      for servername in self.relevant_daemons:
+        self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
+        self.daemon_is_enabled[servername] = self.dbi.daemon_info(servername)._enable
+
+      self.threadLock.release()
+      time.sleep(10)
+
+    def getProjDict(self):
+      self.threadLock.acquire()
+      tmpdict = self.proj_dict.copy()
+      self.threadLock.release()
+      return tmpdict
+
+    def getProjects(self):
+      self.threadLock.acquire()
+      tmplist = copy.copy(self.projects)
+      self.threadLock.release()
+      return tmplist
+
+    def getDaemonEnabled(self,servername):
+      try:
+        tmp_isenabled = self.daemon_is_enabled[servername]
+      except: KeyError('What?? Server not in daemon_is_enabled.keys() inside of gui_utils_api thread.')
+      return tmp_isenabled
+
+    def getDaemonLastLogtime(self,servername):
+      try:
+        tmp_lastlogtime = self.daemon_last_logtimes[servername]
+      except: KeyError('What?? Server not in daemon_last_logtimes.keys() inside of gui_utils_api thread.')
+      return tmp_lastlogtime
+
   def __init__(self):
 
-    # DB interface:
-    self.dbi = ds_reader(pubdb_conn_info.reader_info())
-    
-    #Establish a connection to the database through the DBI
-    try:
-      self.dbi.connect()
-    except:
-      print "Unable to connect to database... womp womp :("
-
+    threadLock = threading.Lock()
+    #Create thread that does the DB querying:
+    self.querythread = self.myQueryThread(1, 'guit_querythread', threadLock)
+    #Start the thread that does the DB querying:
+    self.querythread.start()
+    #Initialize proj_dict
     #Dictionary that contains projects as keys, and arrays of statuses as values. ex:
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
-    self.proj_dict = self.dbi.list_status()
-    self.enabled_projects = [ x._project for x in self.dbi.list_projects() ]
+    self.proj_dict = self.querythread.getProjDict()
+    self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
     self.my_utils = GuiUtils()
     self.colors = self.my_utils.getColors()
 
   def update(self):
-    self.proj_dict = self.dbi.list_status()
-    self.enabled_projects = [ x._project for x in self.dbi.list_projects() ]
+    self.proj_dict = self.querythread.getProjDict()
+    self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
 
   def getAllProjectNames(self):
     return self.proj_dict.keys()
@@ -56,10 +114,6 @@ class GuiUtilsAPI():
     #tot_n does not include status == 0, or 1000 now
     tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
 
-    #if len(statuses) > len(self.colors):
-    #  print "Uh oh, more different statuses than colors! Increase number of colors!"
-    #  return [ (1., 'r') ]
-
     slices = []
     #one giant green slice for fully completed project
     if len(statuses) == 1 and statuses[0][0] in [ 0, 1000 ]:
@@ -68,8 +122,6 @@ class GuiUtilsAPI():
     for x in statuses:
       #Don't care about status == 0 or 1000
       if x[0] in [ 0, 1000 ]: continue
-      #if x[0] not in self.colors.keys():
-      #  print "uh oh! Status %d for project %s is not in my color dictionary. Adding it as red." % (x[0],projname)
 
       if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
       elif x[0] > 100: mycolor = 'r'
@@ -79,11 +131,6 @@ class GuiUtilsAPI():
     return slices
       
   def computePieRadius(self, projname, max_radius, tot_n=0):
-
-    #If piechart has no entries, give it a zero radius
-    #skip this for now
-    #if not tot_n:
-    #  return 0.
 
     #Right now use radius = (Rmax/2log(5))log(n_total_runsubruns)
     #unless radius > Rmax, in which case use radius = Rmax
@@ -103,35 +150,28 @@ class GuiUtilsAPI():
 
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0
-    tot_n = sum([x[1] for x in statuses if x[0]])
+    #tot_n does not include status == 0 or 1000
+    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
     return tot_n
 
   def getNRunSubruns(self,projname):
-    #don't include status == 0 in any of this
-    return [x for x in self.proj_dict[projname] if x[0]]
+    #don't include status == 0 or 1000 in any of this
+    return [x for x in self.proj_dict[projname] if x[0] not in [ 0, 1000 ]]
     
   def getDaemonStatuses(self, servername):
-    #Returns [enabled or disabled, running or dead]
+    #Returns [enabled/disabled, running/dead]
     max_daemon_log_lag = 600 #seconds
-    is_enabled = self.dbi.daemon_info(servername)._enable
-
+    is_enabled = self.querythread.getDaemonEnabled(servername)
+    last_logtime = self.querythread.getDaemonLastLogtime(servername)
     #If you just use list_daemon_log(servername) you get an ENORMOUS list back
-    #Use the list_daemon_log(servername, starttime, endtime) (those are datetime stamps)
-    d_logs = self.dbi.list_daemon_log(servername)
+    #Use the list_daemon_log(servername, starttime, endtime) when it is fixed (those are datetime stamps)
     #starttime = datetime.datetime.today()# - datetime.timedelta(seconds=max_daemon_log_lag)
-    #d_logs = self.dbi.list_daemon_log(servername,start=starttime)
-    #print d_logs
-    #this should maybe just be time_since = take the LAST log in d_logs, then get logtime
-    #taking advantage of fact that d_logs is time ordered
-    time_since_log_update = self.my_utils.getTimeSinceInSeconds(d_logs[-1]._logtime)
+    time_since_log_update = self.my_utils.getTimeSinceInSeconds(last_logtime)
     is_running = True if time_since_log_update < max_daemon_log_lag else False
     return (is_enabled, is_running)
   
   def genDaemonTextAndWarnings(self):
-    #Add text to bottom left of GUI showing if daemons are running and enabled
-    daemon_text = QtGui.QGraphicsTextItem()
-    daemon_warning = QtGui.QGraphicsTextItem()
+    #Add text to bottom of GUI showing if daemons are running and enabled
     text_content = ''
     warning_content = ''
     for dname in self.my_utils.getRelevantDaemons():
@@ -143,19 +183,8 @@ class GuiUtilsAPI():
             warning_content += 'Daemon %s is NOT RUNNING as of %s!\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
     if warning_content: warning_content += "Tell an expert!"
 
-    daemon_text.setPlainText(text_content)
-    daemon_text.setDefaultTextColor(QtGui.QColor('white'))
-    myfont = QtGui.QFont()
-    myfont.setPointSize(12)
-    daemon_text.setFont(myfont)
-    daemon_warning.setPlainText(warning_content)
-    daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
-    warningfont = QtGui.QFont()
-    warningfont.setPointSize(50)
-    daemon_warning.setFont(warningfont)
-
     #if daemon_warning actually had nothing in it, return no daemon warning
-    return (daemon_text, daemon_warning) if warning_content else (daemon_text, 0)
+    return (text_content,warning_content) if warning_content else (text_content, '')
 
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
@@ -180,7 +209,6 @@ class GuiUtils():
     self.colors={ 1:[72, 118, 255] }#47, 75, 101] }#[0, 255, 255] } #[47, 75, 101] }
     self.update_period = 10 #seconds
     self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
-
 
   def getColors(self):
     return self.colors
