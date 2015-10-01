@@ -243,9 +243,9 @@ class proc_daemon(ds_base):
                 self.debug('Skipping a project on irrelevant server: %s' % x._project)
                 continue
             
-            if proj_ptr and proj_ptr.active():
-                self.info('Skipping update on project %s (still active)' % x._project)
-                continue
+            #if proj_ptr and proj_ptr.active():
+            #    self.info('Skipping update on project %s (still active)' % x._project)
+            #    continue
 
             if not x._enable:
                 if not proj_ptr:

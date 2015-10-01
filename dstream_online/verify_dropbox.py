@@ -240,9 +240,6 @@ class verify_dropbox( ds_project_base ):
 
             pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
             near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
-            print near1_adler32_1
-            print pnfs_adler32_1
-            continue
             try:
                 samweb = samweb_cli.SAMWebClient(experiment="uboone")
                 meta = samweb.getMetadata(filenameorid=in_file_name)

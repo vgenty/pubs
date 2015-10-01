@@ -338,7 +338,7 @@ def plot_resource_usage(proj,outpath):
     # number of samples to average over
     Navg = 7
 
-    print len(rTHOME)
+    #print len(rTHOME)
     # 1st step is to calculate and smooth the rates
     if (len(rTHOME) > Navg):
         dsize = getDISKSize('/home/')
@@ -356,7 +356,7 @@ def plot_resource_usage(proj,outpath):
         datesRHOME  = dts.date2num(rateTHOME)
         plt.plot(datesRHOME,rateHOME,'o--',color='c',label='Rate @ /home/')
 
-    print len(rTDISK)
+    #print len(rTDISK)
     if (len(rTDISK) > Navg):
         dsize = getDISKSize('/data/')
         #datesRDATA, rateDATA = smooth_rate(dsize,rTDISK,rDISK,Navg)
@@ -373,7 +373,7 @@ def plot_resource_usage(proj,outpath):
         datesRDATA  = dts.date2num(rateTDATA)
         plt.plot(datesRDATA,rateDATA,'o--',color='r',label='Rate @ /data/')
 
-    print len(rTDLOC)
+    #print len(rTDLOC)
     if (len(rTDLOC) > Navg):
         dsize = getDISKSize('/datalocal/')
         #datesRDLOC, rateDLOC = smooth_rate(dsize,rTDLOC,rDLOC,Navg)
