@@ -11,6 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from dstream import ds_multiprocess
 from ds_online_env import *
 from ROOT import *
 import datetime, json
@@ -19,8 +20,8 @@ import samweb_client.utility
 import extractor_dict
 import pdb
 import subprocess
-import glob
-
+# script module tools
+from scripts import find_run
 
 ## @Class dstream_online.get_metadata
 #  @brief Get metadata from a binary or a swizzled file
@@ -165,24 +166,25 @@ class get_metadata( ds_project_base ):
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 1
+            status = kSTATUS_INIT
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
 
             infile_v.append(filelist[0])
             outfile_v.append('%s.json' % infile_v[-1])
@@ -190,6 +192,7 @@ class get_metadata( ds_project_base ):
 
             if ctr <= 0: break
             
+        action = self.get_action()
 
         status_v = action(infile_v)
 
@@ -199,24 +202,26 @@ class get_metadata( ds_project_base ):
         for i in xrange(len(status_v)):
 
             run,subrun = runid_v[i]
+            status,jsonData = status_v[i]
+            if jsonData:
+                fout = open('%s.json' % infile_v[i], 'w')
+                json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
 
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = status_v[i] )
-            
-            # Log status
-            self.log_status( status)
+            if log_db:
+                self.log_status ( ds_status( project = self._project,
+                                             run     = run,
+                                             subrun  = subrun,
+                                             seq     = 0,
+                                             status  = status) )
         
     def process_swizzled_files(self,in_file_v):
         
-        status_v = []
-
+        status_v=[]
         for in_file in in_file_v:
 
-            statue=0
+            status_v.append((0,''))
+            jsonData = None
             try:
                 jsonData = extractor_dict.getmetadata( in_file )
                 status = 3
@@ -225,141 +230,72 @@ class get_metadata( ds_project_base ):
                 status = 100
                 self.error('Failed extracting metadata from the swizzled file.')
                     
-            if not status == 100:
-                
-                with open('%s.json' % in_file, 'w') as ofile:
-                    json.dump(jsonData, ofile, sort_keys = True, indent = 4, ensure_ascii=False)
-                    status=2
-                    # To Eric: what are you doing here?
-                    #try:
-                    #    samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                        # samweb.validateFileMetadata(json_file) # this throws/raises exception
-                    #    status = 2
-                    #except:
-                    #    self.error( "Problem with samweb metadata: ", jsonData)
-                    #    self.error( sys.exc_info()[0])
-                    #    status=100
- 
-            else:
-                status = 1000
-                self.error('Did not find the input file %s' % in_file )
-
-            status_v.append(status)
+            status_v[-1]=(status,jsonData)
 
         return status_v
             
     def process_ubdaq_files(self,in_file_v):
 
         cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
-        status_v = [None]*len(in_file_v)
-        proc_v   = [None]*len(in_file_v)
-        retval_v = [None]*len(in_file_v)
-        cout_v   = [None]*len(in_file_v)
-        cerr_v   = [None]*len(in_file_v)
+
+        mp = ds_multiprocess(self._project)
+
         for i in xrange(len(in_file_v)):
 
             in_file = in_file_v[i]
             
             cmd = cmd_template % (in_file,in_file)
-            status = 0
-            proc_v[i]=subprocess.Popen(cmd,shell=True,stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+            index, active_counter = mp.execute(cmd)
 
             if not self._parallelize:
-
-                time_slept = 0
-                p = proc_v[i]
-                while p.poll() is None and time_slept < self._max_proc_time:
-
-                    time_slept += 0.5
-                    time.sleep(0.5)
-
-                if p.poll() is None:
-                    p.kill()
-                    time.sleep(5)
-                    if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
-                    status_v[i] = 100
-                else:
-                    status_v[i] = 3
-                    (out,err)   = p.communicate()
-                    cout_v[i]   = out
-                    cerr_v[i]   = err
-                    retval_v[i] = p.poll()
+                mp.communicate()
             else:
-                active_ctr = 0
+
                 time_slept = 0
-                while 1:
+                while active_counter >= self._parallelize:
+
                     if time_slept > self._max_proc_time:
-                        # kill the 1st one
-                        for i in xrange(len(proc_v)):
-                            p = proc_v[i]
-                            if not p or not p.poll() is None: continue
-                            p.kill()
-                            time.sleep(1)
-                            if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
-                            status_v[i] = 100
-                            break    
-                    active_ctr = 0
-                    remaining_ctr = 0
-                    for p in proc_v:
-                        if not p: remaining_ctr +=1
-                        if p and p.poll() is None: active_ctr +=1
-                    if active_ctr < self._parallelize:
+                        self.error('Exceeding process limit time (%s sec). Killing processes...' % self._max_proc_time)
+                        mp.kill()
                         break
                     time.sleep(0.2)
                     time_slept += 0.2
 
                     if int(time_slept)%5 == 0:
-                        self.info('Parallel processing %d runs (%d/%d left)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
+                        self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
+                                                                                   i-active_counter,
+                                                                                   len(in_file_v)))
 
-        if self._parallelize:
+                    active_counter = mp.active_count()
 
-            active_ctr = 0
-            time_slept = 0
-            while active_ctr:
-                active_ctr = 0
-                remaining_ctr = 0
-                if time_slept > self._max_proc_time:
-                    # kill the 1st one
-                    for i in xrange(len(proc_v)):
-                        p = proc_v[i]
-                        if not p or not p.poll() is None: continue
-                        p.kill()
-                        time.sleep(1)
-                        if p.poll() is None: subprocess.call(['kill','-9',str(p.pid)])
-                        status_v[i] = 100
-                        break    
+        time_slept = 0
+        active_counter = mp.active_count()
+        while active_counter:
+            
+            if time_slept > self._max_proc_time:
+                self.error('Exceeding process limit time (%s sec). Killing processes...' % self._max_proc_time)
+                mp.kill()
+                break
+            time.sleep(0.2)
+            time_slept += 0.2
 
-                for p in proc_v:
-                    if p:
-                        if p.poll() is None: active_ctr +=1
-                        else: remaining_ctr +=1
-                time.sleep(0.2)
-                time_slept += 0.2
-
-                if int(time_slept)%5 == 0:
-                    self.info('Parallel processing %d runs (%d/%d done)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
-
-            for i in xrange(len(in_file_v)):
-                if status_v[i]: continue
-                p = proc_v[i]
-                status_v[i] = 3
-                (out,err)   = p.communicate()
-                cout_v[i]   = out
-                cerr_v[i]   = err
-                retval_v[i] = p.poll()
+            if int(time_slept)%5 == 0:
+                self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
+                                                                           len(in_file_v)-active_counter,
+                                                                           len(in_file_v)))
+            active_counter = mp.active_count()
 
         # Now extract MetaData for successful ones
+        status_v=[]
         for i in xrange(len(in_file_v)):
 
-            if not status_v[i] == 3:
-                status_v[i] = 100
-                continue
-            if retval_v[i]:
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % retval_v[i])
-                status_v[i] = 100
+            status_v.append((3,None))
+            out,err = mp.communicate(i)
+            if mp.poll(i):
+                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % mp.poll(i))
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 continue
             in_file = in_file_v[i]
-            out = cout_v[i]
 
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
             run = subrun = 0
@@ -386,15 +322,14 @@ class get_metadata( ds_project_base ):
                     if "Localhost Time: (sec,usec)" in line:
                         stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
 
-                status_v[i] = 3
+                status_v[i] = (3,None)
                 self.info('Successfully extract metadata from the ubdaq file (%d/%d) @ %s' % (i,len(in_file_v),time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except:
                 self.error ("Unexpected error:", sys.exc_info()[0] )
-                status_v[i] = 100
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
                 continue
-
 
             fsize = os.path.getsize(in_file)
 
@@ -402,12 +337,12 @@ class get_metadata( ds_project_base ):
 
             if not ref_status._status == 0:
                 self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = 1
+                status_v[i] = (kSTATUS_INIT,None)
                 continue
 
             if not ref_status._data:
                 self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = 101
+                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                 continue
 
             # run number and subrun number in the metadata seem to be funny,
@@ -429,18 +364,7 @@ class get_metadata( ds_project_base ):
                          "ub_project.name": "online", 
                          "ub_project.stage": "assembler", 
                          "ub_project.version": self._pubsver }
-
-            fout = open('%s.json' % in_file, 'w')
-            json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
-            status_v[i] = 2
-            #try:
-            #    #samweb = samweb_cli.SAMWebClient(experiment="uboone")
-            #     samweb.validateFileMetadata(json_file) # this throws/raises exception
-            #    status_v[i] = 2
-            #except:
-            #    self.error( "Problem with samweb metadata: ", jsonData)
-            #    self.error( sys.exc_info()[0])
-            #    status_v[i] = 100
+            status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
 
@@ -468,23 +392,24 @@ class get_metadata( ds_project_base ):
             # Report starting
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 1
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            status = kSTATUS_INIT
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
             in_file = filelist[0]
             out_file = '%s.json' % in_file
@@ -534,8 +459,7 @@ class get_metadata( ds_project_base ):
 
             status = 1
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -580,6 +504,8 @@ if __name__ == '__main__':
     test_obj = get_metadata( proj_name )
 
     test_obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    test_obj.get_resource()
 
     test_obj.process_newruns()
 

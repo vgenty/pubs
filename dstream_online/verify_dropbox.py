@@ -94,7 +94,10 @@ class verify_dropbox( ds_project_base ):
         self._in_dir = ''
         self._out_dir = ''
         self._infile_format = ''
-        self._parent_project = ''
+        self._parent_project = []
+        self._parent_status = []
+        self._project_list = []
+        self._project_requirement = []
         self._experts = ''
         self._data = ''
         self._nruns_to_postpone = 0
@@ -108,7 +111,6 @@ class verify_dropbox( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._out_dir = '%s' % (resource['OUTDIR'])
-        self._parent_project = resource['PARENT_PROJECT']
         self._ref_project = resource['REF_PROJECT']
         self._experts = resource['EXPERTS']
         try:
@@ -116,6 +118,24 @@ class verify_dropbox( ds_project_base ):
             self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
+
+        try:
+            self._parent_project = resource['PARENT_PROJECT'].split(':')
+            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            if not len(self._parent_project) == len(self._parent_status):
+                raise ValueError
+        except Exception:
+            self.error('Failed to load parent projects...')
+            return False
+
+        #this constructs the list of projects and their status codes
+        #we want the project to be status 1, while the dependent projects to
+        # be status 0
+        self._project_list = [self._project ]
+        self._project_requirement = [ kSTATUS_INIT ]
+
+        self._project_list += self._parent_project
+        self._project_requirement += self._parent_status
 
     ## @brief calculate the checksum of a file
     def compare_dropbox_checksum( self ):
@@ -153,9 +173,7 @@ class verify_dropbox( ds_project_base ):
             if ctr_postpone >= self._nruns_to_postpone: break
             if parent == self._project: continue
             
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
+        target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
             self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
             for x in target_runs:
                 status = ds_status( project = self._project,
