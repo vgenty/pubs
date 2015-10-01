@@ -15,6 +15,7 @@
 *.txt
 *.doc
 *.pdf
+*.out
 *~
 *.pcm
 /GNUmakefile

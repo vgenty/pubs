@@ -73,6 +73,7 @@ class get_metadata( ds_project_base ):
         self._metadata_type = kMAXTYPE_METADATA        
         self._max_proc_time = 50
         self._parallelize = 0
+        self._min_run = 0
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -102,6 +103,9 @@ class get_metadata( ds_project_base ):
             self._parallelize = int(resource['PARALLELIZE'])
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
+
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
 
         self._ref_project = resource['REF_PROJECT']
 
@@ -139,6 +143,8 @@ class get_metadata( ds_project_base ):
             target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
             self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
             for x in target_runs:
+
+                if int(x[0]) < self._min_run: continue
                 status = ds_status( project = self._project,
                                     run     = int(x[0]),
                                     subrun  = int(x[1]),
@@ -158,10 +164,12 @@ class get_metadata( ds_project_base ):
         for x in self.get_xtable_runs([self._project,self._parent_project],
                                       [1,0]):
 
+            (run, subrun) = (int(x[0]), int(x[1]))
+
+            if run < self._min_run: break
             # Counter decreases by 1
             ctr -= 1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
+            if ctr < 0: break
 
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
@@ -190,8 +198,6 @@ class get_metadata( ds_project_base ):
             outfile_v.append('%s.json' % infile_v[-1])
             runid_v.append((run,subrun))
 
-            if ctr <= 0: break
-            
         action = self.get_action()
 
         status_v = action(infile_v)
@@ -208,12 +214,11 @@ class get_metadata( ds_project_base ):
                 json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
 
             # Create a status object to be logged to DB (if necessary)
-            if log_db:
-                self.log_status ( ds_status( project = self._project,
-                                             run     = run,
-                                             subrun  = subrun,
-                                             seq     = 0,
-                                             status  = status) )
+            self.log_status ( ds_status( project = self._project,
+                                         run     = run,
+                                         subrun  = subrun,
+                                         seq     = 0,
+                                         status  = status) )
         
     def process_swizzled_files(self,in_file_v):
         

@@ -43,7 +43,7 @@ class ds_clean(ds_project_base):
         self._nruns = None
         self._min_run = 0
         self._in_dir = ''
-        self._infile_format = ''
+        self._name_pattern = ''
         self._parent_project = []
         self._parent_status = []
     ## @brief method to retrieve the project resource information if not yet done
@@ -117,62 +117,63 @@ class ds_clean(ds_project_base):
             (run, subrun) = (int(x[0]), int(x[1]))
 
             if run < self._min_run: 
-                continue
+                break
 
             # Counter decreases by 1
             ctr -=1
+            if ctr <0: break
 
-            tmp_status = 1
-            rm_status = 1
-            multiple_file_status=0
+            tmp_status = kSTATUS_INIT
+            rm_status = kSTATUS_INIT
 
             # Check input file exists. Otherwise report error
-            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+            filelist = find_run.find_file(self._in_dir,self._name_pattern,run,subrun)
+
             if (len(filelist)>1):
-                self.error('ERROR: There is more than one file matching that pattern: %s' % filelist)
-                multiple_file_status=200
+                self.error('There is more than one file matching that pattern: %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = int(x[0]),
+                                            subrun  = int(x[1]),
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE) )
+                continue
+
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )     
-            else:
-                in_file = filelist[0]
-                self.info('Removing %s'%in_file)
+                self.log_status( ds_status( project = self._project,
+                                            run     = int(x[0]),
+                                            subrun  = int(x[1]),
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND) )
+                continue
 
-                if ":" in in_file:
+            in_file = filelist[0]
+            self.info('Removing %s'%in_file)
+
+            if ":" in in_file:
                 #check that out_file is a file before trying to remove 
                 #(hopefully should avoid unintentional rm with bad out_dir/name_pattern combo)
-                    if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                        rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
-                        tmp_status=2
-                else:
-                    self.info('Looks like the file is local on this node')
-                    if not os.path.isfile(in_file):
-                        self.info("ERROR: os.path.isfile('%s') returned false?!"%in_file)
-                    self.info('Going to remove the file with rm...')
-                    rm_status=os.system('rm -f %s' % in_file)
-                    tmp_status=2
+                if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
+                    rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
+                    tmp_status=kSTATUS_TO_BE_VALIDATED
+            else:
+                self.info('Looks like the file is local on this node')
+                if not os.path.isfile(in_file):
+                    self.info("ERROR: os.path.isfile('%s') returned false?!"%in_file)
+                self.info('Going to remove the file with rm...')
+                rm_status=os.system('rm -f %s' % in_file)
+                tmp_status=kSTATUS_TO_BE_VALIDATED
 
-                if rm_status==0:
-                    tmp_status=tmp_status + multiple_file_status
-                else:
-                    self.info('Failed to remove the file %s' % in_file)
-                    tmp_status=4
-                # Create a status object to be logged to DB (if necessary)
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = tmp_status )
+            if rm_status:
+                self.info('Failed to remove the file %s' % in_file)
+                tmp_status=kSTATUS_ERROR_CANNOT_REMOVE_FILE
+            # Create a status object to be logged to DB (if necessary)
+            self.log_status ( ds_status( project = self._project,
+                                         run     = int(x[0]),
+                                         subrun  = int(x[1]),
+                                         seq     = 0,
+                                         status  = tmp_status ) )
             
-                # Log status
-                self.log_status( status )
-
             # Break from loop if counter became 0
             if not ctr: break
 
@@ -190,7 +191,7 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_runs(self._project,2,False):
+        for x in self.get_runs(self._project,kSTATUS_TO_BE_VALIDATED,False):
 
             # Counter decreases by 1
             ctr -=1
@@ -200,27 +201,23 @@ class ds_clean(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Check if file %s was deleted.' % in_file)
 
-            tmp_status=0
+            tmp_status=kSTATUS_DONE
             if ":" in in_file:
                 if not os.system('ssh -x %s "ls %s"'%(tuple(in_file.split(":")))):
-                    tmp_status=100
+                    tmp_status=kSTATUS_CANNOT_REMOVE_FILE
             else:
                 if (len(glob.glob(in_file))>0):
-                    tmp_status=100
+                    tmp_status=kSTATUS_CANNOT_REMOVE_FILE
 
-            if (tmp_status==100):
+            if not tmp_status == kSTATUS_DONE:
                 self.error('Failed to remove %s'%in_file)
 
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = int(x[2]),
-                                status  = tmp_status )
-            
-            # Log status
-            self.log_status( status )
-
+            self.log_status ( ds_status( project = self._project,
+                                         run     = int(x[0]),
+                                         subrun  = int(x[1]),
+                                         seq     = int(x[2]),
+                                         status  = tmp_status ) )
             # Break from loop if counter became 0
             if not ctr: break
 
@@ -238,7 +235,7 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        for x in self.get_runs(self._project,100,False):
+        for x in self.get_runs(self._project,kSTATUS_ERROR_CANNOT_REMOVE_FILE,False):
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
@@ -251,7 +248,7 @@ class ds_clean(ds_project_base):
             in_file = '%s/%s' % (self._in_dir,self._name_pattern % (run,subrun))
             self.info('Will try removing %s again later.' % (in_file))
 
-            tmp_status = 100
+            tmp_status = kSTATUS_ERROR_CANNOT_REMOVE_FILE
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,
@@ -275,7 +272,7 @@ if __name__ == '__main__':
     
     test_obj.process_newruns()
     
-    test_obj.error_handle()
+    #test_obj.error_handle()
     
     test_obj.validate()
     

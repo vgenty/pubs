@@ -87,6 +87,7 @@ class ds_multiprocess(ds_base):
             if p.poll() is None: 
                 ctr+=1
             elif not isinstance(p,finished_process):
+                self._cout_v[i], self._cerr_v[i] = self._proc_v[i].communicate()
                 self._proc_v[i] = finished_process(p.poll())
                 del p
         return ctr

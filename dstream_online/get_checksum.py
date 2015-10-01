@@ -45,7 +45,7 @@ class get_checksum( ds_project_base ):
         self._nruns_to_postpone = 0
         self._parallelize = 0
         self._max_proc_time = 30
-
+        self._min_run = 0
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -69,6 +69,9 @@ class get_checksum( ds_project_base ):
             self._parallelize = int(resource['PARALLELIZE'])
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
+
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
 
     ## @brief calculate the checksum of a file
     def calculate_checksum( self ):
@@ -100,6 +103,7 @@ class get_checksum( ds_project_base ):
             target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
             self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
             for x in target_runs:
+                if int(x[0]) < self._min_run: continue
                 status = ds_status( project = self._project,
                                     run     = int(x[0]),
                                     subrun  = int(x[1]),
@@ -122,10 +126,11 @@ class get_checksum( ds_project_base ):
             # Break from loop if counter became 0
             if ctr <= 0: break
 
+            (run, subrun) = (int(x[0]), int(x[1]))
+            if run < self._min_run: break
+
             # Counter decreases by 1
             ctr -= 1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
 
             # Report starting
             #self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))

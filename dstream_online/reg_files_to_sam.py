@@ -57,7 +57,8 @@ class reg_files_to_sam( ds_project_base ):
         self._project_list = [ self._project, ]
         self._project_requirement = [ kSTATUS_INIT ]
         self._nruns_to_postpone = 0
-        
+        self._min_run = 0
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -85,6 +86,9 @@ class reg_files_to_sam( ds_project_base ):
         for x in xrange( len(self._parent_project) ):
             self._project_list.append( self._parent_project[x] )
             self._project_requirement.append( 0 )
+
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
 
     ## @brief declare a file to SAM
     def process_runs(self):
@@ -114,6 +118,8 @@ class reg_files_to_sam( ds_project_base ):
             target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
             self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
             for x in target_runs:
+
+                if x < self._min_run: break
                 status = ds_status( project = self._project,
                                     run     = int(x[0]),
                                     subrun  = int(x[1]),
@@ -136,9 +142,10 @@ class reg_files_to_sam( ds_project_base ):
             # Counter decreases by 1
             ctr -= 1
 
-            if ctr < 0 : break
-
             (run, subrun) = (int(x[0]), int(x[1]))
+            if run < self._min_run: break
+
+            if ctr < 0 : break
 
             # Report starting
             self.info('Declaring a file to SAM: run=%d, subrun=%d ...' % (run,subrun) )
@@ -180,7 +187,7 @@ class reg_files_to_sam( ds_project_base ):
             runid_v.append((run,subrun))
 
 
-        status_v = process_files(files_v)
+        status_v = self.process_files(files_v)
         for i in xrange(len(status_v)):
             run,subrun = runid_v[i]
             status = status_v[i]
@@ -194,11 +201,13 @@ class reg_files_to_sam( ds_project_base ):
     ## @brief given files attempt to register to sam
     def process_files(self, in_file_v):
 
-        status_v=[kSTATUS_ERROR_GENERIC] * len(in_file_v)
+        status_v=[kSTATUS_ERROR_UNKNOWN] * len(in_file_v)
 
         for i in xrange(len(status_v)):
 
             json_dict = None
+            in_file = in_file_v[i]
+            in_json = in_file + '.json'
             try:
                 json_dict = json.load( open( in_json ) )
             except ValueError:

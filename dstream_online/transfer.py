@@ -56,6 +56,7 @@ class transfer( ds_project_base ):
         self._nruns_to_postpone = 0
         self._parallelize = 0
         self._max_proc_time = 120
+        self._min_run = 0
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -79,7 +80,9 @@ class transfer( ds_project_base ):
             self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
-
+        
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
     ## @brief Transfer files to dropbox
     def transfer_file( self ):
 
@@ -109,6 +112,9 @@ class transfer( ds_project_base ):
             target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
             self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
             for x in target_runs:
+
+                if int(x[0]) < self._min_run: break
+
                 status = ds_status( project = self._project,
                                     run     = int(x[0]),
                                     subrun  = int(x[1]),
@@ -125,10 +131,12 @@ class transfer( ds_project_base ):
         for x in self.get_xtable_runs([self._project, self._parent_project],
                                       [1, 0]):
             if ctr <=0: break
+
+            (run, subrun) = (int(x[0]), int(x[1]))
+            if run < self._min_run: break
+
             # Counter decreases by 1
             ctr -= 1
-            
-            (run, subrun) = (int(x[0]), int(x[1]))
             
             # Report starting
             self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun) )
