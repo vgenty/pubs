@@ -26,13 +26,7 @@ class GuiUtilsAPI():
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.name = name
-      self.proj_dict = {}
-      self.projects = None
-      self.relevant_daemons = GuiUtils().getRelevantDaemons()
-      self.threadLock = threadlock
-      self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
-      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
-
+      
       # DB interface:
       self.dbi = ds_reader(pubdb_conn_info.reader_info())
     
@@ -42,22 +36,32 @@ class GuiUtilsAPI():
       except:
         print "Unable to connect to database in query thread... womp womp :("
 
-    def run(self):
-      self.threadLock.acquire()
-
-      self.proj_dict = self.dbi.list_status()
+      self.queried_proj_dict = self.dbi.list_status()
       self.projects = self.dbi.list_projects()
-      for servername in self.relevant_daemons:
-        self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
-        self.daemon_is_enabled[servername] = self.dbi.daemon_info(servername)._enable
+      self.relevant_daemons = GuiUtils().getRelevantDaemons()
+      self.threadLock = threadlock
+      self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
+      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
 
-      self.threadLock.release()
-      time.sleep(10)
+
+    def run(self):
+      #self.threadLock.acquire()
+      while True:
+        self.queried_proj_dict = self.dbi.list_status()
+        print "Updated project_dict in query thread!"
+        self.projects = self.dbi.list_projects()
+        for servername in self.relevant_daemons:
+          self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
+          self.daemon_is_enabled[servername] = self.dbi.daemon_info(servername)._enable
+
+        #self.threadLock.release()
+        time.sleep(10)
 
     def getProjDict(self):
       self.threadLock.acquire()
-      tmpdict = self.proj_dict.copy()
+      tmpdict = self.queried_proj_dict.copy()
       self.threadLock.release()
+      print "Query thread is handing dictionary to main thread."
       return tmpdict
 
     def getProjects(self):
@@ -68,14 +72,22 @@ class GuiUtilsAPI():
 
     def getDaemonEnabled(self,servername):
       try:
+        self.threadLock.acquire()
         tmp_isenabled = self.daemon_is_enabled[servername]
-      except: KeyError('What?? Server not in daemon_is_enabled.keys() inside of gui_utils_api thread.')
+        self.threadLock.release()
+      except: 
+        self.threadLock.release()
+        KeyError('What?? Server not in daemon_is_enabled.keys() inside of gui_utils_api thread.')
       return tmp_isenabled
 
     def getDaemonLastLogtime(self,servername):
       try:
+        self.threadLock.acquire()
         tmp_lastlogtime = self.daemon_last_logtimes[servername]
-      except: KeyError('What?? Server not in daemon_last_logtimes.keys() inside of gui_utils_api thread.')
+        self.threadLock.release()
+      except: 
+        self.threadLock.release()
+        KeyError('What?? Server not in daemon_last_logtimes.keys() inside of gui_utils_api thread.')
       return tmp_lastlogtime
 
   def __init__(self):
@@ -88,8 +100,12 @@ class GuiUtilsAPI():
     #Initialize proj_dict
     #Dictionary that contains projects as keys, and arrays of statuses as values. ex:
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
+    #At this point, the project dict isn't filled yet...
     self.proj_dict = self.querythread.getProjDict()
-    self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
+    if self.querythread.getProjects():
+      self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
+    else:
+      self.enabled_projects = ['']
     self.my_utils = GuiUtils()
     self.colors = self.my_utils.getColors()
 
@@ -218,6 +234,7 @@ class GuiUtils():
 
   def getTimeSinceInSeconds(self,timestamp):
     now = datetime.datetime.today()
+    if not timestamp: return 0
     return (now - timestamp).total_seconds()
 
   def getRelevantDaemons(self):
