@@ -48,7 +48,6 @@ class GuiUtilsAPI():
       #self.threadLock.acquire()
       while True:
         self.queried_proj_dict = self.dbi.list_status()
-        print "Updated project_dict in query thread!"
         self.projects = self.dbi.list_projects()
         for servername in self.relevant_daemons:
           self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
@@ -61,7 +60,6 @@ class GuiUtilsAPI():
       self.threadLock.acquire()
       tmpdict = self.queried_proj_dict.copy()
       self.threadLock.release()
-      print "Query thread is handing dictionary to main thread."
       return tmpdict
 
     def getProjects(self):
