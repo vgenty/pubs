@@ -4,14 +4,13 @@ import sys
 PREFIX = 'NoiseRun'
 SUFFIX = 'ubdaq'
 
-def match_file_name(path,outname):
+def match_file_name(path,prefix,suffix):
 
     # make sure the path to this directory exists
     if (os.path.isdir(path) == False):
         return -1
 
     fout = open(outname,'w+')
-
 
     dircontents = [ x for x in os.listdir(path) if x.endswith(SUFFIX) and x.startswith(PREFIX) ]
 

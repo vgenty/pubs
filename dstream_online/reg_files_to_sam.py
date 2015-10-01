@@ -87,7 +87,7 @@ class reg_files_to_sam( ds_project_base ):
             self._project_requirement.append( 0 )
 
     ## @brief declare a file to SAM
-    def declare_to_sam( self ):
+    def process_runs(self):
         
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -125,111 +125,125 @@ class reg_files_to_sam( ds_project_base ):
 
         for p in self._project_list:
             self._api.commit('DROP TABLE IF EXISTS temp%s;' % p)
+
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
+        runid_v = []
+        files_v = []
         for x in self.get_xtable_runs(self._project_list,
                                       self._project_requirement):
 
             # Counter decreases by 1
             ctr -= 1
 
+            if ctr < 0 : break
+
             (run, subrun) = (int(x[0]), int(x[1]))
 
             # Report starting
             self.info('Declaring a file to SAM: run=%d, subrun=%d ...' % (run,subrun) )
 
-            status = 1
-            
+            status = kSTATUS_INIT
+
             # Check input file exists. Otherwise report error
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
+                continue
 
             in_file = filelist[0]
             in_json = '%s.json' % in_file
 
-            self.info('Declaring ' + in_file + ' to SAM: using ' + in_json  )
-            
+            if not os.path.isfile( in_json ):
+                self.error('Missing json file: %s' % in_json)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
 
-            if os.path.isfile( in_file ) and os.path.isfile( in_json ):
-                self.info('Found %s' % (in_file) )
-                self.info('Found %s' % (in_json) )
-                json_dict = None
-                try:
-                    json_dict = json.load( open( in_json ) )
-                except ValueError:
-                    self.error('Failed loading json file: %s' % in_json)
-                    status = 103
-                    json_dict=None
+            files_v.append(in_file)
+            runid_v.append((run,subrun))
 
-                if json_dict:
-                    # native SAM python call, instead of a system call
-                    # make sure you've done get-cert
-                    # Perhaps we want a try block for samweb?
-                    samweb = samweb_cli.SAMWebClient(experiment="uboone")
-                
-                    # Check if the file already exists at SAM
-                    try:
-                        in_file_base=os.path.basename(in_file)
-                        samweb.getMetadata(filenameorid=in_file_base)
-                        status = 101
-                        # Email the experts
-                        subject = 'File %s Existing at SAM' % in_file_base
-                        text = """
-File %s has already exists at SAM!
-                    """ % in_file_base
 
-                        pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-
-                    except samweb_cli.exceptions.FileNotFound:
-                        # metadata already validated in get_assembler_metadata_file.py
-                        try:
-                            samweb.declareFile(md=json_dict)
-                            status = 2
-                        except Exception as e:
-                            #                        print "Unexpected error: samweb declareFile problem: "
-                            self.error( "Unexpected error: samweb declareFile problem: ")
-                            self.error( "%s" % e)
-                            subject = "samweb declareFile problem: %s" % in_file_base
-                            text = """
-File %s failed to be declared to SAM!
-%s
-                        """ % ( in_file_base, traceback.print_exc() )
-
-                            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-
-                            # print "Give some null properties to this meta data"
-                            self.error( "Give this file a status 102")
-                            status = 102
-
-            else:
-                status = 100
-
+        status_v = process_files(files_v)
+        for i in xrange(len(status_v)):
+            run,subrun = runid_v[i]
+            status = status_v[i]
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
-            
-            # Log status
-            self.log_status( status )
+            self.log_status( ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = subrun,
+                                        seq     = 0,
+                                        status  = status ) )
 
-            # Break from loop if counter became 0
-            if not ctr: break
+    ## @brief given files attempt to register to sam
+    def process_files(self, in_file_v):
 
+        status_v=[kSTATUS_ERROR_GENERIC] * len(in_file_v)
+
+        for i in xrange(len(status_v)):
+
+            json_dict = None
+            try:
+                json_dict = json.load( open( in_json ) )
+            except ValueError:
+                self.error('Failed loading json file: %s' % in_json)
+                status_v[i] = kSTATUS_ERROR_WRONG_JSON_FORMAT
+                continue
+
+            # native SAM python call, instead of a system call
+            # make sure you've done get-cert
+            # Perhaps we want a try block for samweb?
+            samweb = samweb_cli.SAMWebClient(experiment="uboone")
+                
+            # Check if the file already exists at SAM
+            try:
+                in_file_base=os.path.basename(in_file)
+                samweb.getMetadata(filenameorid=in_file_base)
+                # Email the experts
+                subject = 'File %s Existing at SAM' % in_file_base
+                text = "File %s has already exists at SAM!" % in_file_base
+                pub_smtp( os.environ['PUB_SMTP_ACCT'], 
+                          os.environ['PUB_SMTP_SRVR'], 
+                          os.environ['PUB_SMTP_PASS'], 
+                          self._experts, subject, text )
+                status_v[i] = kSTATUS_ERROR_DUPLICATE_SAM_ENTRY 
+                continue
+            except samweb_cli.exceptions.FileNotFound:
+                # metadata already validated in get_assembler_metadata_file.py
+                try:
+                    samweb.declareFile(md=json_dict)
+                    status_v[i] = kSTATUS_TO_BE_VALIDATED
+                except Exception as e:
+                    #                        print "Unexpected error: samweb declareFile problem: "
+                    self.error( "Unexpected error: samweb declareFile problem: ")
+                    self.error( "%s" % e)
+                    subject = "samweb declareFile problem: %s" % in_file_base
+                    text = "File %s failed to be declared to SAM! %s" % ( in_file_base, traceback.print_exc() )
+                    pub_smtp( os.environ['PUB_SMTP_ACCT'], 
+                              os.environ['PUB_SMTP_SRVR'], 
+                              os.environ['PUB_SMTP_PASS'], 
+                              self._experts, subject, text )
+
+                    # print "Give some null properties to this meta data"
+                    status_v[i] = kSTATUS_ERROR_CANNOT_MAKE_SAM_ENTRY
+
+        return status_v
 
     ## @brief Check the SAM definition
     def validate_sam( self ):
@@ -254,28 +268,32 @@ File %s failed to be declared to SAM!
             # Counter decreases by 1
             ctr -= 1
 
+            if ctr < 0 : break
+
             (run, subrun) = (int(x[0]), int(x[1]))
 
             # Report starting
             self.info('Checking the SAM declaration: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 12
+            status = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND
 
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
             in_file = filelist[0]
             in_file_base = os.path.basename(in_file)
@@ -284,22 +302,16 @@ File %s failed to be declared to SAM!
             # Check if the file already exists at SAM
             try:
                 samweb.getMetadata(filenameorid=in_file_base)
-                status = 0
+                status = kSTATUS_DONE
             except samweb_cli.exceptions.FileNotFound:
-                status = 1
+                status = kSTATUS_INIT
 
             # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
+            self.log_status( ds_status( project = self._project,
+                                        run     = int(x[0]),
+                                        subrun  = int(x[1]),
+                                        seq     = 0,
+                                        status  = status ) )
 
     ## For future use
     # def create_sam_def():
@@ -323,7 +335,8 @@ if __name__ == '__main__':
 
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    obj.declare_to_sam()
+    #obj.declare_to_sam()
+    obj.process_runs()    
 
     obj.validate_sam()
 

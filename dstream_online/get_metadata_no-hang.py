@@ -166,23 +166,25 @@ class get_metadata( ds_project_base ):
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 1
+            status = kSTATUS_INIT
 
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
 
             infile_v.append(filelist[0])
             outfile_v.append('%s.json' % infile_v[-1])
@@ -190,6 +192,7 @@ class get_metadata( ds_project_base ):
 
             if ctr <= 0: break
             
+        action = self.get_action()
 
         status_v = action(infile_v)
 
@@ -205,18 +208,19 @@ class get_metadata( ds_project_base ):
                 json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
 
             # Create a status object to be logged to DB (if necessary)
-            self.log_status ( ds_status( project = self._project,
-                                         run     = run,
-                                         subrun  = subrun,
-                                         seq     = 0,
-                                         status  = status) )
+            if log_db:
+                self.log_status ( ds_status( project = self._project,
+                                             run     = run,
+                                             subrun  = subrun,
+                                             seq     = 0,
+                                             status  = status) )
         
     def process_swizzled_files(self,in_file_v):
         
         status_v=[]
         for in_file in in_file_v:
 
-            status_v.append(0,'')
+            status_v.append((0,''))
             jsonData = None
             try:
                 jsonData = extractor_dict.getmetadata( in_file )
@@ -235,13 +239,14 @@ class get_metadata( ds_project_base ):
         cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
 
         mp = ds_multiprocess(self._project)
-        
+
         for i in xrange(len(in_file_v)):
 
             in_file = in_file_v[i]
             
             cmd = cmd_template % (in_file,in_file)
             index, active_counter = mp.execute(cmd)
+
             if not self._parallelize:
                 mp.communicate()
             else:
@@ -257,12 +262,15 @@ class get_metadata( ds_project_base ):
                     time_slept += 0.2
 
                     if int(time_slept)%5 == 0:
-                        self.info('Parallel processing %d runs (%d/%d left)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
+                        self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
+                                                                                   i-active_counter,
+                                                                                   len(in_file_v)))
 
-                    active_counter = mp.active_counter()
+                    active_counter = mp.active_count()
 
         time_slept = 0
-        while mp.active_counter():
+        active_counter = mp.active_count()
+        while active_counter:
             
             if time_slept > self._max_proc_time:
                 self.error('Exceeding process limit time (%s sec). Killing processes...' % self._max_proc_time)
@@ -272,7 +280,10 @@ class get_metadata( ds_project_base ):
             time_slept += 0.2
 
             if int(time_slept)%5 == 0:
-                self.info('Parallel processing %d runs (%d/%d left)...' % (active_ctr,active_ctr+remaining_ctr,len(in_file_v)))
+                self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
+                                                                           len(in_file_v)-active_counter,
+                                                                           len(in_file_v)))
+            active_counter = mp.active_count()
 
         # Now extract MetaData for successful ones
         status_v=[]
@@ -282,7 +293,7 @@ class get_metadata( ds_project_base ):
             out,err = mp.communicate(i)
             if mp.poll(i):
                 self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % mp.poll(i))
-                status_v[i] = (100,None)
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 continue
             in_file = in_file_v[i]
 
@@ -316,7 +327,7 @@ class get_metadata( ds_project_base ):
 
             except:
                 self.error ("Unexpected error:", sys.exc_info()[0] )
-                status_v[i] = (100,None)
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
                 continue
 
@@ -326,12 +337,12 @@ class get_metadata( ds_project_base ):
 
             if not ref_status._status == 0:
                 self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (1,None)
+                status_v[i] = (kSTATUS_INIT,None)
                 continue
 
             if not ref_status._data:
                 self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (101,None)
+                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                 continue
 
             # run number and subrun number in the metadata seem to be funny,
@@ -353,7 +364,7 @@ class get_metadata( ds_project_base ):
                          "ub_project.name": "online", 
                          "ub_project.stage": "assembler", 
                          "ub_project.version": self._pubsver }
-            status_v[i] = (2,jsonData)
+            status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
 
@@ -381,22 +392,24 @@ class get_metadata( ds_project_base ):
             # Report starting
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
-            status = 1
+            status = kSTATUS_INIT
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
             in_file = filelist[0]
             out_file = '%s.json' % in_file
@@ -491,6 +504,8 @@ if __name__ == '__main__':
     test_obj = get_metadata( proj_name )
 
     test_obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    test_obj.get_resource()
 
     test_obj.process_newruns()
 
