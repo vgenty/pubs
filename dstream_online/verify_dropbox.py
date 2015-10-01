@@ -94,10 +94,14 @@ class verify_dropbox( ds_project_base ):
         self._in_dir = ''
         self._out_dir = ''
         self._infile_format = ''
-        self._parent_project = ''
+        self._parent_project = []
+        self._parent_status = []
+        self._project_list = []
+        self._project_requirement = []
         self._experts = ''
         self._data = ''
         self._nruns_to_postpone = 0
+        self._min_run = 0
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -108,7 +112,6 @@ class verify_dropbox( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._out_dir = '%s' % (resource['OUTDIR'])
-        self._parent_project = resource['PARENT_PROJECT']
         self._ref_project = resource['REF_PROJECT']
         self._experts = resource['EXPERTS']
         try:
@@ -116,6 +119,27 @@ class verify_dropbox( ds_project_base ):
             self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
         except KeyError,ValueError:
             pass
+
+        try:
+            self._parent_project = resource['PARENT_PROJECT'].split(':')
+            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            if not len(self._parent_project) == len(self._parent_status):
+                raise ValueError
+        except Exception:
+            self.error('Failed to load parent projects...')
+            return False
+
+        #this constructs the list of projects and their status codes
+        #we want the project to be status 1, while the dependent projects to
+        # be status 0
+        self._project_list = [self._project ]
+        self._project_requirement = [ kSTATUS_INIT ]
+
+        self._project_list += self._parent_project
+        self._project_requirement += self._parent_status
+
+        if 'MIN_RUN' in resource:
+            self._min_run = int(resource['MIN_RUN'])
 
     ## @brief calculate the checksum of a file
     def compare_dropbox_checksum( self ):
@@ -129,7 +153,7 @@ class verify_dropbox( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        runlist_v = self.get_xtable_runs( [self._project, self._parent_project], [1, 0] )
+        runlist_v = self.get_xtable_runs( self._project_list, self._project_requirement )
 
         self.compare_dropbox_checksum_from_runlist(runlist_v)
 
@@ -148,26 +172,23 @@ class verify_dropbox( ds_project_base ):
         #
         # Process Postpone first
         #
-        ctr_postpone = 0
-        for parent in [self._parent_project]:
-            if ctr_postpone >= self._nruns_to_postpone: break
-            if parent == self._project: continue
-            
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
-            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
-            for x in target_runs:
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = kSTATUS_POSTPONE )
-                self.log_status(status)
-                ctr_postpone += 1
-                if ctr_postpone > self._nruns_to_postpone: break
-
-        
+        #ctr_postpone = 0
+        #for parent in [self._parent_project]:
+        #    if ctr_postpone >= self._nruns_to_postpone: break
+        #    if parent == self._project: continue
+        #    
+        #    target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
+        #    self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
+        #    for x in target_runs:
+        #        if int(x[0]) < self._min_run: continue
+        #        status = ds_status( project = self._project,
+        #                            run     = int(x[0]),
+        #                            subrun  = int(x[1]),
+        #                            seq     = 0,
+        #                            status  = kSTATUS_POSTPONE )
+        #        self.log_status(status)
+        #        ctr_postpone += 1
+        #        if ctr_postpone > self._nruns_to_postpone: break
                 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
@@ -178,32 +199,36 @@ class verify_dropbox( ds_project_base ):
         checksum_error_msg=''
         for x in runlist_v:
 
-            # Counter decreases by 1
-            ctr -= 1
+            if ctr <= 0: break
 
             (run, subrun) = (int(x[0]), int(x[1]))
+            if run < self._min_run: break
+
+            # Counter decreases by 1
+            ctr -= 1
 
             # Report starting
             self.info('Calculating the file checksum: run=%d, subrun=%d ...' % (run,subrun))
 
-            statusCode = 1
+            statusCode = kSTATUS_INIT
             in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            #filelist = glob.glob( in_file_holder )
-            filelist=['NoiseRun-0002770-00261.ubdaq']
+            filelist = glob.glob( in_file_holder )
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
                 self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_FILE_NOT_UNIQUE ) )
 
             in_file = filelist[0]
             in_file_name = os.path.basename(in_file)
@@ -213,33 +238,38 @@ class verify_dropbox( ds_project_base ):
             RefStatus = self._api.get_status( ds_status(self._ref_project, run, subrun, 0))
             near1_checksum = RefStatus._data
 
+            pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
+            near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
+            print near1_adler32_1
+            print pnfs_adler32_1
+            continue
             try:
                 samweb = samweb_cli.SAMWebClient(experiment="uboone")
                 meta = samweb.getMetadata(filenameorid=in_file_name)
                 checksum_info = meta['checksum'][0].split(':')
                 #self.warning("Found on tape %s" % in_file_name)
-                if checksum_info[0] == 'enstore':
+                if checksum_info[0] == 'enstore' and int(checksum_info[1]) == int(near1_checksum):
                     self._data = checksum_info[1]
-                    statusCode = 0
+                    statusCode = kSTATUS_DONE
                 else:
-                    statusCode = 10
+                    statusCode = kSTATUS_ERROR_CHECKSUM_MISMATCH
 
             except samweb_cli.exceptions.FileNotFound:
                 locate_error_msg = 'File %s is not found at SAM!' % in_file
-                statusCode = 1
+                statusCode = kSTATUS_INIT
 
                 try:
                     pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
                     near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
 
                     if near1_adler32_1 == pnfs_adler32_1:
-                        statusCode = 0
+                        statusCode = kSTATUS_DONE
                     else:
                         self.error('Found checksum disagreement @ (run,subrun) = (%d,%d)' % (run,subrun))
                         checksum_error_msg += 'Run %d, subrun %d\n' % ( run, subrun )
                         checksum_error_msg += 'Converted %s checksum: %s\n' % ( self._ref_project, near1_adler32_1 )
                         checksum_error_msg += 'Converted PNFS checksum: %s\n\n' % ( pnfs_adler32_1 )
-                        statusCode = 1000
+                        statusCode = kSTATUS_ERROR_CHECKSUM_MISMATCH
                         self._data = '%s:%s;PNFS:%s' % ( self._ref_project, near1_adler32_1, pnfs_adler32_1 )
 
                 except LookupError:
@@ -256,9 +286,6 @@ class verify_dropbox( ds_project_base ):
 
             # Log status
             self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
 
         # Report checksum error
         if checksum_error_msg:
@@ -301,7 +328,7 @@ class verify_dropbox( ds_project_base ):
             # Report starting
             self.info('Calculating the file checksum: run=%d, subrun=%d ...' % (run,subrun))
 
-            statusCode = 2
+            statusCode = kSTATUS_TO_BE_VERIFIED
             in_file_name = self._infile_format % ( run, subrun )
             in_file = '%s/%s' % ( self._in_dir, in_file_name )
 
@@ -313,7 +340,7 @@ class verify_dropbox( ds_project_base ):
             self._data = str( self._data )
 
             if self._data:
-               statusCode = 0
+               statusCode = kSTATUS_DONE
             else:
                 subject = 'Checksum of the file %s not in database' % in_file
                 text = """File: %s
@@ -322,7 +349,7 @@ Checksum is not in database
 
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 
-                statusCode = 100
+                statusCode = kSTATUS_ERROR_CHECKSUM_NOT_FOUND
 
             # Create a status object to be logged to DB (if necessary)
             status = ds_status( project = self._project,

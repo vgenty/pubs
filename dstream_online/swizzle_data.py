@@ -14,8 +14,8 @@ from dstream import ds_status
 from ds_online_env import *
 import datetime
 import subprocess as sub
-import glob
-
+# script module tools
+from scripts import find_run
 
 
 ## @Class swizzle_data
@@ -129,8 +129,7 @@ class swizzle_data(ds_project_base):
             status = 1
             
             # Check input file exists. Otherwise report error
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -351,8 +350,7 @@ class swizzle_data(ds_project_base):
 
             status = 1
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
@@ -442,8 +440,7 @@ class swizzle_data(ds_project_base):
 
             status = 1
 
-            in_file_holder = '%s/%s' % (self._in_dir,self._infile_format % (run,subrun))
-            filelist = glob.glob( in_file_holder )
+            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100

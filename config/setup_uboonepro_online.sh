@@ -77,7 +77,8 @@ case `uname -n` in
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc;
                 ;;
             (ubdaq-prod-evb*)
-	        setup uboonedaq_datatypes v6_14_00 -q e7:prof;
+	        setup uboonecode v04_22_00 -q prof:e7;
+	        #setup uboonedaq_datatypes v6_14_00 -q e7:prof;
 	        setup sam_web_client;
 		setup postgresql v9_3_6 -q p279;
 		setup pyqtgraph;

@@ -3,6 +3,15 @@ import subprocess
 from ds_exception import DSException
 import time
 
+class finished_process:
+
+    _return_value = -9
+
+    def __init__(self,arg=-9):
+        self._return_value = arg
+
+    def poll(self): return self._return_value
+
 ## @class ds_multiprocess
 #  @brief A class that handles parallelization of command execution
 #  @details Someone should replace this w/ multiprocessing
@@ -25,10 +34,12 @@ class ds_multiprocess(ds_base):
             self._proc_v.append(p)
             self._cerr_v.append(None)
             self._cout_v.append(None)
-            return (len(self._proc_v)-1,active_ctr+1)
         except Exception:
             self.error('Failed to execute: %s' % cmd)
-            return (-1,active_ctr)
+            _cout_v.append('')
+            _cerr_v.append('Failed to execute: %s' % cmd)
+            _proc_v.append(finished_process(-9))
+        return (len(self._proc_v)-1,active_ctr+1)
 
     def finished(self,index=None):
         if index is None:
@@ -48,7 +59,8 @@ class ds_multiprocess(ds_base):
         if self._cout_v[index] is None:
 
             self._cout_v[index], self._cerr_v[index] = self._proc_v[index].communicate()
-            
+            self._proc_v[index] = finished_process(self._proc_v[index].poll())
+
         return (self._cout_v[index],self._cerr_v[index])
 
     def kill(self):
@@ -64,10 +76,20 @@ class ds_multiprocess(ds_base):
             if p.poll() is None:
                 subprocess.call(['kill','-9',str(p.pid)])
 
+        if self.active_count():
+            self.kill()
+
     def active_count(self):
         ctr=0
-        for p in self._proc_v:
-            if p.poll() is None: ctr+=1
+        for i in xrange(len(self._proc_v)):
+            
+            p = self._proc_v[i]
+            if p.poll() is None: 
+                ctr+=1
+            elif not isinstance(p,finished_process):
+                self._cout_v[i], self._cerr_v[i] = self._proc_v[i].communicate()
+                self._proc_v[i] = finished_process(p.poll())
+                del p
         return ctr
 
     
