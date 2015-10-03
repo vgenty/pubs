@@ -636,7 +636,7 @@ Job IDs    : %s
                                                      remove=False,
                                                      upload=True)
 
-            if store_status == 0:
+            if store_status == 0 and stobj.ana_data_tier != '':
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
                                                          add=False,
@@ -735,13 +735,13 @@ Stage      : %s
                 for run in run_subruns.keys():
                     all_subruns = run_subruns[run].copy()
 
-                    # Process subruns in groups of 10.
+                    # Process subruns in groups of 12.
 
                     subruns = []
                     while len(all_subruns) > 0:
                         subrun = all_subruns.pop()
                         subruns.append(subrun)
-                        if len(subruns) >= 10 or len(all_subruns) == 0:
+                        if len(subruns) >= 12 or len(all_subruns) == 0:
 
                             statusCode = self.__decode_status__( fstatus )
 
