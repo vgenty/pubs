@@ -14,7 +14,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_multiprocess
-from ds_online_env import *
+from ds_online_constants import *
 import samweb_client.utility
 import traceback
 # script module tools

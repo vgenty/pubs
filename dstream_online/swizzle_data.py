@@ -11,7 +11,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ds_online_env import *
+from ds_online_constants import *
 import datetime
 import subprocess as sub
 # script module tools

@@ -13,7 +13,7 @@ from pub_util import pub_smtp
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ds_online_env import *
+from ds_online_constants import *
 import samweb_cli
 import json
 import traceback
