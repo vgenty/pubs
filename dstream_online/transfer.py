@@ -53,7 +53,6 @@ class transfer( ds_project_base ):
         #self._meta_dir = ''
         self._infile_format = ''
         self._parent_project = ''
-        self._nruns_to_postpone = 0
         self._parallelize = 0
         self._max_proc_time = 120
         self._min_run = 0
@@ -75,11 +74,6 @@ class transfer( ds_project_base ):
             
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
-        try:
-            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
-        except KeyError,ValueError:
-            pass
         
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
@@ -99,30 +93,6 @@ class transfer( ds_project_base ):
             self.get_resource()
 
         self.info('Start transfer_file @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-        #
-        # Process Postpone first
-        #
-        ctr_postpone = 0
-        for parent in [self._parent_project]:
-            if ctr_postpone >= self._nruns_to_postpone: break
-            if parent == self._project: continue
-            
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
-            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
-            for x in target_runs:
-
-                if int(x[0]) < self._min_run: break
-
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = kSTATUS_POSTPONE )
-                self.log_status(status)
-                ctr_postpone += 1
-                if ctr_postpone > self._nruns_to_postpone: break
                 
         # Fetch runs from DB and process for # runs specified for this instance.
         args_v  = []
