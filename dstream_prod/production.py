@@ -75,6 +75,7 @@ class production(ds_project_base):
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None }
         self._max_runid = None
+        self._min_runid = None
         self._nruns     = None
         self._xml_file  = ''
         self._stage_name    = []
@@ -113,6 +114,8 @@ class production(ds_project_base):
                 self._digit_to_name[digit]=name
                 self._name_to_digit[name]=digit
             self._max_runid = (int(proj_info._resource['MAX_RUN']),int(proj_info._resource['MAX_SUBRUN']))
+            if proj_info._resource.has_key('MIN_RUN') and proj_info._resource.has_key('MIN_SUBRUN'):
+                self._min_runid = (int(proj_info._resource['MIN_RUN']),int(proj_info._resource['MIN_SUBRUN']))
         except Exception:
             self.error('Failed to load project parameters...')
             return False
@@ -721,6 +724,8 @@ Stage      : %s
                     runid = (run,subrun)
                     if self._max_runid and runid > self._max_runid:
                         continue
+                    if self._min_runid and runid < self._min_runid:
+                        continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
@@ -751,7 +756,6 @@ Stage      : %s
                             if multiaction != None:
                                 self._data = None
                                 statusCode = multiaction( statusCode, istage, run, subruns )
-
                                 self.info('Finished executing a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
