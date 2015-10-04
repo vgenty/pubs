@@ -47,6 +47,20 @@ kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND  = 406
 kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE = 407
 
 #
+# Successful status for Binary Transfer on evb (transfer_binary_dropbox_evb)
+#
+kSTATUS_TRANSFER_BINARY_NEAR1 = 1001 # -> if Dropbox is down, then move files to near1
+kSTATUS_VALIDATE_DATA         = 1002 # -> files moved to dropbox, then validate success of this operation
+
+#
+# Successful status for Binary Transfer Validation on evb (compare_binary_checksum_evb)
+#
+kSTATUS_SWIZZLE_DATA = 1003 # -> transfer successful, choose to swizzle this file online
+kSTATUS_REMOVE_DATA  = 1004 # -> transfer successful, choose to remove the binary file
+
+
+
+#
 # Metadata types
 #
 kUBDAQ_METADATA, kSWIZZLED_METADATA, kMAXTYPE_METADATA = xrange(3)
