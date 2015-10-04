@@ -54,8 +54,10 @@ class production(ds_project_base):
 
         self._project = arg
 
+        # Actions associated with single subruns.
+
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
-                             self.kINITIATED     : self.submit,
+                             self.kINITIATED     : None,
                              self.kTOBEVALIDATED : self.isRunning,
                              self.kSUBMITTED     : self.isRunning,
                              self.kRUNNING       : self.isRunning,
@@ -63,7 +65,17 @@ class production(ds_project_base):
                              self.kTOBERECOVERED : self.recover,
                              self.kREADYFORSAM   : self.declare,
                              self.kDECLARED      : self.store }
+        self.PROD_MULTIACTION = { self.kDONE          : None,
+                                  self.kINITIATED     : self.submit,
+                                  self.kTOBEVALIDATED : None,
+                                  self.kSUBMITTED     : None,
+                                  self.kRUNNING       : None,
+                                  self.kFINISHED      : None,
+                                  self.kTOBERECOVERED : None,
+                                  self.kREADYFORSAM   : None,
+                                  self.kDECLARED      : None }
         self._max_runid = None
+        self._min_runid = None
         self._nruns     = None
         self._xml_file  = ''
         self._stage_name    = []
@@ -102,6 +114,8 @@ class production(ds_project_base):
                 self._digit_to_name[digit]=name
                 self._name_to_digit[name]=digit
             self._max_runid = (int(proj_info._resource['MAX_RUN']),int(proj_info._resource['MAX_SUBRUN']))
+            if proj_info._resource.has_key('MIN_RUN') and proj_info._resource.has_key('MIN_SUBRUN'):
+                self._min_runid = (int(proj_info._resource['MIN_RUN']),int(proj_info._resource['MIN_SUBRUN']))
         except Exception:
             self.error('Failed to load project parameters...')
             return False
@@ -184,7 +198,7 @@ class production(ds_project_base):
                 return False
         return True
 
-    def submit( self, statusCode, istage, run, subrun ):
+    def submit( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
         
@@ -197,7 +211,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -205,7 +219,7 @@ class production(ds_project_base):
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
-            self.error('Exception raied by project.get_pubs_stage:')
+            self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -218,7 +232,7 @@ class production(ds_project_base):
         try:
             jobid = project.dosubmit(probj, stobj)
         except:
-            self.error('Exception raied by project.dosubmit:')
+            self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -241,10 +255,33 @@ class production(ds_project_base):
             return error_status
 
         # Now grab the parent job id and submit time.
-        self._data = '%s+%f' % (jobid, time.time())
+        single_data = '%s+%f' % (jobid, time.time())
 
         statusCode = istage + self.kSUBMITTED
-        self.info( "Submitted jobs, jobid: %s, status: %d" % ( self._data, statusCode ) )
+        self.info( "Submitted jobs, jobid: %s, status: %d" % ( single_data, statusCode ) )
+
+        # Here we need to convert the job data into a list with one entry for each subrun.
+        # In case of input from sam, we keep the original job id and copy it for each job,
+        # since we have no way of knowing what the job ids of the parallel workers will
+        # be at this point.  This jobid will be the dagman jobid, which will run until
+        # every worker is finished.
+        # In case of input from a file list, increment the process number encoded in
+        # the job id for each subrun.
+
+        n1 = single_data.find('.')
+        n2 = single_data.find('@')
+        multi_data = []
+        if n1 > 0 and n2 > 0 and n2 > n1 and stobj.inputlist != '':
+            head = single_data[:n1+1]
+            tail = single_data[n2:]
+            process=0
+            for subrun in subruns:
+                multi_data.append('%s%d%s' % (head, process, tail))
+                process += 1
+        else:
+            for subrun in subruns:
+                multi_data.append(single_data)
+        self._data = multi_data
 
         # Pretend I'm doing something
         time.sleep(5)
@@ -329,9 +366,9 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
         except:
-            self.error('Exception raied by project.get_pubs_stage:')
+            self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -358,13 +395,13 @@ class production(ds_project_base):
         except:
             sys.stdout = real_stdout
             sys.stderr = real_stderr
-            self.error('Exception raied by project.docheck:')
+            self.error('Exception raised by project.docheck:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
             for line in traceback.format_tb(e[2]):
                 self.error(line)
-            return statusCode + istage
+            check_status = 1
 
         # Update pubs status.
         if check_status == 0:
@@ -414,9 +451,9 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
         except:
-            self.error('Exception raied by project.get_pubs_stage:')
+            self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -429,7 +466,7 @@ Job IDs    : %s
         try:
             jobid = project.dosubmit(probj, stobj)
         except:
-            self.error('Exception raied by project.dosubmit:')
+            self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -486,9 +523,9 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
         except:
-            self.error('Exception raied by project.get_pubs_stage:')
+            self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -537,7 +574,7 @@ Job IDs    : %s
         except:
             sys.stdout = real_stdout
             sys.stderr = real_stderr
-            self.error('Exception raied by project.docheck_declarations:')
+            self.error('Exception raised by project.docheck_definitions:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -576,9 +613,9 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subrun, self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
         except:
-            self.error('Exception raied by project.get_pubs_stage:')
+            self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -602,7 +639,7 @@ Job IDs    : %s
                                                      remove=False,
                                                      upload=True)
 
-            if store_status == 0:
+            if store_status == 0 and stobj.ana_data_tier != '':
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
                                                          add=False,
@@ -621,7 +658,7 @@ Job IDs    : %s
         except:
             sys.stdout = real_stdout
             sys.stderr = real_stderr
-            self.error('Exception raied by project.docheck_locations:')
+            self.error('Exception raised by project.docheck_locations:')
             e = sys.exc_info()
             for item in e:
                 self.error(item)
@@ -676,6 +713,10 @@ Stage      : %s
             for istatus in status_v:
                 fstatus = istage + istatus
                 self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
+
+                # Get (run, subrun) pairs from pubs database.
+
+                run_subruns = {}
                 for x in self.get_runs( self._project, fstatus ):
                     
                     run    = int(x[0])
@@ -683,37 +724,93 @@ Stage      : %s
                     runid = (run,subrun)
                     if self._max_runid and runid > self._max_runid:
                         continue
+                    if self._min_runid and runid < self._min_runid:
+                        continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
                     self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (run,subrun,self.now_str()))
+                    if not run_subruns.has_key(run):
+                        run_subruns[run] = set()
+                    if not subrun in run_subruns[run]:
+                        run_subruns[run].add(subrun)
 
-                    statusCode = self.__decode_status__( fstatus )
-                    action = self.PROD_ACTION[statusCode]
+                # Loop over runs.
 
-                    # Get status object
-                    status = self._api.get_status(ds_status(self._project,
-                                                            x[0],x[1],x[2]))
-                    self._data = status._data
-                    statusCode = action( statusCode, istage, run, subrun )
+                for run in run_subruns.keys():
+                    all_subruns = run_subruns[run].copy()
 
-                    self.info('Finished executing an action: %s @ %s' % (action.__name__,self.now_str()))
+                    # Process subruns in groups of 12.
 
-                    # Create a status object to be logged to DB (if necessary)
-                    status = ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = statusCode,
-                                        data    = self._data )
+                    subruns = []
+                    while len(all_subruns) > 0:
+                        subrun = all_subruns.pop()
+                        subruns.append(subrun)
+                        if len(subruns) >= 12 or len(all_subruns) == 0:
 
-                    # Log status
-                    self.log_status( status )
+                            statusCode = self.__decode_status__( fstatus )
 
-                    # Counter decreases by 1
-                    ctr -=1
-                    # Break from loop if counter became 0
-                    if ctr < 0: return
+                            # Do actions associated with multiple subruns.
+
+                            multiaction = self.PROD_MULTIACTION[statusCode]
+                            if multiaction != None:
+                                self._data = None
+                                statusCode = multiaction( statusCode, istage, run, subruns )
+                                self.info('Finished executing a multiple subrun action: %s @ %s' % (
+                                        multiaction.__name__, self.now_str()))
+
+                                # Create a status object to be logged to DB (if necessary)
+                                # Do this for each subrun.
+
+                                process = 0
+                                for subrun in subruns:
+                                    status = ds_status( project = self._project,
+                                                        run     = run,
+                                                        subrun  = subrun,
+                                                        seq     = 0,
+                                                        status  = statusCode,
+                                                        data    = self._data[process] )
+
+                                    # Log status
+                                    self.log_status( status )
+                                    process += 1
+
+                            subruns = []
+
+                    # Loop over subruns and do single-subrun actions.
+
+                    for subrun in run_subruns[run]:
+
+                        statusCode = self.__decode_status__( fstatus )
+                        action = self.PROD_ACTION[statusCode]
+                        if action != None:
+
+                            # Read data.
+
+                            status = self._api.get_status(ds_status(self._project,
+                                                                    run, subrun, 0))
+                            self._data = status._data
+
+                            statusCode = action( statusCode, istage, run, subrun )
+
+                            self.info('Finished executing an action: %s @ %s' % (
+                                    action.__name__,self.now_str()))
+
+                            # Create a status object to be logged to DB (if necessary)
+                            status = ds_status( project = self._project,
+                                                run     = run,
+                                                subrun  = subrun,
+                                                seq     = 0,
+                                                status  = statusCode,
+                                                data    = self._data )
+
+                            # Log status
+                            self.log_status( status )
+
+                        # Counter decreases by 1
+                        ctr -=1
+                        # Break from loop if counter became 0
+                        if ctr < 0: return
         return
 
 
