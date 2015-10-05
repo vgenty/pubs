@@ -13,7 +13,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ds_online_constants import *
+from ds_online_util import *
 import glob
 # script module tools
 from scripts import find_run

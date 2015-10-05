@@ -12,7 +12,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_multiprocess
-from ds_online_constants import *
+from ds_online_util import *
 # ifdh
 import ifdh
 import subprocess as sub
