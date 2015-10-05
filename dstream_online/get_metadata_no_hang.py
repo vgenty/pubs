@@ -86,8 +86,10 @@ class get_metadata( ds_project_base ):
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
 
-        if not 'METADATA_TYPE' in resource or not is_valid_metadata_type(resource['METADATA_TYPE']):
-            raise DSException('Invalid metadata type or not specified...')
+        if not 'METADATA_TYPE' in resource:
+            raise DSException('Metadata type not specified in resource...')
+        if not is_valid_metadata_type(resource['METADATA_TYPE']):
+            raise DSException('Invalid metadata type: %s' % resource['METADATA_TYPE'])
 
         exec('self._metadata_type = int(%s)' % resource['METADATA_TYPE'])
         
@@ -130,17 +132,17 @@ class get_metadata( ds_project_base ):
         runid_v   = []
         infile_v  = []
         outfile_v = []
+        checksum_v = []
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project,self._parent_project],
-                                      [1,0]):
+                                      [kSTATUS_INIT,kSTATUS_DONE]):
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
             if run < self._min_run: break
             # Counter decreases by 1
-            ctr -= 1
-            if ctr < 0: break
+            if ctr <= 0: break
 
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
@@ -165,13 +167,30 @@ class get_metadata( ds_project_base ):
                                             seq     = 0,
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
 
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+
+            if not ref_status._status == 0:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                continue
+
+            if not ref_status._data:
+                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_REFERENCE_PROJECT_DATA ) )
+                continue
+
+            checksum_v.append(ref_status._data)
             infile_v.append(filelist[0])
             outfile_v.append('%s.json' % infile_v[-1])
             runid_v.append((run,subrun))
+            ctr -= 1
 
         action = self.get_action()
 
-        status_v = action(infile_v)
+        status_v = action(infile_v,runid_v,checksum_v)
 
         if not len(status_v) == len(runid_v):
             raise DSException('Logic error: status vector from %s must match # of run ids!' % str(action))
@@ -191,7 +210,7 @@ class get_metadata( ds_project_base ):
                                          seq     = 0,
                                          status  = status) )
         
-    def process_swizzled_files(self,in_file_v):
+    def process_swizzled_files(self,in_file_v,runid_v,checksum_v=[]):
         
         status_v=[]
         for in_file in in_file_v:
@@ -210,7 +229,10 @@ class get_metadata( ds_project_base ):
 
         return status_v
             
-    def process_ubdaq_files(self,in_file_v):
+    def process_ubdaq_files(self,in_file_v,runid_v,checksum_v=[]):
+
+        if not len(in_file_v) == len(runid_v):
+            raise DSException('Input file list and runid list has different length!')
 
         cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
 
@@ -269,23 +291,34 @@ class get_metadata( ds_project_base ):
             in_file = in_file_v[i]
             out,err = mp.communicate(i)
             fsize = os.path.getsize(in_file)
-            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+            run,subrun = runid_v[i]
 
-            if not ref_status._status == 0:
-                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_INIT,None)
-                continue
+            checksum = ''
+            if checksum_v:
+                checksum = checksum_v[i]
+            else:
+                ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
 
-            if not ref_status._data:
-                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
-                continue
+                if not ref_status._status == 0:
+                    self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                    status_v[i] = (kSTATUS_INIT,None)
+                    continue
+
+                if not ref_status._data:
+                    self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                    status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
+                    continue
+
+                checksum = ref_status._data
 
             if mp.poll(i):
-                self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % mp.poll(i))
+                self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(i)))
                 if not mp.poll(i) == 2:
                     status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                     continue
+                # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                continue
                 jsonData = { 'file_name': os.path.basename(in_file), 
                              'file_type': "data", 
                              'file_size': fsize, 
@@ -296,7 +329,7 @@ class get_metadata( ds_project_base ):
                              'end_time': '1970-00-01T00:00:00',
                              'last_event': -1,
                              'group': 'uboone', 
-                             "crc": { "crc_value":ref_status._data,  "crc_type":"adler 32 crc type" }, 
+                             "crc": { "crc_value":checksum,  "crc_type":"adler 32 crc type" }, 
                              "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
                              "data_tier": "raw", "event_count": 0,
                              "ub_project.name": "online", 
@@ -306,17 +339,19 @@ class get_metadata( ds_project_base ):
                 continue
                                
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
-            run = subrun = 0
             ver = -12
             sevt = eevt = -12
             stime = etime = -12
+
             try:
                 for line in last_event_cout.split('\n'):
                     
                     if "run_number=" in line and "subrun" not in line :
-                        run = int(line.split('=')[-1])
+                        if not run == int(line.split('=')[-1]):
+                            self.warning('Detected un-matching run number: content says run=%d for file %d' % (int(line.split('=')[-1]),in_file))
                     if "subrun_number=" in line:
-                        subrun = int(line.split('=')[-1])
+                        if not subrun == int(line.split('=')[-1]):
+                            self.warning('Detected un-matching subrun number: content says subrun=%d for file %d' % (int(line.split('=')[-1]),in_file))
                     if "event_number=" in line:
                         eevt = int(line.split('=')[-1])
                     if "Localhost Time: (sec,usec)" in line:
@@ -331,12 +366,12 @@ class get_metadata( ds_project_base ):
                         stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
 
                 status_v[i] = (3,None)
-                self.info('Successfully extract metadata from the ubdaq file (%d/%d) @ %s' % (i,len(in_file_v),time.strftime('%Y-%m-%d %H:%M:%S')))
+                self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except:
                 self.error ("Unexpected error:", sys.exc_info()[0] )
                 status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
-                self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
+                self.error('Failed extracting metadata: %s' % in_file)
                 continue
 
             # run number and subrun number in the metadata seem to be funny,
@@ -352,7 +387,7 @@ class get_metadata( ds_project_base ):
                          'end_time': etime, 
                          'last_event':eevt, 
                          'group': 'uboone', 
-                         "crc": { "crc_value":ref_status._data,  "crc_type":"adler 32 crc type" }, 
+                         "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
                          "application": {  "family": "online",  "name": "assembler", "version": ver }, 
                          "data_tier": "raw", "event_count": eevt - sevt + 1 ,
                          "ub_project.name": "online", 
