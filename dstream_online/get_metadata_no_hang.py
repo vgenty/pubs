@@ -13,6 +13,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_multiprocess
 from ds_online_constants import *
+from ds_online_util import *
 from ROOT import *
 import datetime, json
 import samweb_cli
@@ -62,7 +63,6 @@ class get_metadata( ds_project_base ):
         self._jeevt = -12
         self._jsevt = -12
         self._jver = -12
-        self._nruns_to_postpone = 0
         self._pubsver = "v6_00_00"
         #Kirby - I think this should actually be the assembler version
         # since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
@@ -85,11 +85,6 @@ class get_metadata( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
-        try:
-            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
-        except KeyError,ValueError:
-            pass
 
         if not 'METADATA_TYPE' in resource or not is_valid_metadata_type(resource['METADATA_TYPE']):
             raise DSException('Invalid metadata type or not specified...')
@@ -129,30 +124,6 @@ class get_metadata( ds_project_base ):
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
-
-        #
-        # Process Postpone first
-        #
-        ctr_postpone = 0
-        for parent in [self._parent_project]:
-            if ctr_postpone >= self._nruns_to_postpone: break
-            if parent == self._project: continue
-            
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
-            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
-            for x in target_runs:
-
-                if int(x[0]) < self._min_run: continue
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = kSTATUS_POSTPONE )
-                self.log_status(status)
-                ctr_postpone += 1
-                if ctr_postpone > self._nruns_to_postpone: break
 
         action = self.get_action()
 
@@ -266,7 +237,7 @@ class get_metadata( ds_project_base ):
                     time.sleep(0.2)
                     time_slept += 0.2
 
-                    if int(time_slept)%5 == 0:
+                    if (int(time_slept*10)%50) == 0:
                         self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
                                                                                    i-active_counter,
                                                                                    len(in_file_v)))
@@ -284,7 +255,7 @@ class get_metadata( ds_project_base ):
             time.sleep(0.2)
             time_slept += 0.2
 
-            if int(time_slept)%5 == 0:
+            if (int(time_slept*10)%50) == 0:
                 self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
                                                                            len(in_file_v)-active_counter,
                                                                            len(in_file_v)))
@@ -295,13 +266,45 @@ class get_metadata( ds_project_base ):
         for i in xrange(len(in_file_v)):
 
             status_v.append((3,None))
+            in_file = in_file_v[i]
             out,err = mp.communicate(i)
+            fsize = os.path.getsize(in_file)
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+
+            if not ref_status._status == 0:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = (kSTATUS_INIT,None)
+                continue
+
+            if not ref_status._data:
+                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
+                continue
+
             if mp.poll(i):
                 self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % mp.poll(i))
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                if not mp.poll(i) == 2:
+                    status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                    continue
+                jsonData = { 'file_name': os.path.basename(in_file), 
+                             'file_type': "data", 
+                             'file_size': fsize, 
+                             'file_format': "binaryraw-uncompressed", 
+                             'runs': [ [run,  subrun, 'test'] ], 
+                             'first_event': -1,
+                             'start_time': '1970-00-01T00:00:00',
+                             'end_time': '1970-00-01T00:00:00',
+                             'last_event': -1,
+                             'group': 'uboone', 
+                             "crc": { "crc_value":ref_status._data,  "crc_type":"adler 32 crc type" }, 
+                             "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
+                             "data_tier": "raw", "event_count": 0,
+                             "ub_project.name": "online", 
+                             "ub_project.stage": "assembler", 
+                             "ub_project.version": self._pubsver }
+                status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
                 continue
-            in_file = in_file_v[i]
-
+                               
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
             run = subrun = 0
             ver = -12
@@ -334,20 +337,6 @@ class get_metadata( ds_project_base ):
                 self.error ("Unexpected error:", sys.exc_info()[0] )
                 status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
-                continue
-
-            fsize = os.path.getsize(in_file)
-
-            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
-
-            if not ref_status._status == 0:
-                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_INIT,None)
-                continue
-
-            if not ref_status._data:
-                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                 continue
 
             # run number and subrun number in the metadata seem to be funny,

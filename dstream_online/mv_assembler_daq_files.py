@@ -12,6 +12,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from ds_online_util import *
 # script module tools
 from scripts import find_run
 
@@ -29,7 +30,9 @@ class mv_assembler_daq_files(ds_project_base):
     _infile_foramt  = ''
     _outfile_format = ''
     _parallelize = 0
-    _max_wait = 600
+    _max_proc_time = 600
+    _parent = ''
+
     ## @brief default ctor can take # runs to process for this instance
     def __init__(self):
 
@@ -52,11 +55,13 @@ class mv_assembler_daq_files(ds_project_base):
             self._in_dir = '%s' % (resource['INDIR'])
             self._infile_format = resource['INFILE_FORMAT']
             self._outfile_format = resource['OUTFILE_FORMAT']
-            #exec('self._parallelize = bool(%s)' % resource['PARALLELIZE'])
-
             if 'PARALLELIZE' in resource:
                 self._parallelize = int(resource['PARALLELIZE'])
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
+
+            self._parent_project = resource['PARENT_PROJECT']
+            exec('self._parent_status  = int(%s)' % resource[PARENT_STATUS])
+            status_name(self._parent_status)
         except Exception:
             return False
 
@@ -69,256 +74,176 @@ class mv_assembler_daq_files(ds_project_base):
         else:
             self.info('Starting a sequential transfer process for %d runs...' % self._nruns)
         ctr = self._nruns
-        proc_list=[]
-        done_list=[]
-        run_id=[]
-        for x in self.get_runs(self._project,1):
+
+        runid_v=[]
+        infile_v=[]
+
+        for x in self.get_runs([self._project,self._parent_project],
+                               [kSTATUS_INIT,self._parent_status]):
 
             # Counter decreases by 1
             ctr -=1
+            if ctr < 0: break
 
             run    = int(x[0])
             subrun = int(x[1])
 
             # Report starting
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
-            status_code=1
+            status_code=kSTATUS_INIT
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
+                continue
             
-            if (len(filelist)>0):
-                in_file = filelist[0]
-                in_file_segments = os.path.basename(in_file).split('-')
-                if (len(in_file_segments)<2):
-                    self.error('ERROR: The file %s does not contain the - character' % in_file)
-                    self.error('ERROR: So have no idea what to do.')
-                    break
-                out_file_prefix = in_file_segments[0]
-                out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
-                #cmd = ['rsync', '-v', in_file, 'ubdaq-prod-near1:%s' % out_file]
-                #cmd = ['rsync', '-v', in_file, out_file]
-                cmd = ['cp', '-v', in_file, out_file]
-                proc_list.append(subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
-                done_list.append(False)
-                run_id.append((run,subrun))
-                self.info('Started copy (run,subrun)=%s @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
-                # Create a status object to be logged to DB (if necessary)
-                status_code=3
+            in_file = filelist[0]
+            in_file_segments = os.path.basename(in_file).split('-')
+            if len(in_file_segments)<2:
+                self.error('The file %s does not contain the - character' % in_file)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FORMATED ) )
+                continue
 
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
+            infile_v.append(in_file_segments[0])
+            runid_v.append((run,subrun))
 
-                self.log_status( status )
+        mp = self.process_files(infile_v)
 
-                # if not parallelized, wait till proc is done
-                if not self._parallelize:
-                    time_spent = 0
-                    while ((len(proc_list)>0) and (proc_list[-1].poll() is None)):
-                        time.sleep(1)
-                        time_spent +=1
+        self.info('Finished all @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+        for i in xrange(len(infile_v)):
+            run,subrun = runid_v[i]
+            self.log_status( ds_status( project = self._project,
+                                        run = run,
+                                        subrun = subrun,
+                                        seq = 0,
+                                        status = kSTATUS_TO_BE_VALIDATED ) )
+            
 
-                        if time_spent > self._max_proc_time:
-                            self.error('Exceeding the max wait time (%d sec). Terminating the process...' % self._max_proc_time)
-                            proc_list[-1].kill()
-                            time.sleep(5)
+    def process_files(self,in_filelist_v):
 
-                            if proc_list[-1].poll() is None:
-                                self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[-1].pid)
-                                subprocess.call(['kill','-9',str(proc_list[-1].pid)])
-                                break
+        mp = ds_multiprocess(self._project)
 
-                    self.info('Finished sequential copy [%s] @ %s' % (run_id[-1],time.strftime('%Y-%m-%d %H:%M:%S')))
-                    status = ds_status( project = self._project,
-                                        run     = run_id[-1][0],
-                                        subrun  = run_id[-1][1],
-                                        seq     = 0,
-                                        status  = 2 )
-                    self.log_status( status )
+        for i in xrange(len(in_filelist_v)):
 
-                # if parallelized, wait till at least processes go down to specified number
-                else:
-                    active_counter = self._parallelize
-                    time_spent = 0
-                    while 1:
-                        active_counter = 0
-                        for x in xrange(len(proc_list)):
-                            if done_list[x]: continue
-                            if not proc_list[x].poll() is None:
-                                self.info('Finished parallel copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
-                                status_code = 2
-                                status = ds_status( project = self._project,
-                                                    run     = run_id[x][0],
-                                                    subrun  = run_id[x][1],
-                                                    seq     = 0,
-                                                    status  = status_code )
-                                self.log_status( status )
-                                done_list[x] = True
-                            else:
-                                active_counter += 1
+            in_file  = in_filelist_v[i]
+            out_file = '%s/%s' % (self._out_dir,in_file.split('/')[-1])
 
-                        if active_counter <= self._parallelize:
-                            break
+            cmd = ['cp', '-v', in_file, out_file]
+            self.info('Copying %s @ %s' % (in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
-                        time.sleep(0.5)
-                        time_spent+=0.5
+            index,active_ctr = mp.execute(cmd)
 
-                        if time_spent>1 and (int(time_spent*10))%50 == 0:
-                            self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
-                        if time_spent > self._max_proc_time:
-                            self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_proc_time)
-                            for x in xrange(len(proc_list)):
-                                proc_list[x].kill()
+            if not self._parallelize:
+                mp.communicate(index)
+            else:
+                time_slept = 0
+                while active_ctr > self._parallelize:
+                    time.sleep(0.2)
+                    time_slept += 0.2
+                    active_ctr = mp.active_count()
 
-                                status_code = 101
-                                status = ds_status( project = self._project,
-                                                    run     = run_id[x][0],
-                                                    subrun  = run_id[x][1],
-                                                    seq     = 0,
-                                                    status  = status_code )
-                                self.log_status( status )
-
-                                # hard kill if still alive
-                                time.sleep(5)
-                                if proc_list[x].poll() is None:
-                                    self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
-                                    subprocess.call(['kill','-9',str(proc_list[x].pid)])
-
-            if not ctr: break
-        
-        # if not parallelized, done
-        if not self._parallelize:
-            return
-
-        finished = False
-        time_spent = 0
-        while not finished:
-            finished = True
+                    if time_slept > self._max_proc_time:
+                        self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
+                        mp.kill()
+                        break
+                    if int(time_slept) and (int(time_slept*10)%50) == 0:
+                        self.info('Waiting for %d/%d process to finish...' % (active_ctr,len(in_filelist_v)))
+        time_slept=0
+        while mp.active_count():
             time.sleep(0.2)
-            time_spent += 0.2
-            active_counter = 0
-            for x in xrange(len(proc_list)):
-                if done_list[x]: continue
-                if not proc_list[x].poll() is None:
-                    self.info('Finished copy [%s] @ %s' % (run_id[x],time.strftime('%Y-%m-%d %H:%M:%S')))
-                    status_code = 2
-                    status = ds_status( project = self._project,
-                                        run     = run_id[x][0],
-                                        subrun  = run_id[x][1],
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )
-                    done_list[x] = True
-                else:
-                    active_counter += 1
-                    finished = False
-
-            if time_spent > 1 and (int(time_spent*10)) % 50 == 0:
-                self.info('Waiting for copy to be done... (%d/%d processes) ... %d [sec]' % (active_counter,len(proc_list),time_spent))
-            if time_spent > self._max_proc_time:
-                self.error('Exceeding the max wait time (%d sec). Terminating the processes...' % self._max_proc_time)
-                for x in xrange(len(proc_list)):
-                    proc_list[x].kill()
-
-                    status_code = 101
-                    status = ds_status( project = self._project,
-                                        run     = run_id[x][0],
-                                        subrun  = run_id[x][1],
-                                        seq     = 0,
-                                        status  = status_code )
-                    self.log_status( status )
-
-                    # hard kill if still alive
-                    time.sleep(5)
-                    if proc_list[x].poll() is None:
-                        self.error('Process termination failed. Hard-killing it (kill -9 %d)' % proc_list[x].pid)
-                        subprocess.call(['kill','-9',str(proc_list[x].pid)])
+            time_slept += 0.2
+            if time_slept > self._max_proc_time:
+                mp.kill()
                 break
-        self.info('All finished @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+        return mp
 
     ## @brief access DB and validate finished runs
     def validate(self):
 
         ctr = self._nruns
         # see if the status=2 files we've processed are indeed where they should be.
-        for x in self.get_runs(self._project,2): 
+        for x in self.get_runs(self._project,kSTATUS_TO_BE_VALIDATED): 
 
             # Counter decreases by 1
             ctr -=1
-
+            if ctr<0: break
+            
             run    = int(x[0])
             subrun = int(x[1])
-            status_code = 2
+            status_code = kSTATUS_TO_BE_VALIDATED
 
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
+                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
+                continue
 
             if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
-            
-            if (len(filelist)>0):
-                in_file = filelist[0]
-                in_file_segments = os.path.basename(in_file).split('-')
-                if (len(in_file_segments)<2):
-                    self.error('ERROR: The file %s does not contain the - character' % in_file)
-                    self.error('ERROR: So have no idea what to do.')
-                    break
-                out_file_prefix = in_file_segments[0]
+                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
+                continue
 
-                out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
+            in_file = filelist[0]
+            in_file_segments = os.path.basename(in_file).split('-')
+            if (len(in_file_segments)<2):
+                self.error('The file %s does not contain the - character' % in_file)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FORMATED ) )
+                continue
 
+            out_file_prefix = in_file_segments[0]
+            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
+
+            size_diff = -1
+            try:
+                size_diff = os.path.getsize(in_file) - os.path.getsize(out_file)
+            except Exception:
                 size_diff = -1
-                try:
-                    size_diff = os.path.getsize(in_file) - os.path.getsize(out_file)
-                except Exception:
-                    size_diff = -1
             
-                #res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
-                #res = subprocess.call(['ls', out_file])
-                if size_diff:
-                    self.error('error on run: run=%d, subrun=%d ...' % (run,subrun))
-                    status_code = 102
-                else:
-                    self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                    status_code = 0
+            #res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
+            #res = subprocess.call(['ls', out_file])
+            if size_diff:
+                self.error('Size mis-match on run: run=%d, subrun=%d ...' % (run,subrun))
+                status_code = kSTATUS_ERROR_TRANSFER_FAILED
+            else:
+                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
+                status_code = kSTATUS_DONE
                 
-                    # Create a status object to be logged to DB (if necessary)
-                    status = ds_status( project = self._project,
+            # Create a status object to be logged to DB (if necessary)
+            self.log_status( ds_status( project = self._project,
                                         run     = run,
                                         subrun  = subrun,
                                         seq     = 0,
                                         status  = status_code )
             
-                    # Log status
-                    self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
-
 # A unit test section
 if __name__ == '__main__':
 

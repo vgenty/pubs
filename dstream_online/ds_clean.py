@@ -13,7 +13,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ds_online_constants import *
+from ds_online_util import *
 import glob
 # script module tools
 from scripts import find_run
@@ -46,6 +46,7 @@ class ds_clean(ds_project_base):
         self._name_pattern = ''
         self._parent_project = []
         self._parent_status = []
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
 
@@ -55,12 +56,54 @@ class ds_clean(ds_project_base):
         self._in_dir = '%s' % (resource['DIR'])
         self._name_pattern = resource['NAME_PATTERN']
         self._disk_frac_limit = int(resource['USED_DISK_FRAC_LIMIT'].strip("%"))
-
         try:
-            self._parent_project = resource['PARENT_PROJECT'].split(':')
-            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            self._parent_project = []
+
+            # Get parent project sets
+            for parent_list in resource['PARENT_PROJECT'].split('::'):
+
+                self._parent_project.append( parent_list.split(':') )
+
+            self._parent_status = []
+
+            # Get parent status sets
+            for parent_status in resource['PARENT_STATUS'].split('::'):
+
+                self._parent_status.append( parent_status.split(':') )
+
+            # Convert parent status to known integers
+            for x in xrange(len(self._parent_status)):
+
+                status_list = self._parent_status[i]
+                int_status_list = []
+                for x in status_list:
+                    try:
+                        exec('int_status_list.append( int(%s) )' % x)
+                        status_name(int_status_list[-1])
+                    except Exception:
+                        self.error('Parent set %s has invalid status representation %s' % (self._parent_project[i],x))
+                        raise ValueError
+
+                self._parent_status[i] = int_status_list
+
+            if not len(self._parent_project):
+                self.error('No parent registered!')
+                raise ValueError                
+        
             if not len(self._parent_project) == len(self._parent_status):
+                self.error('Number set of parent and its status entry do not match!')
                 raise ValueError
+
+            for x in xrange(len(self._parent_project)):
+
+                if not len(self._parent_project[i]) == len(self._parent_status[i]):
+                    self.error('Parent set %s has only %d status entries!' % (self._parent_project[i],len(self._parent_status[i])))
+                    raise ValueError
+
+                if not len(self._parent_project[i]):
+                    self.error('Empty parent set given!')
+                    raise ValueError
+                
         except Exception:
             self.error('Failed to load parent projects...')
             return False
@@ -68,14 +111,23 @@ class ds_clean(ds_project_base):
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
 
-        #this constructs the list of projects and their status codes
-        #we want the project to be status 1, while the dependent projects to
-        # be status 0
-        self._project_list = [self._project ]
-        self._project_requirement = [ kSTATUS_INIT ]
 
-        self._project_list += self._parent_project
-        self._project_requirement += self._parent_status
+    ## @brief internal function to organize a list of runs based on self._parent_project and self._parent_status (not to be called in public)
+    def get_run_list(self):
+
+        run_list = []
+
+        for i in xrange(len(self._parent_project)):
+
+            parent_list   = self._parent_project[i]
+            parent_status = self._parent_status[i]
+            
+            project_list   = [ self._project ] + parent_list
+            project_status = [ kSTATUS_INIT  ] + parent_status
+
+            run_list.append(self._api.get_xtable_runs( project_list, project_status, False ))
+        
+        return run_list
 
     ## @brief access DB and retrieves new runs and process
     def process_newruns(self):
@@ -102,17 +154,17 @@ class ds_clean(ds_project_base):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
-        #we want the last argument of this list get_xtable_runs call to be False
-        #that way the list is old files first to newew files last and clean up that way
-        #target_runs = self.get_xtable_runs([self._project, self._parent_project], 
-        #                                   [            1,                    0],False)
 
-        for p in self._project_list:
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % p)
-
-        target_runs = self.get_xtable_runs(self._project_list, self._project_requirement, False)
-        self.info('Found %d runs to be processed (from project %s ... requirement %s)' % (len(target_runs),self._parent_project,self._parent_status))
+        target_runs = self.get_run_list()
+        for i in len(xrange(self._parent_project)):
+            self.info('Found %d runs to be processed (from project %s ... requirement %s)' % (len(target_runs[i]),
+                                                                                              self._parent_project[i],
+                                                                                              self._parent_status[i]))
+        combined_runs = []
         for x in target_runs:
+            combined_runs += x
+            
+        for x in combined_runs:
 
             (run, subrun) = (int(x[0]), int(x[1]))
 
