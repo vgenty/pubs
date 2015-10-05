@@ -63,6 +63,8 @@ class transfer( ds_project_base ):
 
         self._success_status = kSTATUS_DONE
         self._error_handle_status = None
+        self._bypass_status = None
+        self._bypass = False
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -117,6 +119,11 @@ class transfer( ds_project_base ):
             exec('status = int(%s)' % child_status)
             status_name(status)
             self._child_status.append(status)
+
+        # get bypass status
+        exec('self._bypass = bool(%s)' % resource['BYPASS'])
+        exec('self._bypass_status = int(%s)' % resource['BYPASS_STATUS'])
+        status_name(self._bypass_status)
 
         # Validate sanity of child status list
         if not len(self._child_trigger_status) == len(self._child_projects):
@@ -178,7 +185,7 @@ class transfer( ds_project_base ):
         runid_v = []
         ctr = self._nruns
         for x in self.get_xtable_runs([self._project, self._parent_project],
-                                      [1, 0]):
+                                      [kSTATUS_INIT, kSTATUS_DONE]):
             if ctr <=0: break
 
             (run, subrun) = (int(x[0]), int(x[1]))
@@ -186,11 +193,16 @@ class transfer( ds_project_base ):
 
             # Counter decreases by 1
             ctr -= 1
-            
+
+            if self._bypass:
+                self.info('Configured to bypass transfer: run=%d, subrun=%d ...' % (run,subrun))
+                self.set_transfer_status(run=run,subrun=subrun,status=self._bypass_status)
+                continue
+
             # Report starting
             self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun))
             
-            status = 1
+            status = kSTATUS_INIT
             
             # Check input file exists. Otherwise report error
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
