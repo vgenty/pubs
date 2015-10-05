@@ -292,7 +292,7 @@ class transfer( ds_project_base ):
                         self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
                         mp.kill()
                         break
-                    if int(time_slept) and int(time_slept)%3 < 0.3 == 0:
+                    if int(time_slept) and (int(time_slept*10)%50) == 0:
                         self.info('Waiting for %d/%d process to finish...' % (active_ctr,len(in_filelist_v)))
         time_slept=0
         while mp.active_count():

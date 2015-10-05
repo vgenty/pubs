@@ -237,7 +237,7 @@ class get_metadata( ds_project_base ):
                     time.sleep(0.2)
                     time_slept += 0.2
 
-                    if int(time_slept)%5 == 0:
+                    if (int(time_slept*10)%50) == 0:
                         self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
                                                                                    i-active_counter,
                                                                                    len(in_file_v)))
@@ -255,7 +255,7 @@ class get_metadata( ds_project_base ):
             time.sleep(0.2)
             time_slept += 0.2
 
-            if int(time_slept)%5 == 0:
+            if (int(time_slept*10)%50) == 0:
                 self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
                                                                            len(in_file_v)-active_counter,
                                                                            len(in_file_v)))
@@ -266,13 +266,45 @@ class get_metadata( ds_project_base ):
         for i in xrange(len(in_file_v)):
 
             status_v.append((3,None))
+            in_file = in_file_v[i]
             out,err = mp.communicate(i)
+            fsize = os.path.getsize(in_file)
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+
+            if not ref_status._status == 0:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = (kSTATUS_INIT,None)
+                continue
+
+            if not ref_status._data:
+                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
+                continue
+
             if mp.poll(i):
                 self.error('Return status from dumpEventHeaders for last event is not successful. It is %d .' % mp.poll(i))
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                if not mp.poll(i) == 2:
+                    status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                    continue
+                jsonData = { 'file_name': os.path.basename(in_file), 
+                             'file_type': "data", 
+                             'file_size': fsize, 
+                             'file_format': "binaryraw-uncompressed", 
+                             'runs': [ [run,  subrun, 'test'] ], 
+                             'first_event': -1,
+                             'start_time': '1970-00-01T00:00:00',
+                             'end_time': '1970-00-01T00:00:00',
+                             'last_event': -1,
+                             'group': 'uboone', 
+                             "crc": { "crc_value":ref_status._data,  "crc_type":"adler 32 crc type" }, 
+                             "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
+                             "data_tier": "raw", "event_count": 0,
+                             "ub_project.name": "online", 
+                             "ub_project.stage": "assembler", 
+                             "ub_project.version": self._pubsver }
+                status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
                 continue
-            in_file = in_file_v[i]
-
+                               
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
             run = subrun = 0
             ver = -12
@@ -305,20 +337,6 @@ class get_metadata( ds_project_base ):
                 self.error ("Unexpected error:", sys.exc_info()[0] )
                 status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                 self.error('Failed extracting metadata from the ubdaq file. (%d/%d)' % (i,len(in_file_v)))
-                continue
-
-            fsize = os.path.getsize(in_file)
-
-            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
-
-            if not ref_status._status == 0:
-                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_INIT,None)
-                continue
-
-            if not ref_status._data:
-                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                 continue
 
             # run number and subrun number in the metadata seem to be funny,
