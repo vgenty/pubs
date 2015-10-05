@@ -55,9 +55,14 @@ class transfer( ds_project_base ):
         self._max_proc_time = 120
         self._min_run = 0
 
+        self._ntrials = 0
+        
         self._child_trigger_status=[]
         self._child_projects=[]
         self._child_status=[]
+
+        self._success_status = kSTATUS_DONE
+        self._error_handle_status = None
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -80,6 +85,14 @@ class transfer( ds_project_base ):
         
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
+
+        if 'NUM_RETRIAL' in resource:
+            self._ntrials = int(resource['NUM_RETRIAL'])
+
+        exec('self._success_status=int(resource[\'SUCCESS_STATUS\'])')
+        exec('self._error_handle_status=int(resource[\'ERROR_STATUS\'])')
+        status_name(self._success_status)
+        status_name(self._error_handle_status)
 
         # Get child status sets
         self._child_trigger_status=[]
@@ -114,14 +127,35 @@ class transfer( ds_project_base ):
 
     ## @brief a function that should be used to set status
     def set_transfer_status(self,run,subrun,status,data=''):
+
         status_name(status)
+
+        child_list   = None
+        child_status = None
+        if status in self._child_trigger_status:
+            child_index = None
+            for i in xrange(len(self._child_trigger_status)):
+                if status == self._child_trigger_status[i]:
+                    child_index = i
+                    break
+            child_list   = self._child_project[child_index]
+            child_status = self._child_status[child_index]
+        
         self.log_status( ds_status( project = self._project,
                                     run = run,
                                     subrun = subrun,
                                     seq = 0,
                                     status = status,
                                     data = data ) )
-        
+        if child_list:
+
+            for child in child_list:
+                self.log_status( ds_status( project = child,
+                                            run = run,
+                                            subrun = subrun,
+                                            seq = 0
+                                            status = child_status ) )
+            
     ## @brief Transfer files to dropbox
     def transfer_file( self ):
 
@@ -192,21 +226,31 @@ class transfer( ds_project_base ):
 
         for i in xrange(len(args_v)):
 
+            run = runid_v[i][0]
+            subrun = runid_v[i][1]
+            
             if mp.poll(i):
-                self.info('Failed copy %s @ %s' % (runid_v[i],time.strftime('%Y-%m-%d %H:%M:%S')))
-                self.log_status ( ds_status( project = self._project,
-                                             run     = runid_v[i][0],
-                                             subrun  = runid_v[i][1],
-                                             seq     = 0,
-                                             status  = 555 ) )
-
+                self.error('Failed copy %s @ %s' % (runid_v[i],time.strftime('%Y-%m-%d %H:%M:%S')))
+                old_status = self._api.get_status( ds_status(self._project, run, subrun, 0) )
+                if self._ntrials and (not old_status._data or int(old_status._data) < self._ntrials):
+                    self.info('Will retry later...')
+                    past_trials = 1
+                    if old_status._data:
+                        past_trials = int(old_status._data) + 1
+                        
+                    self.set_transfer_status( run = run,
+                                              subrun = subrun,
+                                              status = kSTATUS_INIT,
+                                              data = str(past_trials) )
+                else:
+                     self.set_transfer_status( run = run,
+                                               subrun = subrun,
+                                               status =  self._error_handle_status )
             else:
                 self.info('Finished copy %s @ %s' % (runid_v[i],time.strftime('%Y-%m-%d %H:%M:%S')))
-                self.log_status( ds_status( project = self._project,
-                                            run     = runid_v[i][0],
-                                            subrun  = runid_v[i][1],
-                                            seq     = 0,
-                                            status  = 0 ) )
+                self.set_transfer_status( run = run,
+                                          subrun = subrun,
+                                          status = self._success_status )
 
         self.info('All finished @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
                 
@@ -247,77 +291,6 @@ class transfer( ds_project_base ):
                 break
         return mp
 
-
-    ## @brief Validate the dropbox
-    def validate_outfile( self ):
-
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-            self.error('Cannot connect to DB! Aborting...')
-            return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
-        # Fetch runs from DB and process for # runs specified for this instance.
-        ctr = self._nruns
-        for x in self.get_runs( self._project, 2 ):
-
-            # Counter decreases by 1
-            ctr -=1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('Validating a file in the output directory: run=%d, subrun=%d ...' % (run,subrun))
-
-            status = 2
-            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
-            if (len(filelist)<1):
-                self.error('ERROR: Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
-                continue
-
-            if (len(filelist)>1):
-                self.error('ERROR: Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('ERROR: List of files found %s' % filelist)
-
-            in_file = filelist[0]
-            if_file_basename = os.path.basename(in_file)
-            out_file = '%s/%s' % ( self._out_dir, in_file_base)
-            out_json = '%s/%s.json' %( self._out_dir, in_file_base)
-
-            # construct ifdh object
-            ih = ifdh.ifdh()
-
-            try:
-                ih.locateFile( out_file )
-                ih.locateFile( out_json )
-                status = 0
-            except:
-                status = 1
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = int(x[2]),
-                                status  = status )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
-
-
 # A unit test section
 if __name__ == '__main__':
 
@@ -327,5 +300,3 @@ if __name__ == '__main__':
 
     obj.transfer_file()
 
-    #if "pnnl" not in proj_name:
-    #    obj.validate_outfile()

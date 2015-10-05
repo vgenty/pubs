@@ -6,7 +6,6 @@ kSTATUS_DONE            = 0
 kSTATUS_INIT            = 1
 kSTATUS_TO_BE_VALIDATED = 2
 kSTATUS_POSTPONE        = 1000
-kSTATUS_TO_BE_SWIZZLED  = 1001
 
 # Generic error status, discouraged to use
 kSTATUS_ERROR_UNKNOWN = 100
@@ -57,8 +56,6 @@ kSTATUS_VALIDATE_DATA         = 1002 # -> files moved to dropbox, then validate 
 #
 kSTATUS_SWIZZLE_DATA = 1003 # -> transfer successful, choose to swizzle this file online
 kSTATUS_REMOVE_DATA  = 1004 # -> transfer successful, choose to remove the binary file
-
-
 
 #
 # Metadata types
