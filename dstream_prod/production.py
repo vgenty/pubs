@@ -755,8 +755,10 @@ Stage      : %s
                             multiaction = self.PROD_MULTIACTION[statusCode]
                             if multiaction != None:
                                 self._data = None
+                                self.info('Starting a multiple subrun action: %s @ %s' % (
+                                        multiaction.__name__, self.now_str()))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
-                                self.info('Finished executing a multiple subrun action: %s @ %s' % (
+                                self.info('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
                                 # Create a status object to be logged to DB (if necessary)
@@ -775,7 +777,14 @@ Stage      : %s
                                     self.log_status( status )
                                     process += 1
 
+                                # Counter decreases by number of subruns
+                                ctr -= len(subruns)
+
+                                # Break from loop if counter became 0
+                                if ctr < 0: return
+
                             subruns = []
+
 
                     # Loop over subruns and do single-subrun actions.
 
@@ -791,9 +800,10 @@ Stage      : %s
                                                                     run, subrun, 0))
                             self._data = status._data
 
+                            self.info('Starting an action: %s @ %s' % (
+                                    action.__name__,self.now_str()))
                             statusCode = action( statusCode, istage, run, subrun )
-
-                            self.info('Finished executing an action: %s @ %s' % (
+                            self.info('Finished an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
@@ -807,10 +817,10 @@ Stage      : %s
                             # Log status
                             self.log_status( status )
 
-                        # Counter decreases by 1
-                        ctr -=1
-                        # Break from loop if counter became 0
-                        if ctr < 0: return
+                            # Counter decreases by 1
+                            ctr -=1
+                            # Break from loop if counter became 0
+                            if ctr < 0: return
         return
 
 
