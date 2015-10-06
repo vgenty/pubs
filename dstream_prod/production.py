@@ -554,7 +554,9 @@ Job IDs    : %s
             # Create artroot dataset definition.
 
             if declare_status == 0:
-                dim = project_utilities.dimensions(probj, stobj, ana=False)
+                nopubs_stobj = stobj
+                nopubs_stobj.pubs_output = 0
+                dim = project_utilities.dimensions(probj, nopubs_stobj, ana=False)
                 declare_status = project.docheck_definition(stobj.defname, dim, True)
 
             # Create analysis dataset definition.
