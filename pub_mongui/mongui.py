@@ -170,7 +170,7 @@ for iprojname in projectnames:
     #Re-draw the text on top of the pie chart with the project name
     mysupertext = QtGui.QGraphicsTextItem()
     mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
-    mysupertext.setPlainText(iprojname)
+    mysupertext.setPlainText(proj_dict[iprojname].getDescript())
     mysupertext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -183,7 +183,7 @@ for iprojname in projectnames:
     mysubtext = QtGui.QGraphicsTextItem()
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
-    mysubtext.setPlainText('%d G : %d Int : %d Err ==> %d Drawn'%(ngood, ninter, nerr,tot_n))
+    mysubtext.setPlainText('%d G : %d Int : %d Err => %d'%(ngood, ninter, nerr,tot_n))
     mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -197,8 +197,8 @@ for iprojname in projectnames:
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
 mytext = QtGui.QGraphicsTextItem()
-mytext.setPos(scene_xmin+0.78*scene_width,scene_height*0.90)
-mytext.setPlainText('Legend:\nBlue: Pending Files (Good)\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
+mytext.setPos(scene_xmin+0.78*scene_width,scene_height*0.91)
+mytext.setPlainText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
 mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
 myfont.setPointSize(10)
@@ -265,7 +265,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setPlainText('%d G : %d Int : %d Err ==> %d Drawn'%(ngood, ninter, nerr,tot_n))
+        projsubtext_dict[iprojname].setPlainText('%d G : %d Int : %d Err => %d'%(ngood, ninter, nerr,tot_n))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()

@@ -181,8 +181,10 @@ class GuiUtilsAPI():
     return tot_n
 
   def getNRunSubruns(self,projname):
-    #don't include status == 0 or 1000 in any of this
-    return [ x for x in self.proj_dict[projname] if not self.my_utils.isGoodStatus(x[0]) ]
+    #don't include "good" statuses in this
+    #return [ x for x in self.proj_dict[projname] if not self.my_utils.isGoodStatus(x[0]) ]
+    #Let's try including "good" statuses...
+    return [ x for x in self.proj_dict[projname] ]
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled/disabled, running/dead]
