@@ -9,21 +9,23 @@ class CustomProjectSubwindow():
 
     def __init__(self, piechartitem):
 
+
         self.piechartitem = piechartitem
         self.pname = piechartitem.getName()
         self.pdesc = piechartitem.getDescript()
-        self.colors = GuiUtils().getColors()
-        self.update_period = GuiUtils().getUpdatePeriod()
+        self.myguiutil = GuiUtils()
+        self.colors = self.myguiutil.getColors()
+        self.update_period = self.myguiutil.getUpdatePeriod()
         self.history_plot = None
 
         # Open an external window
-        self.win = pg.GraphicsWindow(size=(500,500))
+        self.win = pg.GraphicsWindow(size=(800,500))
         # Window title
         self.win.setWindowTitle(self.pname+': Additional Information')
         # Portion of window that shows project description text
-        self.AddTextViewbox(self.pdesc)
+        # self.AddTextViewbox(self.pdesc)
         # Portion of the window that draws a random plot
-        self.win.nextRow()
+        # self.win.nextRow()
         #self.AddRandomPlot()
         self.AddHistoryPlot()
 
@@ -58,10 +60,11 @@ class CustomProjectSubwindow():
         self.history_plot.showGrid(x=True,y=True)
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
+        # self.history_plot.addLegend()
         colorcounter = 0
         for status, values in history.iteritems():
-            #ignore status 0 and 1000 (0 shouldn't be in here anyway)
-            if status in [ 0, 1000 ]: continue
+            #ignore good statuses
+            if self.myguiutil.isGoodStatus(status): continue
             data = np.array(values)
             xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
             #add multiple plots by just calling self.history_plot.plot() a bunch of times
@@ -72,6 +75,7 @@ class CustomProjectSubwindow():
             leg.addItem(curve,'Status %d'%status)
             colorcounter += 1
         leg.setParentItem(self.history_plot)
+        # leg.anchor(itemPos=(1,0), parentPos=(1,0), offset=(-10,10))
             
 
     def __del__(self):

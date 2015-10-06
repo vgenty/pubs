@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
+from custom_bar_class import ProgressBarItem
 from gui_utils_api import GuiUtilsAPI, GuiUtils
 
 # catch ctrl+C to terminate the program
@@ -31,12 +32,16 @@ import time
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
 
-my_template = 'pubs_diagram_093015.png'#'pubs_diagram_092515.png'
+my_template = 'pubs_diagram_100615.png'#'pubs_diagram_092515.png'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
+
+# GUI utils interface
+guiut = GuiUtils()
+
 # ==> timeprofiling: creating gdbi object takes 1.3 seconds (it connects itself to database)
 
 #suppress warnings temporarily:
@@ -80,7 +85,9 @@ enabledprojectnames = gdbi.getEnabledProjectNames()
 proj_dict = {}
 
 # Dictionary of project name --> text on top of project
-projtext_dict = {}
+projsupertext_dict = {}
+# Dictionary of project name --> text below project
+projsubtext_dict = {}
 
 #Read in the parameters for this template into a dictionary
 #These dictate, based on project name, where to draw on GUI
@@ -119,7 +126,7 @@ for iprojname in projectnames:
     xloc, yloc, maxradius = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
 
-    ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
+    ichart = ProgressBarItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
 
     #Initialize the piechart description from the stored text file
     if iprojname in proj_descripts.keys():
@@ -161,25 +168,37 @@ for iprojname in projectnames:
  
     #On top of the pie chart, write the number of run/subruns
     #Re-draw the text on top of the pie chart with the project name
-    mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(ix-ir/2,iy+1.1*ir)
-    mytext.setPlainText(str(tot_n))
-    mytext.setDefaultTextColor(QtGui.QColor('white'))
+    mysupertext = QtGui.QGraphicsTextItem()
+    mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
+    mysupertext.setPlainText(iprojname)
+    mysupertext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
     myfont.setPointSize(12)
-    mytext.setFont(myfont)
-    scene.addItem(mytext)
+    mysupertext.setFont(myfont)
+    scene.addItem(mysupertext)
     #Store the text in a dictionary
-    projtext_dict[iprojname] = mytext
+    projsupertext_dict[iprojname] = mysupertext
 
+    mysubtext = QtGui.QGraphicsTextItem()
+    mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
+    ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
+    mysubtext.setPlainText('%d G : %d Int : %d Err ==> %d Drawn'%(ngood, ninter, nerr,tot_n))
+    mysubtext.setDefaultTextColor(QtGui.QColor('white'))
+    myfont = QtGui.QFont()
+    myfont.setBold(True)
+    myfont.setPointSize(12)
+    mysubtext.setFont(myfont)
+    scene.addItem(mysubtext)
+    #Store the text in a dictionary
+    projsubtext_dict[iprojname] = mysubtext
 
 # ==> timeprofiling: creating all piecharts and adding them to the scene takes 0.002 seconds **************
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
 mytext = QtGui.QGraphicsTextItem()
-mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.92)
-mytext.setPlainText('Legend:\nBlue: Pending Files (Good)\nColorful: Error status.\nGray: Project Disabled')
+mytext.setPos(scene_xmin+0.78*scene_width,scene_height*0.90)
+mytext.setPlainText('Legend:\nBlue: Pending Files (Good)\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
 mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
 myfont.setPointSize(10)
@@ -245,7 +264,8 @@ def update_gui():
         proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
         #Below the pie chart, update the written number of run/subruns
-        projtext_dict[iprojname].setPlainText(str(tot_n))
+        ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())    
+        projsubtext_dict[iprojname].setPlainText('%d G : %d Int : %d Err ==> %d Drawn'%(ngood, ninter, nerr,tot_n))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()

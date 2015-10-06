@@ -25,8 +25,7 @@ class GuiUtilsAPI():
     def __init__(self, threadID, name, threadlock):
       threading.Thread.__init__(self)
       self.threadID = threadID
-      self.name = name
-      
+      self.name = name  
       # DB interface:
       self.dbi = ds_reader(pubdb_conn_info.reader_info())
     
@@ -43,6 +42,9 @@ class GuiUtilsAPI():
       self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
       self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
 
+      #the querythread itSELF is a "daemon" (different than PUBS daemon)
+      #the reason for this is to make sure the thread closes when the main program closes
+      self.setDaemon(True)
 
     def run(self):
       #self.threadLock.acquire()
@@ -107,6 +109,10 @@ class GuiUtilsAPI():
     self.my_utils = GuiUtils()
     self.colors = self.my_utils.getColors()
 
+  #on destructor, kill the thread
+  def __del__(self):
+    print "Destructing gui utils api!"
+    self.querythread.exit()
   def update(self):
     self.proj_dict = self.querythread.getProjDict()
     self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
@@ -123,23 +129,29 @@ class GuiUtilsAPI():
       print "Uh oh projname is not in dictionary. Figure out what happened..."
       return [ (1., 'r') ]
 
+    tot_n = self.getTotNRunSubruns(projname)
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0, or 1000 now
-    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
 
     slices = []
     #one giant green slice for fully completed project
-    if len(statuses) == 1 and statuses[0][0] in [ 0, 1000 ]:
+    if len(statuses) == 1 and self.my_utils.isGoodStatus(statuses[0][0]):
       return [ ( 1., 'g' ) ]
 
     for x in statuses:
-      #Don't care about status == 0 or 1000
-      if x[0] in [ 0, 1000 ]: continue
-
-      if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
-      elif x[0] > 100: mycolor = 'r'
-      else: mycolor = [255, 140, 0] #dark orange
+      #Don't care about good status values
+      if self.my_utils.isGoodStatus(x[0]): continue
+      elif self.my_utils.isErrorStatus(x[0]): mycolor = 'r'
+      elif self.my_utils.isIntermediateStatus(x[0]): mycolor = [255, 140, 0] #dark orange
+      # if x[0] in self.colors.keys(): 
+      #   mycolor = self.colors[x[0]]
+      # elif self.my_utils.isErrorStatus(x[0]): 
+      #   mycolor = 'r'
+      # elif self.my_utils.isIntermediateStatus(x[0]): 
+      #   mycolor = [255, 140, 0] #dark orange
+      else:
+        mycolor = 'w'
+        print "wtf happened, status %d for project %s"%(x[0],projname)
       slices.append( ( (float(x[1])/tot_n), mycolor ) )
     
     return slices
@@ -164,13 +176,13 @@ class GuiUtilsAPI():
 
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0 or 1000
-    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
+    #tot_n does not include "good" statuses
+    tot_n = sum( [ x[1] for x in statuses if not self.my_utils.isGoodStatus(x[0]) ] )
     return tot_n
 
   def getNRunSubruns(self,projname):
     #don't include status == 0 or 1000 in any of this
-    return [x for x in self.proj_dict[projname] if x[0] not in [ 0, 1000 ]]
+    return [ x for x in self.proj_dict[projname] if not self.my_utils.isGoodStatus(x[0]) ]
     
   def getDaemonStatuses(self, servername):
     #Returns [enabled/disabled, running/dead]
@@ -237,3 +249,26 @@ class GuiUtils():
 
   def getRelevantDaemons(self):
     return self.relevant_daemons
+
+  def isGoodStatus(self, status):
+    return True if status == 0 or status >= 1000 else False
+
+  def isIntermediateStatus(self, status):
+    return True if status >= 1 and status < 100 else False
+
+  def isErrorStatus(self,status):
+    return True if status >= 100 and status < 1000 else False
+
+  def getNGoodInterError(self,history):
+    n_good, n_inter, n_error = 0, 0, 0
+    latest_data = []
+    for status, ihistory in history.iteritems():
+      latest_data.append( (status, ihistory[-1]) )
+
+    for status, current_value in latest_data:
+      if self.isGoodStatus(status): n_good += current_value
+      elif self.isErrorStatus(status): n_error += current_value
+      elif self.isIntermediateStatus(status): n_inter += current_value
+      else:
+        print "something has gone horribly wrong. status %d for project %s"%(x[0],projname)
+    return (n_good, n_inter, n_error)

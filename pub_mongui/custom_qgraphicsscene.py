@@ -24,7 +24,8 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
     def mousePressEvent(self, event):
         item_clicked = self.itemAt(event.scenePos())
         if item_clicked is not None:
-            if item_clicked.__module__ == 'custom_piechart_class':
+            if item_clicked.__module__ == 'custom_piechart_class' or \
+               item_clicked.__module__ == 'custom_bar_class':
                 self.projwin = CustomProjectSubwindow(item_clicked)
 
     def mouseReleaseEvent(self, event):
