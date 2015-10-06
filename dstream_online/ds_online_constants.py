@@ -44,7 +44,7 @@ kSTATUS_ERROR_CANNOT_REMOVE_FILE = 140
 kSTATUS_ERROR_CANNOT_SWIZZLE = 150
 
 #
-# Failur local file copy from evb to near1 ... 160s
+# Failur for file tansfer protocole ... 160s
 #
 kSTATUS_ERROR_TRANSFER_FAILED = 160
 
@@ -68,6 +68,8 @@ kSTATUS_VALIDATE_DATA         = 1002 # -> files moved to dropbox, then validate 
 #
 kSTATUS_SWIZZLE_DATA = 1003 # -> transfer successful, choose to swizzle this file online
 kSTATUS_REMOVE_DATA  = 1004 # -> transfer successful, choose to remove the binary file
+kSTATUS_SKIP_SWIZZLE = 1005 # -> if we decide to remove binary file w/o swizzling, this is assigned to all ROOT related projects
+kSTATUS_BYPASS_BINARY_TRANSFER_NEAR1 = 1006
 
 #
 # Metadata types

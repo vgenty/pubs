@@ -1,4 +1,5 @@
 import ds_online_constants
+from ds_online_constants import *
 from dstream import DSException
 
 class ds_online_util_vars:

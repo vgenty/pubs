@@ -138,7 +138,7 @@ class ds_reader(pubdb_reader):
             return info
         
         (status,data) = self.fetchone()
-
+        
         info._status = int(status)
         info._data   = data
         return info
