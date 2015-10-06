@@ -164,7 +164,7 @@ class ds_clean(ds_project_base):
             ctr = self._nskip
             for x in self.get_xtable_runs([self._project,self._skip_ref_project],
                                           [kSTATUS_INIT,self._skip_ref_status]):
-                if ctr<=0 break;
+                if ctr<=0: break
                 set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
                 ctr -= 1
 
