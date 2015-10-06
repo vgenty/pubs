@@ -74,6 +74,11 @@ class get_metadata( ds_project_base ):
         self._max_proc_time = 50
         self._parallelize = 0
         self._min_run = 0
+
+        self._nskip = 0
+        self._skip_ref_project = []
+        self._skip_ref_status = None
+        self._skip_status = None
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -106,6 +111,17 @@ class get_metadata( ds_project_base ):
 
         self._ref_project = resource['REF_PROJECT']
 
+        if ( 'NSKIP' in resource and
+             'SKIP_REF_PROJECT' in resource and
+             'SKIP_REF_STATUS' in resource and
+             'SKIP_STATUS' in resource ):
+            self._nskip = int(resource['NSKIP'])
+            self._skip_ref_project = resource['SKIP_REF_PROJECT']
+            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
+            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
+            status_name(self._skip_ref_status)
+            status_name(self._skip_status)        
+
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -126,6 +142,18 @@ class get_metadata( ds_project_base ):
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
+
+        if self._nskip and self._skip_ref_project:
+            ctr = self._nskip
+            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
+                                          [kSTATUS_INIT,self._skip_ref_status]):
+                if ctr<=0 break;
+                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                ctr -= 1
+
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
+        
 
         action = self.get_action()
 

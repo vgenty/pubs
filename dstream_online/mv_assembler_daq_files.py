@@ -28,16 +28,24 @@ class mv_assembler_daq_files(ds_project_base):
     _in_dir  = ''
     _out_dir = ''
     _infile_foramt  = ''
-    _outfile_format = ''
     _parallelize = 0
     _max_proc_time = 600
     _parent = ''
+    _parent_status = kSTATUS_DONE
+    _satellite_extension = ''
+
+    _nskip = 0
+    _skip_ref_project = []
+    _skip_ref_status = None
+    _skip_status = None    
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__(self):
+    def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super(mv_assembler_daq_files,self).__init__()
+        super(mv_assembler_daq_files,self).__init__(arg)
+
+        self._project = str(arg)
         if not self.load_params():
             raise Exception()
         
@@ -54,14 +62,26 @@ class mv_assembler_daq_files(ds_project_base):
             self._out_dir = '%s' % (resource['OUTDIR'])
             self._in_dir = '%s' % (resource['INDIR'])
             self._infile_format = resource['INFILE_FORMAT']
-            self._outfile_format = resource['OUTFILE_FORMAT']
             if 'PARALLELIZE' in resource:
                 self._parallelize = int(resource['PARALLELIZE'])
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
-
+            if 'SATELLITE_EXTENSION' in resource:
+                self._satellite_extension = resource['SATELLITE_EXTENSION']
             self._parent_project = resource['PARENT_PROJECT']
-            exec('self._parent_status  = int(%s)' % resource[PARENT_STATUS])
+            exec('self._parent_status  = int(%s)' % resource['PARENT_STATUS'])
             status_name(self._parent_status)
+
+            if ( 'NSKIP' in resource and
+                 'SKIP_REF_PROJECT' in resource and
+                 'SKIP_REF_STATUS' in resource and
+                 'SKIP_STATUS' in resource ):
+                self._nskip = int(resource['NSKIP'])
+                self._skip_ref_project = resource['SKIP_REF_PROJECT']
+                exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
+                exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
+                status_name(self._skip_ref_status)
+                status_name(self._skip_status)
+            
         except Exception:
             return False
 
@@ -73,11 +93,22 @@ class mv_assembler_daq_files(ds_project_base):
             self.info('Starting a parallel (%d) transfer process for %d runs...' % (self._parallelize,self._nruns))
         else:
             self.info('Starting a sequential transfer process for %d runs...' % self._nruns)
-        ctr = self._nruns
 
+        if self._nskip and self._skip_ref_project:
+            ctr = self._nskip
+            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
+                                          [kSTATUS_INIT,self._skip_ref_status]):
+                if ctr<=0 break;
+                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                ctr -= 1
+
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
+
+        ctr = self._nruns
         runid_v=[]
         infile_v=[]
-
+        satellite_v=[]
         for x in self.get_runs([self._project,self._parent_project],
                                [kSTATUS_INIT,self._parent_status]):
 
@@ -121,10 +152,20 @@ class mv_assembler_daq_files(ds_project_base):
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_FORMATED ) )
                 continue
 
+            if self._satellite_extension:
+                satellite_file = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                if not os.path.isfile(satellite_file):
+                    self.error('The satellite file not found: %s' % satellite_file)
+                    continue
+                satellite_v.append(satellite_file)
+                
             infile_v.append(in_file_segments[0])
             runid_v.append((run,subrun))
 
         mp = self.process_files(infile_v)
+        mp_satellite = None
+        if satellite_v:
+            mp_satellite = self.process_files(satellite_v)
 
         self.info('Finished all @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
         for i in xrange(len(infile_v)):
@@ -143,7 +184,7 @@ class mv_assembler_daq_files(ds_project_base):
         for i in xrange(len(in_filelist_v)):
 
             in_file  = in_filelist_v[i]
-            out_file = '%s/%s' % (self._out_dir,in_file.split('/')[-1])
+            out_file = '%s/%s' % ( self._out_dir, in_file.split('/')[-1] )
 
             cmd = ['cp', '-v', in_file, out_file]
             self.info('Copying %s @ %s' % (in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
@@ -187,7 +228,6 @@ class mv_assembler_daq_files(ds_project_base):
             
             run    = int(x[0])
             subrun = int(x[1])
-            status_code = kSTATUS_TO_BE_VALIDATED
 
             filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
             if (len(filelist)<1):
@@ -219,9 +259,7 @@ class mv_assembler_daq_files(ds_project_base):
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_FORMATED ) )
                 continue
 
-            out_file_prefix = in_file_segments[0]
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (out_file_prefix,run,subrun) )
-
+            out_file = '%s/%s' % ( self._out_dir, in_file.split('/')[-1] )
             size_diff = -1
             try:
                 size_diff = os.path.getsize(in_file) - os.path.getsize(out_file)
@@ -232,17 +270,42 @@ class mv_assembler_daq_files(ds_project_base):
             #res = subprocess.call(['ls', out_file])
             if size_diff:
                 self.error('Size mis-match on run: run=%d, subrun=%d ...' % (run,subrun))
-                status_code = kSTATUS_ERROR_TRANSFER_FAILED
-            else:
-                self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
-                status_code = kSTATUS_DONE
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_TRANSFER_FAILED) )
+                continue
+
+            if self._satellite_extension:
+                satellite_in = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                satellite_out = '%s/%s' % ( self._out_dir, satellite_in.split('/')[-1])
+                size_diff = -1
+                try:
+                    size_diff = os.path.getsize(satellite_in) - os.path.getsize(satellite_out)
+                except Exception:
+                    size_diff = -1
+                if size_diff:
+                    self.error('Size mis-match on run: run=%d, subrun=%d ...' % (run,subrun))
+                    self.log_status( ds_status( project = self._project,
+                                                run     = run,
+                                                subrun  = subrun,
+                                                seq     = 0,
+                                                status  = kSTATUS_ERROR_TRANSFER_FAILED) )
+                    continue
                 
-            # Create a status object to be logged to DB (if necessary)
+                if not os.path.isfile(satellite_file):
+                    self.error('The satellite file not found: %s' % satellite_file)
+                    continue
+                satellite_v.append(satellite_file)
+
+            self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
             self.log_status( ds_status( project = self._project,
                                         run     = run,
                                         subrun  = subrun,
                                         seq     = 0,
-                                        status  = status_code )
+                                        status  = kSTATUS_DONE ) )
+
             
 # A unit test section
 if __name__ == '__main__':

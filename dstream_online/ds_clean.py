@@ -46,6 +46,12 @@ class ds_clean(ds_project_base):
         self._name_pattern = ''
         self._parent_project = []
         self._parent_status = []
+        self._satellite_extension = ''
+
+        self._nskip = 0
+        self._skip_ref_project = []
+        self._skip_ref_status = None
+        self._skip_status = None
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -56,6 +62,8 @@ class ds_clean(ds_project_base):
         self._in_dir = '%s' % (resource['DIR'])
         self._name_pattern = resource['NAME_PATTERN']
         self._disk_frac_limit = int(resource['USED_DISK_FRAC_LIMIT'].strip("%"))
+        if 'SATTELITE_EXT' in resource:
+            self._satellite_extension = resource['SATTELITE_EXT']
         try:
             self._parent_project = []
 
@@ -111,6 +119,17 @@ class ds_clean(ds_project_base):
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
 
+        if ( 'NSKIP' in resource and
+             'SKIP_REF_PROJECT' in resource and
+             'SKIP_REF_STATUS' in resource and
+             'SKIP_STATUS' in resource ):
+            self._nskip = int(resource['NSKIP'])
+            self._skip_ref_project = resource['SKIP_REF_PROJECT']
+            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
+            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
+            status_name(self._skip_ref_status)
+            status_name(self._skip_status)
+
 
     ## @brief internal function to organize a list of runs based on self._parent_project and self._parent_status (not to be called in public)
     def get_run_list(self):
@@ -140,6 +159,14 @@ class ds_clean(ds_project_base):
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
             self.get_resource()
+
+        if self._nskip and self._skip_ref_project:
+            ctr = self._nskip
+            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
+                                          [kSTATUS_INIT,self._skip_ref_status]):
+                if ctr<=0 break;
+                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                ctr -= 1
 
         # Check available space
         if ":" in self._in_dir:
@@ -200,20 +227,15 @@ class ds_clean(ds_project_base):
                 continue
 
             in_file = filelist[0]
+            
             self.info('Removing %s'%in_file)
 
-            if ":" in in_file:
-                #check that out_file is a file before trying to remove 
-                #(hopefully should avoid unintentional rm with bad out_dir/name_pattern combo)
-                if not os.system('ssh -x %s "test -f %s"'%(tuple(in_file.split(":")))):
-                    rm_status=os.system('ssh -x %s "rm -f %s"' % tuple(in_file.split(":")))
-                    tmp_status=kSTATUS_TO_BE_VALIDATED
-            else:
-                self.info('Looks like the file is local on this node')
-                if not os.path.isfile(in_file):
-                    self.info("ERROR: os.path.isfile('%s') returned false?!"%in_file)
-                self.info('Going to remove the file with rm...')
+            if not os.path.isfile(in_file):
                 rm_status=os.system('rm -f %s' % in_file)
+                if self._satellite_extension:
+                    satellite_file = str(in_file)
+                    satellite_file = satellite_file[0:in_file.rfind('.')] + '.' + self._satellite_extension
+                    os.system('rm -f %s' % satellite_file)
                 tmp_status=kSTATUS_TO_BE_VALIDATED
 
             if rm_status:

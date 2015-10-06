@@ -58,6 +58,11 @@ class reg_files_to_sam( ds_project_base ):
         self._project_requirement = [ kSTATUS_INIT ]
         self._min_run = 0
 
+        self._nskip = 0
+        self._skip_ref_project = []
+        self._skip_ref_status = None
+        self._skip_status = None
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -83,6 +88,17 @@ class reg_files_to_sam( ds_project_base ):
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
 
+        if ( 'NSKIP' in resource and
+             'SKIP_REF_PROJECT' in resource and
+             'SKIP_REF_STATUS' in resource and
+             'SKIP_STATUS' in resource ):
+            self._nskip = int(resource['NSKIP'])
+            self._skip_ref_project = resource['SKIP_REF_PROJECT']
+            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
+            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
+            status_name(self._skip_ref_status)
+            status_name(self._skip_status)
+
     ## @brief declare a file to SAM
     def process_runs(self):
         
@@ -94,6 +110,18 @@ class reg_files_to_sam( ds_project_base ):
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
             self.get_resource()
+
+        if self._nskip and self._skip_ref_project:
+            ctr = self._nskip
+            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
+                                          [kSTATUS_INIT,self._skip_ref_status]):
+                if ctr<=0 break;
+                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                ctr -= 1
+
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
+            
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
         self._project_requirement[0] = kSTATUS_INIT

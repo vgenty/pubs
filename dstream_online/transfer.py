@@ -57,14 +57,15 @@ class transfer( ds_project_base ):
 
         self._ntrials = 0
         
-        self._child_trigger_status=[]
-        self._child_projects=[]
-        self._child_status=[]
-
         self._success_status = kSTATUS_DONE
         self._error_handle_status = None
         self._bypass_status = None
         self._bypass = False
+
+        self._nskip = 0
+        self._skip_ref_project = []
+        self._skip_ref_status = None
+        self._skip_status = None
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -91,77 +92,39 @@ class transfer( ds_project_base ):
         if 'NUM_RETRIAL' in resource:
             self._ntrials = int(resource['NUM_RETRIAL'])
 
-        exec('self._success_status=int(resource[\'SUCCESS_STATUS\'])')
-        exec('self._error_handle_status=int(resource[\'ERROR_STATUS\'])')
+        exec('self._success_status=int(resource[\'COMPLETE_STATUS\'])')
+        exec('self._error_handle_status=int(resource[\'ERROR_HANDLE_STATUS\'])')
         status_name(self._success_status)
         status_name(self._error_handle_status)
-
-        # Get child status sets
-        self._child_trigger_status=[]
-        for child_trigger_status in resource['CHILD_TRIGGER_STATUS'].split(':'):
-
-            status = None
-            exec('status = int(%s)' % child_trigger_status)
-            status_name(status)
-            self._child_trigger_status.append(status)
-
-        # Get child list
-        self._child_projects=[]
-        for child_project in resource['CHILD_PROJECT'].split('::'):
-
-            self._child_projects.append( child_project.split(':') )
-
-        # Get child status
-        self._child_status=[]
-        for child_status in resource['CHILD_STATUS'].split(':'):
-
-            status = None
-            exec('status = int(%s)' % child_status)
-            status_name(status)
-            self._child_status.append(status)
 
         # get bypass status
         exec('self._bypass = bool(%s)' % resource['BYPASS'])
         exec('self._bypass_status = int(%s)' % resource['BYPASS_STATUS'])
         status_name(self._bypass_status)
 
-        # Validate sanity of child status list
-        if not len(self._child_trigger_status) == len(self._child_projects):
-            raise DSException('Child trigger status and child projects have diferent length!')
-
-        if not len(self._child_trigger_status) == len(self._child_status):
-            raise DSException('Child trigger status and child status have diferent length!')
-
+        if ( 'NSKIP' in resource and
+             'SKIP_REF_PROJECT' in resource and
+             'SKIP_REF_STATUS' in resource and
+             'SKIP_STATUS' in resource ):
+            self._nskip = int(resource['NSKIP'])
+            self._skip_ref_project = resource['SKIP_REF_PROJECT']
+            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
+            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
+            status_name(self._skip_ref_status)
+            status_name(self._skip_status)
+            
     ## @brief a function that should be used to set status
     def set_transfer_status(self,run,subrun,status,data=''):
 
         status_name(status)
 
-        child_list   = None
-        child_status = None
-        if status in self._child_trigger_status:
-            child_index = None
-            for i in xrange(len(self._child_trigger_status)):
-                if status == self._child_trigger_status[i]:
-                    child_index = i
-                    break
-            child_list   = self._child_project[child_index]
-            child_status = self._child_status[child_index]
-        
         self.log_status( ds_status( project = self._project,
                                     run = run,
                                     subrun = subrun,
                                     seq = 0,
                                     status = status,
                                     data = data ) )
-        if child_list:
 
-            for child in child_list:
-                self.log_status( ds_status( project = child,
-                                            run = run,
-                                            subrun = subrun,
-                                            seq = 0
-                                            status = child_status ) )
             
     ## @brief Transfer files to dropbox
     def transfer_file( self ):
@@ -179,6 +142,17 @@ class transfer( ds_project_base ):
             self.get_resource()
 
         self.info('Start transfer_file @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
+        if self._nskip and self._skip_ref_project:
+            ctr = self._nskip
+            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
+                                          [kSTATUS_INIT,self._skip_ref_status]):
+                if ctr<=0 break;
+                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                ctr -= 1
+
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)        
                 
         # Fetch runs from DB and process for # runs specified for this instance.
         args_v  = []
