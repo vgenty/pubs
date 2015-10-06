@@ -62,7 +62,7 @@ class CustomProjectSubwindow():
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60)#,offset=(70,30)) #i can't get this fucking legend to plot in the right location
         # self.history_plot.addLegend()
-        leg.setParentItem(self.history_plot)
+        
         colorcounter = 0
         for status, values in history.iteritems():
             #ignore good statuses
@@ -78,7 +78,7 @@ class CustomProjectSubwindow():
             curve = self.history_plot.plot(xvals,data,name='Status %d'%status,pen=(colorcounter,10))#,pen=mycolor)#(colorcounter,20))
             leg.addItem(curve,'Status %d'%status)
             colorcounter += 1
-        
+        leg.setParentItem(self.history_plot)
         # leg.anchor(itemPos=(1,0), parentPos=(1,0), offset=(-10,10))
             
 
