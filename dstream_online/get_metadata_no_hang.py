@@ -173,7 +173,7 @@ class get_metadata( ds_project_base ):
             if ctr <= 0: break
 
             # Report starting
-            self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
+            #self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
 

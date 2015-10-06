@@ -92,8 +92,8 @@ class transfer( ds_project_base ):
         if 'NUM_RETRIAL' in resource:
             self._ntrials = int(resource['NUM_RETRIAL'])
 
-        exec('self._success_status=int(resource[\'COMPLETE_STATUS\'])')
-        exec('self._error_handle_status=int(resource[\'ERROR_HANDLE_STATUS\'])')
+        exec('self._success_status=int(%s)' % resource['COMPLETE_STATUS'])
+        exec('self._error_handle_status=int(%s)' % resource['ERROR_HANDLE_STATUS'])
         status_name(self._success_status)
         status_name(self._error_handle_status)
 
@@ -152,7 +152,7 @@ class transfer( ds_project_base ):
                 ctr -= 1
 
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)        
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
                 
         # Fetch runs from DB and process for # runs specified for this instance.
         args_v  = []
@@ -174,7 +174,7 @@ class transfer( ds_project_base ):
                 continue
 
             # Report starting
-            self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun))
+            #self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun))
             
             status = kSTATUS_INIT
             

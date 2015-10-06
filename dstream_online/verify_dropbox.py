@@ -124,18 +124,20 @@ class verify_dropbox( ds_project_base ):
         self._experts = resource['EXPERTS']
         try:
             self._parent_project = resource['PARENT_PROJECT'].split(':')
-            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            self._parent_status  = []
+            for x in resource['PARENT_STATUS'].split(':'):
+                exec('self._parent_status.append(int(%s))' % x)
             if not len(self._parent_project) == len(self._parent_status):
                 raise ValueError
         except Exception:
             self.error('Failed to load parent projects...')
-            return False
+            raise DSException
 
-        exec('self._success_status=int(resource[\'FINISHED_STATUS\'])')
-        exec('self._sample_status=int(resource[\'SAMPLE_STATUS\'])')
-        exec('self._sample_modular=int(resource[\'SAMPLE_MODULAR\'])')
+        exec('self._success_status=int(%s)' % resource['FINISHED_STATUS'] )
+        exec('self._sample_status=int(%s)'  % resource['SAMPLE_STATUS']   )
+        exec('self._sample_modular=int(%s)' % resource['SAMPLE_MODULAR']  )
         status_name(self._success_status)
-        status_name(self._error_handle_status)
+        status_name(self._sample_status)
         
         #this constructs the list of projects and their status codes
         #we want the project to be status 1, while the dependent projects to
