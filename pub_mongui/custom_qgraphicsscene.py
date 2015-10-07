@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
+import os
 from custom_project_subwindow import CustomProjectSubwindow
 from custom_daemon_subwindow import CustomDaemonSubwindow
 
@@ -14,6 +15,8 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
         QtGui.QGraphicsScene.__init__(self,x,y,width,height)
         self.projwin = None
         self.daemwin = None
+        self.easteregg_pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/kpic.png')
+        self.easteregg_item = None
 
     def __del__(self):
         pass
@@ -27,9 +30,17 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
             if item_clicked.__module__ == 'custom_piechart_class' or \
                item_clicked.__module__ == 'custom_bar_class':
                 self.projwin = CustomProjectSubwindow(item_clicked)
+        else:
+            self.draw_easteregg()
 
     def mouseReleaseEvent(self, event):
-        pass
+        self.remove_easteregg()
+
+    def draw_easteregg(self):
+        self.easteregg_item = self.addPixmap(self.easteregg_pm)
+       
+    def remove_easteregg(self):
+        self.removeItem(self.easteregg_item)
 
     def openDaemonWindow(self,daemon_warning, force_recreate = False):
         #This if statement says that if the daemon warning window is already open, don't recreate one; just update text

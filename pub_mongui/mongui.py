@@ -32,9 +32,6 @@ import time
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
 my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
-if len(sys.argv) == 2:
-    if sys.argv[1] == 'kazumode':
-        my_template = 'pubs_diagram_BLANK_easteregg.png'
 my_params = 'pubs_diagram_100615_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
@@ -59,6 +56,7 @@ app = QtGui.QApplication([])
 
 #Load in the background image via pixmap
 pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+my_template)
+
 # ==> timeprofiling: loading in this pixmap takes 0.1 seconds
 
 #Make the scene the same size as the background template
