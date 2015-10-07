@@ -129,6 +129,9 @@ for iprojname in projectnames:
     #Make a progress bar item for this project
     ichart = ProgressBarItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
 
+    #Make sure progress bars are always in the front (all default z values are 0)
+    ichart.setZValue(1.0)
+
     #Initialize the piechart description from the stored text file
     if iprojname in proj_descripts.keys():
         ichart.setDescript(proj_descripts[iprojname])
@@ -170,6 +173,7 @@ for iprojname in projectnames:
     #On top of the pie chart, write the number of run/subruns
     #Re-draw the text on top of the pie chart with the project name
     mysupertext = QtGui.QGraphicsTextItem()
+    mysupertext.setZValue(1.0)
     mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
     mysupertext.setPlainText(proj_dict[iprojname].getDescript())
     mysupertext.setDefaultTextColor(QtGui.QColor('white'))
@@ -182,6 +186,7 @@ for iprojname in projectnames:
     projsupertext_dict[iprojname] = mysupertext
 
     mysubtext = QtGui.QGraphicsTextItem()
+    mysubtext.setZValue(1.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
     mysubtext.setPlainText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
@@ -198,41 +203,51 @@ for iprojname in projectnames:
 #######################################################################
 ############## Draw animated arrows from parent --> daughter projects
 #######################################################################
-# arrows = {}
-# animations = {}
+arrows = {}
+animations = {}
 
 # animation_timer = QtCore.QTimeLine(5000)
 # #loop infinitely
 # animation_timer.setLoopCount(0)
 # animation_timer.setFrameRange(0,100)
 
-# for iprojname in projectnames:
-#     if iprojname not in template_params:
-#         continue    
+# line_pen = QtGui.QPen(QtGui.QBrush('w'),5)
+line_pen = QtGui.QPen(QtGui.QColor('darkCyan'))
+line_pen.setWidth(6)
+for iprojname in projectnames:
+    if iprojname not in template_params:
+        continue    
 
-#     xloc, yloc, maxradius, parents = template_params[iprojname]
+    xloc, yloc, maxradius, parents = template_params[iprojname]
 
-#     #For each parent of this project, draw a line from it to the parent and have an animated arrow
-#     for parent in parents:
-#         if parent not in proj_dict.keys():
-#             continue
-#         endpoint = proj_dict[iprojname].getCenterPoint()
-#         startpoint = proj_dict[parent].getCenterPoint()
-#         spx, spy = startpoint[0], startpoint[1]
-#         epx, epy = endpoint[0], endpoint[1]
-#         spx += proj_dict[iprojname].getRadius()*0.5
-#         spy += proj_dict[iprojname].getHeight()*0.5
-#         epx += proj_dict[parent].getRadius()*0.5
-#         epy += proj_dict[parent].getHeight()*0.5
-#         arrows[iprojname] = guiut.getArrowObject((spx,spy),(epx,epy))
-#         arrows[iprojname].setPos(spx,spy)
-#         animations[iprojname] = QtGui.QGraphicsItemAnimation()
-#         animations[iprojname].setItem(arrows[iprojname])
-#         animations[iprojname].setTimeLine(animation_timer)
-#         animations[iprojname].setPosAt(0,QtCore.QPointF(spx,spy))
-#         animations[iprojname].setPosAt(1,QtCore.QPointF(epx,epy))
-#         scene.addItem(arrows[iprojname])
-# #start the animations running
+    #For each parent of this project, draw a line from it to the parent and have an animated arrow
+    for parent in parents:
+        if parent not in proj_dict.keys():
+            continue
+        endpoint = proj_dict[iprojname].getCenterPoint()
+        startpoint = proj_dict[parent].getCenterPoint()
+        spx, spy = startpoint[0], startpoint[1]
+        epx, epy = endpoint[0], endpoint[1]
+        spx += proj_dict[iprojname].getRadius()*0.5
+        spy += proj_dict[iprojname].getHeight()*0.5
+        epx += proj_dict[parent].getRadius()*0.5
+        epy += proj_dict[parent].getHeight()*0.5
+
+        #Let's try lines instead of arrows
+        scene.addLine(spx,spy,epx,epy,pen=line_pen)
+        # if parent == 'prod_verify_binary_evb2dropbox_near1':
+        #     print "starting at Binary Transfer Validation to %s"%iprojname
+        #     print "(%f,%f) ==> (%f,%f)"%(spx,spy,epx,epy)
+        # arrows[iprojname] = guiut.getArrowObject((spx,spy),(epx,epy))
+        # arrows[iprojname].setPos(spx,spy)
+        # arrows[iprojname].setPos(epx,epy)
+        # animations[iprojname] = QtGui.QGraphicsItemAnimation()
+        # animations[iprojname].setItem(arrows[iprojname])
+        # animations[iprojname].setTimeLine(animation_timer)
+        # animations[iprojname].setPosAt(0,QtCore.QPointF(spx,spy))
+        # animations[iprojname].setPosAt(1,QtCore.QPointF(epx,epy))
+        # scene.addItem(arrows[iprojname])
+#start the animations running
 # animation_timer.start()
 #######################################################################
 ############## End draw animated arrows from parent --> daughter projects
