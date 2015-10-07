@@ -115,6 +115,14 @@ daemon_warning.setFont(warningfont)
 scene.addItem(daemon_text)
 # ==> timeprofiling: generating daemon text takes a longass time, until the daemon_log(start,end) function is fixed.
 
+# animation_timer = QtCore.QTimeLine(5000)
+# #loop infinitely
+# animation_timer.setLoopCount(0)
+# animation_timer.setFrameRange(0,100)
+
+# arrows = {}
+# animations = {}
+
 for iprojname in projectnames:
 
     if iprojname not in template_params:
@@ -123,9 +131,10 @@ for iprojname in projectnames:
         continue    
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
-    xloc, yloc, maxradius = template_params[iprojname]
+    xloc, yloc, maxradius, parents = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
 
+    #Make a progress bar item for this project
     ichart = ProgressBarItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
 
     #Initialize the piechart description from the stored text file
@@ -183,7 +192,7 @@ for iprojname in projectnames:
     mysubtext = QtGui.QGraphicsTextItem()
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
-    mysubtext.setPlainText('%d G : %d Int : %d Err => %d'%(ngood, ninter, nerr,tot_n))
+    mysubtext.setPlainText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
     mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -192,6 +201,23 @@ for iprojname in projectnames:
     scene.addItem(mysubtext)
     #Store the text in a dictionary
     projsubtext_dict[iprojname] = mysubtext
+
+
+    # #For each parent of this project, draw a line from it to the parent and have an animated arrow
+    # for parent in parents:
+    #     if parent not in proj_dict.keys():
+    #         continue
+    #     arrows[iprojname] = pg.ArrowItem(angle=-160, tipAngle=60, headLen=40, tailLen=40, tailWidth=20, pen={'color': 'w', 'width': 3})
+    #     startx, starty = proj_dict[iprojname].getCenterPoint()
+    #     endx, endy = proj_dict[parent].getCenterPoint()
+    #     arrows[iprojname].setPos(startx, starty)
+    #     animations[iprojname] = QtGui.QGraphicsItemAnimation()
+    #     animations[iprojname].setItem(arrows[iprojname])
+    #     animations[iprojname].setTimeLine(animation_timer)
+    #     animations[iprojname].setPosAt(0,QtCore.QPointF(startx,starty))
+    #     animations[iprojname].setPosAt(1,QtCore.QPointF(endx,endy))
+    #     scene.addItem(arrows[iprojname])
+
 
 # ==> timeprofiling: creating all piecharts and adding them to the scene takes 0.002 seconds **************
 
@@ -204,6 +230,9 @@ myfont = QtGui.QFont()
 myfont.setPointSize(10)
 mytext.setFont(myfont)
 scene.addItem(mytext)
+
+#start the animations running
+# animation_timer.start()
 
 def update_gui():
     global global_update_counter
@@ -265,7 +294,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setPlainText('%d G : %d Int : %d Err => %d'%(ngood, ninter, nerr,tot_n))
+        projsubtext_dict[iprojname].setPlainText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()
