@@ -24,15 +24,18 @@ from load_proj_descriptions import getProjectDescriptions
 from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
-
+import sys
 import time
 # ==> timeprofiling: importing stuff takes 1.5 seconds
 
 ##############################################################
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
-
-my_template = 'pubs_diagram_100615.png'#'pubs_diagram_092515.png'
+my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
+if len(sys.argv) == 2:
+    if sys.argv[1] == 'kazumode':
+        my_template = 'pubs_diagram_BLANK_easteregg.png'
+my_params = 'pubs_diagram_100615_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 
@@ -91,7 +94,7 @@ projsubtext_dict = {}
 
 #Read in the parameters for this template into a dictionary
 #These dictate, based on project name, where to draw on GUI
-template_params = getParams(my_template)
+template_params = getParams(my_params)
 
 #Read in the project descriptions stored in a separate text file
 proj_descripts = getProjectDescriptions()

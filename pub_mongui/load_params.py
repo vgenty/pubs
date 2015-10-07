@@ -7,8 +7,11 @@ def getParams(template_name):
 
     infile = os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+template_name
     #Strip image extension to file, add '_params.txt'
-    if infile[-4:] == '.png': infile = infile[:-4]
-    myfile = infile + '_params.txt'
+    if infile[-4:] == '.png': 
+        infile = infile[:-4]
+        myfile = infile + '_params.txt'
+    else:
+        myfile = infile
 
     try:
         f = open(myfile,'r')
