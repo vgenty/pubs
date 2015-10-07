@@ -97,18 +97,29 @@ template_params = getParams(my_template)
 proj_descripts = getProjectDescriptions()
 # ==> timeprofiling: getting project descriptions takes 0.1 seconds
 
+#Brush to paint white text
+text_brush = QtGui.QBrush(QtGui.QColor('white'))
+#Pen to outline white text in black
+outline_pen = QtGui.QPen(QtGui.QColor('darkGray'))
+outline_pen.setWidth(0.01)
+
 #Daemon text item (stored in array because that's the only way I can get it to work)
 daemon_text_content, daemon_warning_content = gdbi.genDaemonTextAndWarnings()
-daemon_text = QtGui.QGraphicsTextItem()
-daemon_warning = QtGui.QGraphicsTextItem()
-daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
-daemon_text.setPlainText(daemon_text_content)
-daemon_text.setDefaultTextColor(QtGui.QColor('white'))
+daemon_text = QtGui.QGraphicsSimpleTextItem()
+daemon_warning = QtGui.QGraphicsSimpleTextItem()
+daemon_text.setBrush(text_brush)
+daemon_text.setPen(outline_pen)
+daemon_warning.setBrush(text_brush)
+daemon_warning.setPen(outline_pen)
+daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.93)
+daemon_text.setText(daemon_text_content)
+# daemon_text.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
-myfont.setPointSize(12)
+myfont.setPointSize(13)
+myfont.setBold(True)
 daemon_text.setFont(myfont)
-daemon_warning.setPlainText(daemon_warning_content)
-daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
+daemon_warning.setText(daemon_warning_content)
+# daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
 warningfont = QtGui.QFont()
 warningfont.setPointSize(50)
 daemon_warning.setFont(warningfont)
@@ -172,11 +183,14 @@ for iprojname in projectnames:
  
     #On top of the pie chart, write the number of run/subruns
     #Re-draw the text on top of the pie chart with the project name
-    mysupertext = QtGui.QGraphicsTextItem()
+    mysupertext = QtGui.QGraphicsSimpleTextItem()
+    mysupertext.setBrush(text_brush)
+    mysupertext.setPen(outline_pen)
     mysupertext.setZValue(1.0)
     mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
-    mysupertext.setPlainText(proj_dict[iprojname].getDescript())
-    mysupertext.setDefaultTextColor(QtGui.QColor('white'))
+    mysupertext.setText(proj_dict[iprojname].getDescript())#iprojname)
+    # mysupertext.setDefaultTextColor(QtGui.QColor('white'))
+
     myfont = QtGui.QFont()
     myfont.setBold(True)
     myfont.setPointSize(12)
@@ -185,12 +199,14 @@ for iprojname in projectnames:
     #Store the text in a dictionary
     projsupertext_dict[iprojname] = mysupertext
 
-    mysubtext = QtGui.QGraphicsTextItem()
+    mysubtext = QtGui.QGraphicsSimpleTextItem()
+    mysubtext.setBrush(text_brush)
+    mysubtext.setPen(outline_pen)
     mysubtext.setZValue(1.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
-    mysubtext.setPlainText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
-    mysubtext.setDefaultTextColor(QtGui.QColor('white'))
+    mysubtext.setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
+    # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
     myfont.setPointSize(12)
@@ -254,12 +270,14 @@ for iprojname in projectnames:
 #######################################################################
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
-mytext = QtGui.QGraphicsTextItem()
-mytext.setPos(scene_xmin+0.78*scene_width,scene_height*0.91)
-mytext.setPlainText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
-mytext.setDefaultTextColor(QtGui.QColor('white'))
+mytext = QtGui.QGraphicsSimpleTextItem()
+mytext.setBrush(text_brush)
+mytext.setPen(outline_pen)
+mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.90)
+mytext.setText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
+# mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
-myfont.setPointSize(10)
+myfont.setPointSize(12)
 mytext.setFont(myfont)
 scene.addItem(mytext)
 
@@ -280,8 +298,8 @@ def update_gui():
     daemon_text_content, daemon_warning_content = gdbi.genDaemonTextAndWarnings()
   
     #Change the text on the already-created daemon text
-    daemon_text.setPlainText(daemon_text_content)
-    daemon_warning.setPlainText(daemon_warning_content)
+    daemon_text.setText(daemon_text_content)
+    daemon_warning.setText(daemon_warning_content)
     #If there were any warnings, open a window shouting at shifters
     if daemon_warning_content:      
         dwarnings = scene.openDaemonWindow(daemon_warning,force_recreate = force_recreate_daemonwindow)
@@ -325,7 +343,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setPlainText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
+        projsubtext_dict[iprojname].setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()

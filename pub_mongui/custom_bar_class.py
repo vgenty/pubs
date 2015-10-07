@@ -20,7 +20,7 @@ class ProgressBarItem(QtGui.QGraphicsObject):
         self.y = data[2]
         self.w = data[3]
         self.x = data[1] - 0.5*self.w
-        self.h = 40
+        self.h = 35
         self.total_files = data[4]
         self.slices = data[5]
 
