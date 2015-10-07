@@ -1,5 +1,6 @@
 try:
     from pyqtgraph.Qt import QtGui, QtCore
+    import pyqtgraph as pg
 except ImportError:
     raise ImportError('Ruh roh. You need to set up pyqtgraph before you can use this GUI.')
 
@@ -274,3 +275,16 @@ class GuiUtils():
       else:
         print "something has gone horribly wrong. status %d for project %s"%(x[0],projname)
     return (n_good, n_inter, n_error)
+
+  def getArrowObject(self,startpoint,endpoint):  
+    thisarrow = pg.ArrowItem(angle=self.getArrowAngle(startpoint,endpoint), \
+      tipAngle=60, headLen=35, tailLen=35, tailWidth=15, pen={'color': 'w', 'width': 3})
+    thisarrow.setPos(startpoint[0], startpoint[1])
+    return thisarrow
+
+  def getArrowAngle(self,startpoint,endpoint):
+    # print "get arrow angle: (%f,%f) ==> (%f,%f)" % (startpoint[0],startpoint[1],endpoint[0],endpoint[1])
+    answer = 180. + (180./3.14159)*math.tan(float(endpoint[1]-startpoint[1])/float(endpoint[0]-startpoint[0]))
+    # print "answer = %f"%answer
+    #0 degrees is pointing to the left, 90 degrees is pointing up
+    return answer

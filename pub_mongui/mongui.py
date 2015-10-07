@@ -115,14 +115,6 @@ daemon_warning.setFont(warningfont)
 scene.addItem(daemon_text)
 # ==> timeprofiling: generating daemon text takes a longass time, until the daemon_log(start,end) function is fixed.
 
-# animation_timer = QtCore.QTimeLine(5000)
-# #loop infinitely
-# animation_timer.setLoopCount(0)
-# animation_timer.setFrameRange(0,100)
-
-# arrows = {}
-# animations = {}
-
 for iprojname in projectnames:
 
     if iprojname not in template_params:
@@ -203,23 +195,48 @@ for iprojname in projectnames:
     projsubtext_dict[iprojname] = mysubtext
 
 
-    # #For each parent of this project, draw a line from it to the parent and have an animated arrow
-    # for parent in parents:
-    #     if parent not in proj_dict.keys():
-    #         continue
-    #     arrows[iprojname] = pg.ArrowItem(angle=-160, tipAngle=60, headLen=40, tailLen=40, tailWidth=20, pen={'color': 'w', 'width': 3})
-    #     startx, starty = proj_dict[iprojname].getCenterPoint()
-    #     endx, endy = proj_dict[parent].getCenterPoint()
-    #     arrows[iprojname].setPos(startx, starty)
-    #     animations[iprojname] = QtGui.QGraphicsItemAnimation()
-    #     animations[iprojname].setItem(arrows[iprojname])
-    #     animations[iprojname].setTimeLine(animation_timer)
-    #     animations[iprojname].setPosAt(0,QtCore.QPointF(startx,starty))
-    #     animations[iprojname].setPosAt(1,QtCore.QPointF(endx,endy))
-    #     scene.addItem(arrows[iprojname])
+#######################################################################
+############## Draw animated arrows from parent --> daughter projects
+#######################################################################
+# arrows = {}
+# animations = {}
 
+# animation_timer = QtCore.QTimeLine(5000)
+# #loop infinitely
+# animation_timer.setLoopCount(0)
+# animation_timer.setFrameRange(0,100)
 
-# ==> timeprofiling: creating all piecharts and adding them to the scene takes 0.002 seconds **************
+# for iprojname in projectnames:
+#     if iprojname not in template_params:
+#         continue    
+
+#     xloc, yloc, maxradius, parents = template_params[iprojname]
+
+#     #For each parent of this project, draw a line from it to the parent and have an animated arrow
+#     for parent in parents:
+#         if parent not in proj_dict.keys():
+#             continue
+#         endpoint = proj_dict[iprojname].getCenterPoint()
+#         startpoint = proj_dict[parent].getCenterPoint()
+#         spx, spy = startpoint[0], startpoint[1]
+#         epx, epy = endpoint[0], endpoint[1]
+#         spx += proj_dict[iprojname].getRadius()*0.5
+#         spy += proj_dict[iprojname].getHeight()*0.5
+#         epx += proj_dict[parent].getRadius()*0.5
+#         epy += proj_dict[parent].getHeight()*0.5
+#         arrows[iprojname] = guiut.getArrowObject((spx,spy),(epx,epy))
+#         arrows[iprojname].setPos(spx,spy)
+#         animations[iprojname] = QtGui.QGraphicsItemAnimation()
+#         animations[iprojname].setItem(arrows[iprojname])
+#         animations[iprojname].setTimeLine(animation_timer)
+#         animations[iprojname].setPosAt(0,QtCore.QPointF(spx,spy))
+#         animations[iprojname].setPosAt(1,QtCore.QPointF(epx,epy))
+#         scene.addItem(arrows[iprojname])
+# #start the animations running
+# animation_timer.start()
+#######################################################################
+############## End draw animated arrows from parent --> daughter projects
+#######################################################################
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
 mytext = QtGui.QGraphicsTextItem()
@@ -231,8 +248,7 @@ myfont.setPointSize(10)
 mytext.setFont(myfont)
 scene.addItem(mytext)
 
-#start the animations running
-# animation_timer.start()
+
 
 def update_gui():
     global global_update_counter
