@@ -4,7 +4,7 @@
 #  @author kterao
 
 # python include
-import time,sys,datetime
+import time,sys,datetime,os
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -41,10 +41,12 @@ class daq_uptime_monitor(ds_project_base):
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
-
+        
         #resource = self._api.get_resource( self._project )
 
         #self._run_table =  resource['DAQRunTable']
+
+        pass
         
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -208,7 +210,9 @@ if __name__ == '__main__':
 
     test_obj = daq_uptime_monitor(sys.argv[1])
 
+    test_obj.info('Start @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+
     test_obj.process_newruns()
 
-
+    test_obj.info('End @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
