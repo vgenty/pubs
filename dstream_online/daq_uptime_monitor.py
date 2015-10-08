@@ -18,7 +18,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpc
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter
-import datetime
 import numpy as np
 
 ## @class daq_uptime_monitor
@@ -154,6 +153,10 @@ class daq_uptime_monitor(ds_project_base):
             every_hour = min_key + datetime.timedelta(0,3600*x,0)
             if not every_hour in hour_frac_map:
                 hour_frac_map[every_hour] = 0
+
+        # Correct "this hour fraction"
+        current_hour = datetime.datetime.now() - max_key
+        hour_frac_map[max_key] *= ( 3600. / current_hour.seconds )
 
         dates = hour_frac_map.keys()
         dates.sort()
