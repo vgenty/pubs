@@ -35,7 +35,7 @@ def get_prefix( path ) :
     raise LookupError("no server known for %s" % path)
 
 def get_pnfs_1_adler32_and_size( path ):
-    sum = 0
+    checksum = 0
     first = True
     cmd = "srmls -2 -l %s/pnfs/fnal.gov/usr/%s" % ( get_prefix(path), path[5:])
     #print "running: " , cmd
@@ -54,10 +54,10 @@ def get_pnfs_1_adler32_and_size( path ):
         if line.find("Checksum value:") > 0:
             ssum = line[line.find(':') + 2:]
             #print "got string: ", ssum
-            sum = long( ssum , base = 16 )
-            #print "got val: %lx" % sum
+            checksum = long( ssum , base = 16 )
+            #print "got val: %lx" % checksum
             pf.close()
-            return  sum, size
+            return  checksum, size
 
     pf.close()
     raise LookupError("no checksum found for %s" % path)
@@ -268,8 +268,6 @@ class verify_dropbox( ds_project_base ):
             RefStatus = self._api.get_status( ds_status(self._ref_project, run, subrun, 0))
             near1_checksum = RefStatus._data
 
-            pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
-            near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
             try:
                 samweb = samweb_cli.SAMWebClient(experiment="uboone")
                 meta = samweb.getMetadata(filenameorid=in_file_name)

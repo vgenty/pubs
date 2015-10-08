@@ -237,7 +237,7 @@ class get_metadata( ds_project_base ):
             status,data = status_v[i]
             if data is None:
                 data = ''
-            if data and status == kSTATUS_TO_BE_VALIDATED:
+            if data and type(data) == type(dict()):
                 fout = open('%s.json' % infile_v[i], 'w')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
@@ -350,6 +350,24 @@ class get_metadata( ds_project_base ):
 
                 checksum = ref_status._data
 
+            # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
+            badJsonData = { 'file_name': os.path.basename(in_file), 
+                            'file_type': "data", 
+                            'file_size': fsize, 
+                            'file_format': "binaryraw-uncompressed", 
+                            'runs': [ [run,  subrun, 'test'] ], 
+                            'first_event': 0,
+                            'start_time': '1970-01-01T00:00:00',
+                            'end_time': '1970-01-01T00:00:00',
+                            'last_event': 0,
+                            'group': 'uboone', 
+                            "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
+                            "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
+                            "data_tier": "raw", "event_count": 0,
+                            "ub_project.name": "online", 
+                            "ub_project.stage": "assembler", 
+                            "ub_project.version": self._pubsver }
+            
             if mp.poll(i):
                 self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(i)))
                 ref_status = self._api.get_status( ds_status( self._project, run, subrun, 0 ) )
@@ -367,24 +385,7 @@ class get_metadata( ds_project_base ):
                     status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                     continue
                 self.info('Return code = 2... will provide invalid metadata and move on!')
-                # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
-                jsonData = { 'file_name': os.path.basename(in_file), 
-                             'file_type': "data", 
-                             'file_size': fsize, 
-                             'file_format': "binaryraw-uncompressed", 
-                             'runs': [ [run,  subrun, 'test'] ], 
-                             'first_event': 0,
-                             'start_time': '1970-01-01T00:00:00',
-                             'end_time': '1970-01-01T00:00:00',
-                             'last_event': 0,
-                             'group': 'uboone', 
-                             "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
-                             "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
-                             "data_tier": "raw", "event_count": 0,
-                             "ub_project.name": "online", 
-                             "ub_project.stage": "assembler", 
-                             "ub_project.version": self._pubsver }
-                status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
+                status_v[i] = (kSTATUS_TO_BE_VALIDATED,badJsonData)
                 continue
                                
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
@@ -427,7 +428,7 @@ class get_metadata( ds_project_base ):
                 self.error ("Unexpected error: %s" % sys.exc_info()[0] )
                 self.error ("1st event:\n%s" % first_event_cout)
                 self.error ("Last event:\n%s" % last_event_cout)
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
                 self.error('Failed extracting metadata: %s' % in_file)
                 continue
 
@@ -453,6 +454,7 @@ class get_metadata( ds_project_base ):
             status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
+
 
     ## @brief access DB and retrieves processed run for validation
     def validate(self):
