@@ -1,49 +1,63 @@
 #The format of this file is : project_name, followed by a space, followed by the description with NO line breaks in it. You're allowed to have empty lines.
 
-swizzle_data This project swizzles the data that has successfully been declared, validated, signed, sealed delivered to SAM. Eventually we will in fact ask also that the beamdaq has been retrieved and merged, but that's only a config change in this project's config chunk. We submit lar jobs to local node only, by-passsing condor altogether for now. 
+prod_binary_checksum_evb Binary Checksum
+prod_binary_metadata_near1 Binary Metadata
+prod_register_binary_evb Metadata Registration
+prod_transfer_binary_evb2dropbox_near1 Binary Transfer [EVB]
+prod_verify_binary_evb2dropbox_near1 Binary Transfer Validation [EVB]
+prod_clean_evb_binary_evb Binary Data Deletion [EVB]
+prod_transfer_binary_evb2near1_near1 Binary File Drain [EVB-->Near1]
+prod_transfer_binary_near12dropbox_near1 Binary Transfer [Near1]
+prod_verify_binary_near12dropbox_near1 Binary Transfer Validation [Near1]
+prod_clean_near_binary_near1 Binary Data Deletion [Near1]
 
-get_root_metadata This projects opens daq root files that have been moved by the mv_assembler_daq_files project, opens it and extracts some metadata, then stuffs this into and write out a json file.
 
-monitor_machine_resources This projects monitors the resource usage on the machine on which the PUBS daemon is running. It saves a plot of the resource usage.
 
-get_binary_metadata This projects opens daq binary files that have been moved by the mv_assembler_daq_files project, opens it and extracts some metadata, then stuffs this into and write out a json file.
+#Old projects
+#swizzle_data This project swizzles the data that has successfully been declared, validated, signed, sealed delivered to SAM. Eventually we will in fact ask also that the beamdaq has been retrieved and merged, but that's only a config change in this project's config chunk. We submit lar jobs to local node only, by-passsing condor altogether for now. 
 
-kazu2 This is a project that clearly has nothing to do with production PUBS running, but was created presumably by kazu, or kazu's twin brother, kazu2.
+#get_root_metadata This projects opens daq root files that have been moved by the mv_assembler_daq_files project, opens it and extracts some metadata, then stuffs this into and write out a json file.
 
-transfer_binary_to_dropbox This project moves a binary file to a dropbox directory for SAM to whisk it away... Status codes: 2 => Copied the file to dropbox.
+#monitor_machine_resources This projects monitors the resource usage on the machine on which the PUBS daemon is running. It saves a plot of the resource usage.
 
-compare_binary_checksum_near1 This project compares the binary checksum that we have previously gotten from near1.
+#get_binary_metadata This projects opens daq binary files that have been moved by the mv_assembler_daq_files project, opens it and extracts some metadata, then stuffs this into and write out a json file.
 
-get_root_checksum_near1 This project takes in the root file located on near1 and gets the checksum of it.
+#kazu2 This is a project that clearly has nothing to do with production PUBS running, but was created presumably by kazu, or kazu's twin brother, kazu2.
 
-compare_binary_checksum_tape This project compares the checksum that we have previously gotten from the file on tape.
+#transfer_binary_to_dropbox This project moves a binary file to a dropbox directory for SAM to whisk it away... Status codes: 2 => Copied the file to dropbox.
 
-transfer_root_to_dropbox This project moves a root file to a dropbox directory for SAM to whisk it away... Status codes: 2 => Copied the file to dropbox.
+#compare_binary_checksum_near1 This project compares the binary checksum that we have previously gotten from near1.
 
-get_binary_checksum_near1 This is a project that gets the checksum from a binary file located on near1.
+#get_root_checksum_near1 This project takes in the root file located on near1 and gets the checksum of it.
 
-reg_binary_to_sam This process registers the binary file with samweb *.ubdaq and moves it to a dropbox directory for SAM to whisk it away... Status codes: 100 => Cannot find the file to be declared. 101 => File already exists in SAM, email the expert. 2 => Declared the file to SAM. 102 => File doesn't exist at SAM, but failed to declare to SAM. 0 => Validated the file at SAM.
+#compare_binary_checksum_tape This project compares the checksum that we have previously gotten from the file on tape.
 
-check_binary_on_tape This uses a SAMweb module to check if the binary file is correctly in enstore as we expect it to be.
+#transfer_root_to_dropbox This project moves a root file to a dropbox directory for SAM to whisk it away... Status codes: 2 => Copied the file to dropbox.
 
-check_noise_near1 This runs Wes's noise checking script to determine the number of noisy channels in the TPC. The output is stored in a PUBs data directory.
+#get_binary_checksum_near1 This is a project that gets the checksum from a binary file located on near1.
 
-clean_binary_evb This is a project that checks finished jobs on evb and deletes old files.
+#reg_binary_to_sam This process registers the binary file with samweb *.ubdaq and moves it to a dropbox directory for SAM to whisk it away... Status codes: 100 => Cannot find the file to be declared. 101 => File already exists in SAM, email the expert. 2 => Declared the file to SAM. 102 => File doesn't exist at SAM, but failed to declare to SAM. 0 => Validated the file at SAM.
 
-check_root_on_tape This uses a SAMweb module to check if the root file is correctly in enstore as we expect it to be.
+#check_binary_on_tape This uses a SAMweb module to check if the binary file is correctly in enstore as we expect it to be.
 
-mv_binary_evb This is a project that does an rsync of the binary data file from the evb machine to the near1 machine.
+#check_noise_near1 This runs Wes's noise checking script to determine the number of noisy channels in the TPC. The output is stored in a PUBs data directory.
 
-get_binary_checksum_evb This project takes in the binary file located on ecb and gets the checksum of it.
+#clean_binary_evb This is a project that checks finished jobs on evb and deletes old files.
 
-clean_binary_near1 This is a project that takes finished binary files on near1 and deletes old files.
+#check_root_on_tape This uses a SAMweb module to check if the root file is correctly in enstore as we expect it to be.
 
-clean_root_near1 This is a project that takes finished root files on near1 and deletes old files.
+#mv_binary_evb This is a project that does an rsync of the binary data file from the evb machine to #the near1 machine.
 
-clean_root_json_near1 This is a project that takes finished root JSON files on near1 and deletes old files.
+#get_binary_checksum_evb This project takes in the binary file located on ecb and gets the checksum #of it.
 
-clean_binary_json_near1 This is a project that takes finished binary files on near1 and deletes old files.
+#clean_binary_near1 This is a project that takes finished binary files on near1 and deletes old files#.
 
-reg_root_to_sam This process registers the root file with samweb *.ubdaq and moves it to a dropbox directory for SAM to whisk it away... Status codes: 100 => Cannot find the file to be declared. 101 => File already exists in SAM, email the expert. 2 => Declared the file to SAM. 102 => File doesn't exist at SAM, but failed to declare to SAM. 0 => Validated the file at SAM.
+#clean_root_near1 This is a project that takes finished root files on near1 and deletes old files.
 
-compare_root_checksum_tape This project compares the root checksum that we have previously gotten from tape.
+#clean_root_json_near1 This is a project that takes finished root JSON files on near1 and deletes #old files.
+
+#clean_binary_json_near1 This is a project that takes finished binary files on near1 and deletes old #files.
+
+#reg_root_to_sam This process registers the root file with samweb *.ubdaq and moves it to a dropbox #directory for SAM to whisk it away... Status codes: 100 => Cannot find the file to be declared. 101 #=> File already exists in SAM, email the expert. 2 => Declared the file to SAM. 102 => File doesn't #exist at SAM, but failed to declare to SAM. 0 => Validated the file at SAM.
+
+#compare_root_checksum_tape This project compares the root checksum that we have previously gotten #from tape.

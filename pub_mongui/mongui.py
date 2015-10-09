@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from custom_piechart_class import PieChartItem
 from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
+from custom_bar_class import ProgressBarItem
 from gui_utils_api import GuiUtilsAPI, GuiUtils
 
 # catch ctrl+C to terminate the program
@@ -23,20 +24,24 @@ from load_proj_descriptions import getProjectDescriptions
 from dstream.ds_api import ds_reader
 # pub_dbi import
 from pub_dbi import pubdb_conn_info
-
+import sys
 import time
 # ==> timeprofiling: importing stuff takes 1.5 seconds
 
 ##############################################################
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
-
-my_template = 'pubs_diagram_093015.png'#'pubs_diagram_092515.png'
+my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
+my_params = 'pubs_diagram_100615_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
+
+# GUI utils interface
+guiut = GuiUtils()
+
 # ==> timeprofiling: creating gdbi object takes 1.3 seconds (it connects itself to database)
 
 #suppress warnings temporarily:
@@ -51,6 +56,7 @@ app = QtGui.QApplication([])
 
 #Load in the background image via pixmap
 pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+my_template)
+
 # ==> timeprofiling: loading in this pixmap takes 0.1 seconds
 
 #Make the scene the same size as the background template
@@ -80,25 +86,38 @@ enabledprojectnames = gdbi.getEnabledProjectNames()
 proj_dict = {}
 
 # Dictionary of project name --> text on top of project
-projtext_dict = {}
+projsupertext_dict = {}
+# Dictionary of project name --> text below project
+projsubtext_dict = {}
 
 #Read in the parameters for this template into a dictionary
 #These dictate, based on project name, where to draw on GUI
-template_params = getParams(my_template)
+template_params = getParams(my_params)
 
 #Read in the project descriptions stored in a separate text file
 proj_descripts = getProjectDescriptions()
 # ==> timeprofiling: getting project descriptions takes 0.1 seconds
 
+#Brush to paint white text
+text_brush = QtGui.QBrush(QtGui.QColor('white'))
+#Pen to outline white text in black
+outline_pen = QtGui.QPen(QtGui.QColor('darkGray'))
+outline_pen.setWidth(0.01)
+
 #Daemon text item (stored in array because that's the only way I can get it to work)
 daemon_text_content, daemon_warning_content = gdbi.genDaemonTextAndWarnings()
-daemon_text = QtGui.QGraphicsTextItem()
+daemon_text = QtGui.QGraphicsSimpleTextItem()
 daemon_warning = QtGui.QGraphicsTextItem()
-daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.95)
-daemon_text.setPlainText(daemon_text_content)
-daemon_text.setDefaultTextColor(QtGui.QColor('white'))
+daemon_text.setBrush(text_brush)
+# daemon_text.setPen(outline_pen)
+# daemon_warning.setBrush(text_brush)
+# daemon_warning.setPen(outline_pen)
+daemon_text.setPos(scene_xmin+0.02*scene_width,scene_height*0.93)
+daemon_text.setText(daemon_text_content)
+# daemon_text.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
-myfont.setPointSize(12)
+myfont.setPointSize(13)
+myfont.setBold(True)
 daemon_text.setFont(myfont)
 daemon_warning.setPlainText(daemon_warning_content)
 daemon_warning.setDefaultTextColor(QtGui.QColor('white'))
@@ -108,6 +127,29 @@ daemon_warning.setFont(warningfont)
 scene.addItem(daemon_text)
 # ==> timeprofiling: generating daemon text takes a longass time, until the daemon_log(start,end) function is fixed.
 
+def resetCounters():
+    gdbi.resetCounters()
+
+reset_button = QtGui.QPushButton()
+reset_button.setText("Reset Counters")
+reset_button.setMinimumSize(QtCore.QSize(0,0))
+reset_button.setMaximumSize(QtCore.QSize(10000,10000))
+reset_button.setGeometry(scene_xmin+0.10*scene_width, 0.10*scene_height,200,50)
+# reset_button.setStyleSheet("border-style: outset; border-width: 2px; border-radius: 0px; border-color: beige; font: bold 15px; color: black; padding: 4px;")
+reset_button_widget = scene.addWidget(reset_button)
+reset_button_widget.setZValue(3.0)
+reset_button.clicked.connect(resetCounters)
+
+relative_counter_checkbox = QtGui.QCheckBox()
+relative_counter_checkbox.setText("Use Relative Counters")
+relative_counter_checkbox.setGeometry(scene_xmin+0.10*scene_width, 0.05*scene_height,200,25)
+relative_counter_checkbox.setStyleSheet("color: white; background-color: transparent; font: bold 15px; min-width: 15em")
+relative_counter_checkbox.setAutoFillBackground(True)
+relative_counter_checkbox.setChecked(True)
+relative_counter_checkbox_widget = scene.addWidget(relative_counter_checkbox)
+relative_counter_checkbox_widget.setZValue(3.0)
+
+
 for iprojname in projectnames:
 
     if iprojname not in template_params:
@@ -116,10 +158,14 @@ for iprojname in projectnames:
         continue    
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
-    xloc, yloc, maxradius = template_params[iprojname]
+    xloc, yloc, maxradius, parents = template_params[iprojname]
     xloc, yloc, maxradius = float(xloc), float(yloc), float(maxradius)
 
-    ichart = PieChartItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
+    #Make a progress bar item for this project
+    ichart = ProgressBarItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
+
+    #Make sure progress bars are always in the front (all default z values are 0)
+    ichart.setZValue(2.0)
 
     #Initialize the piechart description from the stored text file
     if iprojname in proj_descripts.keys():
@@ -143,7 +189,8 @@ for iprojname in projectnames:
     #Get the maximum radius of for this pie chart from the template parameters
     max_radius = float(template_params[iprojname][2])
     #Compute the number of entries in the pie chart (denominator)
-    tot_n = gdbi.getTotNRunSubruns(iprojname)
+    # tot_n = gdbi.getTotNRunSubruns(iprojname)
+    tot_n = gdbi.getScaledNRunSubruns(iprojname,use_relative=relative_counter_checkbox.isChecked())
     #Compute the radius if the pie chart, based on the number of entries
     ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
     #Compute the0000gn/T/s slices of the pie chart
@@ -161,30 +208,106 @@ for iprojname in projectnames:
  
     #On top of the pie chart, write the number of run/subruns
     #Re-draw the text on top of the pie chart with the project name
-    mytext = QtGui.QGraphicsTextItem()
-    mytext.setPos(ix-ir/2,iy+1.1*ir)
-    mytext.setPlainText(str(tot_n))
-    mytext.setDefaultTextColor(QtGui.QColor('white'))
+    mysupertext = QtGui.QGraphicsSimpleTextItem()
+    mysupertext.setBrush(text_brush)
+    mysupertext.setPen(outline_pen)
+    mysupertext.setZValue(2.0)
+    mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
+    mysupertext.setText(proj_dict[iprojname].getDescript())#iprojname)
+    # mysupertext.setDefaultTextColor(QtGui.QColor('white'))
+
     myfont = QtGui.QFont()
     myfont.setBold(True)
     myfont.setPointSize(12)
-    mytext.setFont(myfont)
-    scene.addItem(mytext)
+    mysupertext.setFont(myfont)
+    scene.addItem(mysupertext)
     #Store the text in a dictionary
-    projtext_dict[iprojname] = mytext
+    projsupertext_dict[iprojname] = mysupertext
+
+    mysubtext = QtGui.QGraphicsSimpleTextItem()
+    mysubtext.setBrush(text_brush)
+    mysubtext.setPen(outline_pen)
+    mysubtext.setZValue(2.0)
+    mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
+    ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
+    mysubtext.setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
+    # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
+    myfont = QtGui.QFont()
+    myfont.setBold(True)
+    myfont.setPointSize(12)
+    mysubtext.setFont(myfont)
+    scene.addItem(mysubtext)
+    #Store the text in a dictionary
+    projsubtext_dict[iprojname] = mysubtext
 
 
-# ==> timeprofiling: creating all piecharts and adding them to the scene takes 0.002 seconds **************
+#######################################################################
+############## Draw animated arrows from parent --> daughter projects
+#######################################################################
+arrows = {}
+animations = {}
+
+# animation_timer = QtCore.QTimeLine(5000)
+# #loop infinitely
+# animation_timer.setLoopCount(0)
+# animation_timer.setFrameRange(0,100)
+
+# line_pen = QtGui.QPen(QtGui.QBrush('w'),5)
+line_pen = QtGui.QPen(QtGui.QColor('darkCyan'))
+line_pen.setWidth(6)
+for iprojname in projectnames:
+    if iprojname not in template_params:
+        continue    
+
+    xloc, yloc, maxradius, parents = template_params[iprojname]
+
+    #For each parent of this project, draw a line from it to the parent and have an animated arrow
+    for parent in parents:
+        if parent not in proj_dict.keys():
+            continue
+        endpoint = proj_dict[iprojname].getCenterPoint()
+        startpoint = proj_dict[parent].getCenterPoint()
+        spx, spy = startpoint[0], startpoint[1]
+        epx, epy = endpoint[0], endpoint[1]
+        spx += proj_dict[iprojname].getRadius()*0.5
+        spy += proj_dict[iprojname].getHeight()*0.5
+        epx += proj_dict[parent].getRadius()*0.5
+        epy += proj_dict[parent].getHeight()*0.5
+
+        #Let's try lines instead of arrows
+        myline = scene.addLine(spx,spy,epx,epy,pen=line_pen)
+        myline.setZValue(1.0)
+        # if parent == 'prod_verify_binary_evb2dropbox_near1':
+        #     print "starting at Binary Transfer Validation to %s"%iprojname
+        #     print "(%f,%f) ==> (%f,%f)"%(spx,spy,epx,epy)
+        # arrows[iprojname] = guiut.getArrowObject((spx,spy),(epx,epy))
+        # arrows[iprojname].setPos(spx,spy)
+        # arrows[iprojname].setPos(epx,epy)
+        # animations[iprojname] = QtGui.QGraphicsItemAnimation()
+        # animations[iprojname].setItem(arrows[iprojname])
+        # animations[iprojname].setTimeLine(animation_timer)
+        # animations[iprojname].setPosAt(0,QtCore.QPointF(spx,spy))
+        # animations[iprojname].setPosAt(1,QtCore.QPointF(epx,epy))
+        # scene.addItem(arrows[iprojname])
+#start the animations running
+# animation_timer.start()
+#######################################################################
+############## End draw animated arrows from parent --> daughter projects
+#######################################################################
 
 #Add a static legend to the bottom right #to do: make legend always in foreground
-mytext = QtGui.QGraphicsTextItem()
-mytext.setPos(scene_xmin+0.80*scene_width,scene_height*0.92)
-mytext.setPlainText('Legend:\nBlue: Pending Files (Good)\nColorful: Error status.\nGray: Project Disabled')
-mytext.setDefaultTextColor(QtGui.QColor('white'))
+mytext = QtGui.QGraphicsSimpleTextItem()
+mytext.setBrush(text_brush)
+mytext.setPen(outline_pen)
+mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.90)
+mytext.setText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
+# mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
-myfont.setPointSize(10)
+myfont.setPointSize(12)
 mytext.setFont(myfont)
 scene.addItem(mytext)
+
+
 
 def update_gui():
     global global_update_counter
@@ -195,13 +318,17 @@ def update_gui():
     # ==> timeprofiling: if you include daemon text stuff, update_gui takes 3.2 seconds
     #todo: put all of this in a separate thread, perhaps
 
+    #Hide "reset" button if reset checkbox isn't selected
+    if not relative_counter_checkbox.isChecked(): reset_button_widget.hide()
+    else: reset_button_widget.show()
+
     #This is the one DB query that returns all projects and array of different statuses per project
     gdbi.update()
 
     daemon_text_content, daemon_warning_content = gdbi.genDaemonTextAndWarnings()
   
     #Change the text on the already-created daemon text
-    daemon_text.setPlainText(daemon_text_content)
+    daemon_text.setText(daemon_text_content)
     daemon_warning.setPlainText(daemon_warning_content)
     #If there were any warnings, open a window shouting at shifters
     if daemon_warning_content:      
@@ -226,11 +353,12 @@ def update_gui():
         #Get the maximum radius of for this pie chart from the template parameters
         max_radius = float(template_params[iprojname][2])
         #Compute the number of entries in the pie chart (denominator)
-        tot_n = gdbi.getTotNRunSubruns(iprojname)
+        # tot_n = gdbi.getTotNRunSubruns(iprojname)
+        tot_n = gdbi.getScaledNRunSubruns(iprojname)
         #Compute the radius if the pie chart, based on the number of entries
         ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
         #Compute the0000gn/T/s slices of the pie chart
-        pie_slices = gdbi.computePieSlices(iprojname)
+        pie_slices = gdbi.computePieSlices(iprojname,use_relative=relative_counter_checkbox.isChecked())
 
         #If the project is disabled, make a filled-in gray circle
         if iprojname not in enabledprojectnames: pie_slices = [ (1., 0.2) ]
@@ -245,7 +373,8 @@ def update_gui():
         proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
         #Below the pie chart, update the written number of run/subruns
-        projtext_dict[iprojname].setPlainText(str(tot_n))
+        ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
+        projsubtext_dict[iprojname].setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()

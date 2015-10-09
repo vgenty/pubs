@@ -35,7 +35,7 @@ def get_prefix( path ) :
     raise LookupError("no server known for %s" % path)
 
 def get_pnfs_1_adler32_and_size( path ):
-    sum = 0
+    checksum = 0
     first = True
     cmd = "srmls -2 -l %s/pnfs/fnal.gov/usr/%s" % ( get_prefix(path), path[5:])
     #print "running: " , cmd
@@ -54,10 +54,10 @@ def get_pnfs_1_adler32_and_size( path ):
         if line.find("Checksum value:") > 0:
             ssum = line[line.find(':') + 2:]
             #print "got string: ", ssum
-            sum = long( ssum , base = 16 )
-            #print "got val: %lx" % sum
+            checksum = long( ssum , base = 16 )
+            #print "got val: %lx" % checksum
             pf.close()
-            return  sum, size
+            return  checksum, size
 
     pf.close()
     raise LookupError("no checksum found for %s" % path)
@@ -124,18 +124,20 @@ class verify_dropbox( ds_project_base ):
         self._experts = resource['EXPERTS']
         try:
             self._parent_project = resource['PARENT_PROJECT'].split(':')
-            self._parent_status  = [int(x) for x in resource['PARENT_STATUS'].split(':')]
+            self._parent_status  = []
+            for x in resource['PARENT_STATUS'].split(':'):
+                exec('self._parent_status.append(int(%s))' % x)
             if not len(self._parent_project) == len(self._parent_status):
                 raise ValueError
         except Exception:
             self.error('Failed to load parent projects...')
-            return False
+            raise DSException
 
-        exec('self._success_status=int(resource[\'FINISHED_STATUS\'])')
-        exec('self._sample_status=int(resource[\'SAMPLE_STATUS\'])')
-        exec('self._sample_modular=int(resource[\'SAMPLE_MODULAR\'])')
+        exec('self._success_status=int(%s)' % resource['FINISHED_STATUS'] )
+        exec('self._sample_status=int(%s)'  % resource['SAMPLE_STATUS']   )
+        exec('self._sample_modular=int(%s)' % resource['SAMPLE_MODULAR']  )
         status_name(self._success_status)
-        status_name(self._error_handle_status)
+        status_name(self._sample_status)
         
         #this constructs the list of projects and their status codes
         #we want the project to be status 1, while the dependent projects to
@@ -190,7 +192,9 @@ class verify_dropbox( ds_project_base ):
             for x in self.get_xtable_runs([self._project,self._skip_ref_project],
                                           [kSTATUS_INIT,self._skip_ref_status]):
                 if ctr<=0: break
-                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                self.set_verify_status( run     = int(x[0]),
+                                        subrun  = int(x[1]),
+                                        status  = self._skip_status) 
                 ctr -= 1
 
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
@@ -264,8 +268,6 @@ class verify_dropbox( ds_project_base ):
             RefStatus = self._api.get_status( ds_status(self._ref_project, run, subrun, 0))
             near1_checksum = RefStatus._data
 
-            pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( out_file )
-            near1_adler32_1 = convert_0_adler32_to_1_adler32(near1_checksum, pnfs_size)
             try:
                 samweb = samweb_cli.SAMWebClient(experiment="uboone")
                 meta = samweb.getMetadata(filenameorid=in_file_name)

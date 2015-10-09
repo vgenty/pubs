@@ -75,6 +75,8 @@ class get_metadata( ds_project_base ):
         self._parallelize = 0
         self._min_run = 0
 
+        self._nretrial = 5
+
         self._nskip = 0
         self._skip_ref_project = []
         self._skip_ref_status = None
@@ -122,6 +124,8 @@ class get_metadata( ds_project_base ):
             status_name(self._skip_ref_status)
             status_name(self._skip_status)        
 
+        self._nretrial = int(resource['NRETRIAL'])
+
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -148,7 +152,11 @@ class get_metadata( ds_project_base ):
             for x in self.get_xtable_runs([self._project,self._skip_ref_project],
                                           [kSTATUS_INIT,self._skip_ref_status]):
                 if ctr<=0: break
-                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                self.log_status( ds_status( project = self._project,
+                                            run     = int(x[0]),
+                                            subrun  = int(x[1]),
+                                            seq     = 0,
+                                            status  = self._skip_status) )
                 ctr -= 1
 
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
@@ -173,7 +181,7 @@ class get_metadata( ds_project_base ):
             if ctr <= 0: break
 
             # Report starting
-            self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
+            #self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
 
@@ -226,17 +234,20 @@ class get_metadata( ds_project_base ):
         for i in xrange(len(status_v)):
 
             run,subrun = runid_v[i]
-            status,jsonData = status_v[i]
-            if jsonData:
+            status,data = status_v[i]
+            if data is None:
+                data = ''
+            if data and type(data) == type(dict()):
                 fout = open('%s.json' % infile_v[i], 'w')
-                json.dump(jsonData, fout, sort_keys = True, indent = 4, ensure_ascii=False)
-
+                json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
+                data = ''
             # Create a status object to be logged to DB (if necessary)
             self.log_status ( ds_status( project = self._project,
                                          run     = run,
                                          subrun  = subrun,
                                          seq     = 0,
-                                         status  = status) )
+                                         status  = status,
+                                         data    = data ) )
         
     def process_swizzled_files(self,in_file_v,runid_v,checksum_v=[]):
         
@@ -339,31 +350,42 @@ class get_metadata( ds_project_base ):
 
                 checksum = ref_status._data
 
+            # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
+            badJsonData = { 'file_name': os.path.basename(in_file), 
+                            'file_type': "data", 
+                            'file_size': fsize, 
+                            'file_format': "binaryraw-uncompressed", 
+                            'runs': [ [run,  subrun, 'test'] ], 
+                            'first_event': 0,
+                            'start_time': '1970-01-01T00:00:00',
+                            'end_time': '1970-01-01T00:00:00',
+                            'last_event': 0,
+                            'group': 'uboone', 
+                            "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
+                            "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
+                            "data_tier": "raw", "event_count": 0,
+                            "ub_project.name": "online", 
+                            "ub_project.stage": "assembler", 
+                            "ub_project.version": self._pubsver }
+            
             if mp.poll(i):
                 self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(i)))
-                if not mp.poll(i) == 2:
+                ref_status = self._api.get_status( ds_status( self._project, run, subrun, 0 ) )
+                ntrial_past = 0
+                try:
+                    ntrial_past = int(ref_status._data)
+                    ntrial_past +=1
+                except Exception:
+                    ntrial_past = 0
+                if ntrial_past <= self._nretrial:
+                    self.info('Will give a re-trial later (%d/%d)' % (ntrial_past,self._nretrial))
+                    status_v[i] = (kSTATUS_INIT,ntrial_past)
+                    continue
+                if not mp.poll(i) in [2,-9]:
                     status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                     continue
-                # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
-                continue
-                jsonData = { 'file_name': os.path.basename(in_file), 
-                             'file_type': "data", 
-                             'file_size': fsize, 
-                             'file_format': "binaryraw-uncompressed", 
-                             'runs': [ [run,  subrun, 'test'] ], 
-                             'first_event': -1,
-                             'start_time': '1970-00-01T00:00:00',
-                             'end_time': '1970-00-01T00:00:00',
-                             'last_event': -1,
-                             'group': 'uboone', 
-                             "crc": { "crc_value":checksum,  "crc_type":"adler 32 crc type" }, 
-                             "application": {  "family": "online",  "name": "assembler", "version": 'unknown' }, 
-                             "data_tier": "raw", "event_count": 0,
-                             "ub_project.name": "online", 
-                             "ub_project.stage": "assembler", 
-                             "ub_project.version": self._pubsver }
-                status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
+                self.info('Return code = 2... will provide invalid metadata and move on!')
+                status_v[i] = (kSTATUS_TO_BE_VALIDATED,badJsonData)
                 continue
                                
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
@@ -373,32 +395,40 @@ class get_metadata( ds_project_base ):
 
             try:
                 for line in last_event_cout.split('\n'):
-                    
                     if "run_number=" in line and "subrun" not in line :
-                        if not run == int(line.split('=')[-1]):
-                            self.warning('Detected un-matching run number: content says run=%d for file %d' % (int(line.split('=')[-1]),in_file))
+                        self.debug('Extracting run_number... %s' % line.split('=')[-1])
+                        if not run == int(line.split('=')[-1].replace(' ','')):
+                            self.warning('Detected un-matching run number: content says run=%s for file %s' % (int(line.split('=')[-1]),in_file))
                     if "subrun_number=" in line:
-                        if not subrun == int(line.split('=')[-1]):
-                            self.warning('Detected un-matching subrun number: content says subrun=%d for file %d' % (int(line.split('=')[-1]),in_file))
+                        self.debug('Extracting subrun_number... %s' % line.split('=')[-1])
+                        if not subrun == int(line.split('=')[-1].replace(' ','')):
+                            self.warning('Detected un-matching subrun number: content says subrun=%s for file %s' % (int(line.split('=')[-1]),in_file))
                     if "event_number=" in line:
+                        self.debug('Extracting event_number... %s' % line.split('=')[-1])
                         eevt = int(line.split('=')[-1])
                     if "Localhost Time: (sec,usec)" in line:
+                        self.debug('Extracting Localhost Time... %s' % line.split(')')[-1].split(',')[0])
                         etime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
                     if "daq_version_label=" in line:
+                        self.debug('DAQ version... %s' % line.split('=')[-1])
                         ver = line.split('=')[-1]
-
+                        
                 for line in first_event_cout.split('\n'):
                     if "event_number=" in line:
-                        sevt = int(line.split('=')[-1])
+                        self.debug('Extracting event_number... %s' % line.split('=')[-1])
+                        sevt = int(line.split('=')[-1].replace(' ',''))
                     if "Localhost Time: (sec,usec)" in line:
+                        self.debug('Extracting Localhost Time... %s' % line.split(')')[-1].split(',')[0])
                         stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
 
                 status_v[i] = (3,None)
                 self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except:
-                self.error ("Unexpected error:", sys.exc_info()[0] )
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                self.error ("Unexpected error: %s" % sys.exc_info()[0] )
+                self.error ("1st event:\n%s" % first_event_cout)
+                self.error ("Last event:\n%s" % last_event_cout)
+                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
                 self.error('Failed extracting metadata: %s' % in_file)
                 continue
 
@@ -424,6 +454,7 @@ class get_metadata( ds_project_base ):
             status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
+
 
     ## @brief access DB and retrieves processed run for validation
     def validate(self):

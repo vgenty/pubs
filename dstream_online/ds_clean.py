@@ -4,7 +4,7 @@
 #  @author zarko
 
 # python include
-import sys
+import sys,commands
 import time, os, shutil
 import glob
 # pub_dbi package include
@@ -63,28 +63,33 @@ class ds_clean(ds_project_base):
         self._name_pattern = resource['NAME_PATTERN']
         self._disk_frac_limit = int(resource['USED_DISK_FRAC_LIMIT'].strip("%"))
         if 'SATTELITE_EXT' in resource:
-            self._satellite_extension = resource['SATTELITE_EXT']
+            self._satellite_extension = resource['SATTELITE_EXTENSION']
         try:
             self._parent_project = []
+            self.debug('Loading parents...')
 
             # Get parent project sets
             for parent_list in resource['PARENT_PROJECT'].split('::'):
 
                 self._parent_project.append( parent_list.split(':') )
 
-            self._parent_status = []
+            self.debug('PARENT_PROJECT loaded... %s' % self._parent_project)
 
+            self._parent_status = []
             # Get parent status sets
             for parent_status in resource['PARENT_STATUS'].split('::'):
 
                 self._parent_status.append( parent_status.split(':') )
 
+            self.debug('PARENT_STATUS loaded... %s' % self._parent_status)
+
             # Convert parent status to known integers
-            for x in xrange(len(self._parent_status)):
+            for i in xrange(len(self._parent_status)):
 
                 status_list = self._parent_status[i]
                 int_status_list = []
                 for x in status_list:
+                    self.debug('Interpreting status: %s' % x)
                     try:
                         exec('int_status_list.append( int(%s) )' % x)
                         status_name(int_status_list[-1])
@@ -93,11 +98,12 @@ class ds_clean(ds_project_base):
                         raise ValueError
 
                 self._parent_status[i] = int_status_list
+            self.debug('Parent status list loaded: %s' % self._parent_status[i])
 
             if not len(self._parent_project):
                 self.error('No parent registered!')
                 raise ValueError                
-        
+            
             if not len(self._parent_project) == len(self._parent_status):
                 self.error('Number set of parent and its status entry do not match!')
                 raise ValueError
@@ -114,7 +120,7 @@ class ds_clean(ds_project_base):
                 
         except Exception:
             self.error('Failed to load parent projects...')
-            return False
+            raise DSException
 
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
@@ -165,14 +171,16 @@ class ds_clean(ds_project_base):
             for x in self.get_xtable_runs([self._project,self._skip_ref_project],
                                           [kSTATUS_INIT,self._skip_ref_status]):
                 if ctr<=0: break
-                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                self.log_status( ds_status( project = self._project,
+                                            run     = int(x[0]),
+                                            subrun  = int(x[1]),
+                                            seq     = 0,
+                                            status  = self._skip_status) )
+
                 ctr -= 1
 
         # Check available space
-        if ":" in self._in_dir:
-            disk_frac_used=int(os.popen('ssh -x %s "df %s" | tail -n1'%tuple(self._in_dir.split(":"))).read().split()[4].strip("%"))
-        else:
-            disk_frac_used=int(os.popen('df %s | tail -n1'%(self._in_dir)).read().split()[4].strip("%"))
+        disk_frac_used = int(commands.getoutput('df %s | tail -n1' % self._in_dir).split()[3].rstrip('%'))
 
         self.info("%i%% of disk used. Removing files to get down to %i%%."%(disk_frac_used, self._disk_frac_limit))
         if (disk_frac_used < self._disk_frac_limit):
@@ -183,7 +191,7 @@ class ds_clean(ds_project_base):
         ctr = self._nruns
 
         target_runs = self.get_run_list()
-        for i in len(xrange(self._parent_project)):
+        for i in xrange(len(self._parent_project)):
             self.info('Found %d runs to be processed (from project %s ... requirement %s)' % (len(target_runs[i]),
                                                                                               self._parent_project[i],
                                                                                               self._parent_status[i]))
@@ -203,7 +211,6 @@ class ds_clean(ds_project_base):
             if ctr <0: break
 
             tmp_status = kSTATUS_INIT
-            rm_status = kSTATUS_INIT
 
             # Check input file exists. Otherwise report error
             filelist = find_run.find_file(self._in_dir,self._name_pattern,run,subrun)
@@ -227,26 +234,36 @@ class ds_clean(ds_project_base):
                 continue
 
             in_file = filelist[0]
-            
+            rm_status = 1
             self.info('Removing %s'%in_file)
 
-            if not os.path.isfile(in_file):
-                rm_status=os.system('rm -f %s' % in_file)
-                if self._satellite_extension:
-                    satellite_file = str(in_file)
-                    satellite_file = satellite_file[0:in_file.rfind('.')] + '.' + self._satellite_extension
-                    os.system('rm -f %s' % satellite_file)
-                tmp_status=kSTATUS_TO_BE_VALIDATED
+            if os.path.isfile(in_file) and os.system('rm -f %s' % in_file):
+                self.error('Failed to remove the file %s' % in_file)
+                self.log_status ( ds_status( project = self._project,
+                                             run     = int(x[0]),
+                                             subrun  = int(x[1]),
+                                             seq     = 0,
+                                             status  = kSTATUS_ERROR_CANNOT_REMOVE_FILE ) )
+                continue
 
-            if rm_status:
-                self.info('Failed to remove the file %s' % in_file)
-                tmp_status=kSTATUS_ERROR_CANNOT_REMOVE_FILE
+            if self._satellite_extension:
+                satellite_file = str(in_file) + '.' + self._satellite_extension
+                #satellite_file = satellite_file[0:in_file.rfind('.')] + '.' + self._satellite_extension
+                if os.path.isfile(satellite_file) and os.system('rm -f %s' % satellite_file):
+                    self.error('Failed to remove the file %s' % satellite_file)
+                    self.log_status ( ds_status( project = self._project,
+                                                 run     = int(x[0]),
+                                                 subrun  = int(x[1]),
+                                                 seq     = 0,
+                                                 status  = kSTATUS_ERROR_CANNOT_REMOVE_FILE ) )
+                    continue
+
             # Create a status object to be logged to DB (if necessary)
             self.log_status ( ds_status( project = self._project,
                                          run     = int(x[0]),
                                          subrun  = int(x[1]),
                                          seq     = 0,
-                                         status  = tmp_status ) )
+                                         status  = kSTATUS_TO_BE_VALIDATED ) )
             
             # Break from loop if counter became 0
             if not ctr: break

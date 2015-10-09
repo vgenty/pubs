@@ -1,5 +1,6 @@
 try:
     from pyqtgraph.Qt import QtGui, QtCore
+    import pyqtgraph as pg
 except ImportError:
     raise ImportError('Ruh roh. You need to set up pyqtgraph before you can use this GUI.')
 
@@ -25,8 +26,7 @@ class GuiUtilsAPI():
     def __init__(self, threadID, name, threadlock):
       threading.Thread.__init__(self)
       self.threadID = threadID
-      self.name = name
-      
+      self.name = name  
       # DB interface:
       self.dbi = ds_reader(pubdb_conn_info.reader_info())
     
@@ -41,8 +41,11 @@ class GuiUtilsAPI():
       self.relevant_daemons = GuiUtils().getRelevantDaemons()
       self.threadLock = threadlock
       self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
-      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
+      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,True)
 
+      #the querythread itSELF is a "daemon" (different than PUBS daemon)
+      #the reason for this is to make sure the thread closes when the main program closes
+      self.setDaemon(True)
 
     def run(self):
       #self.threadLock.acquire()
@@ -100,16 +103,42 @@ class GuiUtilsAPI():
     #{'dummy_daq': [(1, 109),(2,23)], 'dummy_nubin_xfer': [(0,144), (1, 109)]}
     #At this point, the project dict isn't filled yet...
     self.proj_dict = self.querythread.getProjDict()
+
+    #Dictionary that holds number of good, intermediate, bad status for each project
+    #when user clicks "reset" button, this comes in handy
+    #projectname ==> (ngood, nint, nbad)
+    self.stored_nGoodnInternError = {}
+    for projectname in self.proj_dict.keys():
+      self.stored_nGoodnInternError[projectname] = (0,0,0)
+
     if self.querythread.getProjects():
       self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
     else:
       self.enabled_projects = ['']
     self.my_utils = GuiUtils()
     self.colors = self.my_utils.getColors()
+    #True to reset counters on initialization of GUI
+    self.reset_self = True
+
+  def resetCounters(self):
+    print " >>> RESETTING PUBS MONITORING GUI COUNTERS AT %s <<<"%datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    self.reset_self = True
+
+  #on destructor, kill the thread
+  def __del__(self):
+    print "Destructing gui utils api!"
+    self.querythread.exit()
 
   def update(self):
     self.proj_dict = self.querythread.getProjDict()
     self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
+
+    #if user clicks "reset" button, store the current state of all projects' statuses
+    if self.reset_self:
+      self.reset_self = False
+      for projectname in self.proj_dict.keys():
+        self.stored_nGoodnInternError[projectname] = self.my_utils.getNGoodInterError(projectname,self.proj_dict[projectname])
+      
 
   def getAllProjectNames(self):
     return self.proj_dict.keys()
@@ -117,30 +146,53 @@ class GuiUtilsAPI():
   def getEnabledProjectNames(self):
     return self.enabled_projects
 
-  def computePieSlices(self,projname):
-
+  def computePieSlices(self,projname,use_relative = False):
+   
     if projname not in self.proj_dict.keys():
       print "Uh oh projname is not in dictionary. Figure out what happened..."
       return [ (1., 'r') ]
 
-    statuses = self.proj_dict[projname]
+    # tot_n = self.getTotNRunSubruns(projname)
+    tot_n = self.getScaledNRunSubruns(projname, use_relative=use_relative)
+    statuses = self.getScaledNGoodInterError(projname, use_relative=use_relative)  
+    #statuses is (n_good, n_inter, n_error)
+
+    # OLD #
+    # statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0, or 1000 now
-    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
 
     slices = []
-    #one giant green slice for fully completed project
-    if len(statuses) == 1 and statuses[0][0] in [ 0, 1000 ]:
+    #one giant green slice for fully completed project (no intermediat or error statuses)
+    if statuses[1] == 0 and statuses[2] == 0:
       return [ ( 1., 'g' ) ]
+    if tot_n == 0:
+      return [ (1., 'g' ) ]
 
-    for x in statuses:
-      #Don't care about status == 0 or 1000
-      if x[0] in [ 0, 1000 ]: continue
+    #one giant green slice for just-reset project
+    # if len(statuses) == 1 and self.my_utils.isGoodStatus(statuses[0][0]):
+    #   return [ ( 1., 'g' ) ]
+    # if len(statuses) == 0:
+    #   print "WHATTTTT"
 
-      if x[0] in self.colors.keys(): mycolor = self.colors[x[0]]
-      elif x[0] > 100: mycolor = 'r'
-      else: mycolor = [255, 140, 0] #dark orange
-      slices.append( ( (float(x[1])/tot_n), mycolor ) )
+    # fraction_good = float(statuses[0])/tot_n
+    fraction_inter = float(statuses[1])/tot_n
+    fraction_err = float(statuses[2])/tot_n
+
+    # slices.append( (fraction_good,'g') )
+    slices.append( (fraction_inter,[255,140,0]) )
+    slices.append( (fraction_err,'r') )
+
+    # for x in statuses:
+      #Don't care about good status values
+      # if self.my_utils.isGoodStatus(x[0]): continue
+      # elif self.my_utils.isErrorStatus(x[0]): mycolor = 'r'
+      # elif self.my_utils.isIntermediateStatus(x[0]): mycolor = [255, 140, 0] #dark orange
+      # else:
+      #   mycolor = 'w'
+      # #   print "wtf happened, status %d for project %s"%(x[0],projname)
+      # fraction = 0.
+      # if tot_n: fraction = (float(x[1])/tot_n)
+      # slices.append( ( fraction, mycolor ) )
     
     return slices
       
@@ -164,14 +216,31 @@ class GuiUtilsAPI():
 
     statuses = self.proj_dict[projname]
     #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-    #tot_n does not include status == 0 or 1000
-    tot_n = sum([x[1] for x in statuses if x[0] not in [ 0, 1000 ]])
+    #tot_n does not include "good" statuses
+
+    tot_n = sum( [ x[1] for x in statuses if not self.my_utils.isGoodStatus(x[0]) ] )
     return tot_n
 
   def getNRunSubruns(self,projname):
-    #don't include status == 0 or 1000 in any of this
-    return [x for x in self.proj_dict[projname] if x[0] not in [ 0, 1000 ]]
-    
+    #don't include "good" statuses in this
+    #return [ x for x in self.proj_dict[projname] if not self.my_utils.isGoodStatus(x[0]) ]
+    #Let's try including "good" statuses...
+    return [ x for x in self.proj_dict[projname] ]
+  
+  def getScaledNRunSubruns(self,projname,use_relative = False):
+    # compute the difference between last query ngood/nint/nbad and current query
+    # sum only intermediate and error statuses
+    return sum(self.getScaledNGoodInterError(projname,use_relative)[1:])
+
+  def getScaledNGoodInterError(self,projname,use_relative = False):
+    #return difference in stored number good,inter,bad statuses (either 0's at initialization, or a snapshot when
+    #user hit "reset" button) with the current number of those statuses
+    if use_relative:
+      answer = [b - a for a, b in zip(self.stored_nGoodnInternError[projname],self.my_utils.getNGoodInterError(projname,self.proj_dict[projname]))]
+    else: answer = self.my_utils.getNGoodInterError(projname,self.proj_dict[projname])
+    answer = tuple([ max(x,0) for x in answer ])
+    return answer
+
   def getDaemonStatuses(self, servername):
     #Returns [enabled/disabled, running/dead]
     max_daemon_log_lag = 600 #seconds
@@ -221,7 +290,7 @@ class GuiUtils():
     #              4112:[47,75,101]
     #              }
     self.colors={ 1:[72, 118, 255] }#47, 75, 101] }#[0, 255, 255] } #[47, 75, 101] }
-    self.update_period = 10 #seconds
+    self.update_period = 1 #seconds
     self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 
   def getColors(self):
@@ -237,3 +306,70 @@ class GuiUtils():
 
   def getRelevantDaemons(self):
     return self.relevant_daemons
+
+  def isGoodStatus(self, status):
+    return True if status == 0 or status >= 1000 else False
+
+  def isIntermediateStatus(self, status):
+    return True if status >= 1 and status < 100 else False
+
+  def isErrorStatus(self,status):
+    #temporary random -9 status floating around
+    if status < 0:
+      return True
+    #real definition 
+    return True if status >= 100 and status < 1000 else False
+
+  def getNGoodInterError_fullhistory(self,projname,history):
+    latest_data = []
+    for status, ihistory in history.iteritems():
+      latest_data.append( (status, ihistory[-1]) )
+
+    return self.getNGoodInterError(projname,latest_data=latest_data)
+
+  def getNGoodInterError(self,projname,latest_data):
+    # print projname
+    # print latest_data
+    n_good, n_inter, n_error = 0, 0, 0
+    for status, current_value in latest_data:
+      if self.isGoodStatus(status): n_good += current_value
+      elif self.isErrorStatus(status): n_error += current_value
+      elif self.isIntermediateStatus(status): n_inter += current_value
+      else:
+        print "something has gone horribly wrong. status %d for project %s"%(status,projname)
+   
+    return (n_good, n_inter, n_error)
+
+  def getArrowObject(self,startpoint,endpoint):
+    headlength = 35
+    tipangle = 60
+    tailwidth = 15
+    taillength = self.getArrowLength(startpoint,endpoint) - headlength
+    mypen = {'color': 'w', 'width': 3}
+    angle=self.getArrowAngle(startpoint,endpoint)
+    thisarrow = pg.ArrowItem(angle=angle, tipAngle=tipangle, headLen=headlength,
+     tailLen=taillength, tailWidth=tailwidth, pen=mypen)
+    # thisarrow.setPos(startpoint[0], startpoint[1])
+    return thisarrow
+
+  def getArrowAngle(self,startpoint,endpoint):
+    #0 degrees is pointing to the left, 90 degrees is pointing up
+
+    #case: vertical arrow
+    if startpoint[0] == endpoint[0]:
+      return 90. if endpoint[1] > startpoint[1] else -90.
+
+    #case: horizontal arrow
+    if startpoint[1] == endpoint[1]:
+      return 180. if endpoint[0] > startpoint[0] else 0.
+
+    answer = (180./3.14159)*math.tan(float(endpoint[1]-startpoint[1])/float(endpoint[0]-startpoint[0]))
+    if startpoint[1] > startpoint[0]: answer += 180
+
+    return answer
+
+
+  def getArrowLength(self,startpoint,endpoint):
+    answer = math.sqrt(math.pow(endpoint[1]-startpoint[1],2)+math.pow(endpoint[0]-startpoint[0],2))
+    return 50.
+    # return answer

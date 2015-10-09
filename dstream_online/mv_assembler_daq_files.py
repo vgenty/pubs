@@ -4,7 +4,7 @@
 #  @author echurch
 
 # python include
-import time,os
+import time,os,sys
 import subprocess
 # pub_dbi package include
 from pub_dbi import DBException
@@ -12,6 +12,7 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
+from dstream import ds_multiprocess
 from ds_online_util import *
 # script module tools
 from scripts import find_run
@@ -99,7 +100,11 @@ class mv_assembler_daq_files(ds_project_base):
             for x in self.get_xtable_runs([self._project,self._skip_ref_project],
                                           [kSTATUS_INIT,self._skip_ref_status]):
                 if ctr<=0: break
-                set_transfer_status(run=int(x[0]),subrun=int(x[1]),status=self._skip_status)
+                self.log_status( ds_status( project = self._project,
+                                            run     = int(x[0]),
+                                            subrun  = int(x[1]),
+                                            seq     = 0,
+                                            status  = self._skip_status ) )
                 ctr -= 1
 
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
@@ -109,8 +114,8 @@ class mv_assembler_daq_files(ds_project_base):
         runid_v=[]
         infile_v=[]
         satellite_v=[]
-        for x in self.get_runs([self._project,self._parent_project],
-                               [kSTATUS_INIT,self._parent_status]):
+        for x in self.get_xtable_runs([self._project,self._parent_project],
+                                      [kSTATUS_INIT,self._parent_status]):
 
             # Counter decreases by 1
             ctr -=1
@@ -153,13 +158,14 @@ class mv_assembler_daq_files(ds_project_base):
                 continue
 
             if self._satellite_extension:
-                satellite_file = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                #satellite_file = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                satellite_file = in_file + '.' + self._satellite_extension
                 if not os.path.isfile(satellite_file):
                     self.error('The satellite file not found: %s' % satellite_file)
                     continue
                 satellite_v.append(satellite_file)
                 
-            infile_v.append(in_file_segments[0])
+            infile_v.append(in_file)
             runid_v.append((run,subrun))
 
         mp = self.process_files(infile_v)
@@ -188,6 +194,7 @@ class mv_assembler_daq_files(ds_project_base):
 
             cmd = ['cp', '-v', in_file, out_file]
             self.info('Copying %s @ %s' % (in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
+            print cmd
 
             index,active_ctr = mp.execute(cmd)
 
@@ -260,6 +267,15 @@ class mv_assembler_daq_files(ds_project_base):
                 continue
 
             out_file = '%s/%s' % ( self._out_dir, in_file.split('/')[-1] )
+
+            if not os.path.isfile(out_file):
+                self.error('The output file not found: %s' % out_file)
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND) )
+
             size_diff = -1
             try:
                 size_diff = os.path.getsize(in_file) - os.path.getsize(out_file)
@@ -269,7 +285,7 @@ class mv_assembler_daq_files(ds_project_base):
             #res = subprocess.call(['ssh', 'ubdaq-prod-near1', '-x', 'ls', out_file])
             #res = subprocess.call(['ls', out_file])
             if size_diff:
-                self.error('Size mis-match on run: run=%d, subrun=%d ...' % (run,subrun))
+                self.error('Size mis-match on input file: %s' % in_file)
                 self.log_status( ds_status( project = self._project,
                                             run     = run,
                                             subrun  = subrun,
@@ -278,26 +294,29 @@ class mv_assembler_daq_files(ds_project_base):
                 continue
 
             if self._satellite_extension:
-                satellite_in = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                #satellite_in = str(in_file[0:in_file.rfind('.')]) + '.' + self._satellite_extension
+                satellite_in = in_file + '.' + self._satellite_extension
                 satellite_out = '%s/%s' % ( self._out_dir, satellite_in.split('/')[-1])
+                if not os.path.isfile(satellite_out):
+                    self.error('The satellite file not found: %s' % satellite_out)
+                    self.log_status( ds_status( project = self._project,
+                                                run     = run,
+                                                subrun  = subrun,
+                                                seq     = 0,
+                                                status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_FOUND) )
                 size_diff = -1
                 try:
                     size_diff = os.path.getsize(satellite_in) - os.path.getsize(satellite_out)
                 except Exception:
                     size_diff = -1
                 if size_diff:
-                    self.error('Size mis-match on run: run=%d, subrun=%d ...' % (run,subrun))
+                    self.error('Size mis-match on input file: %s' % satellite_in)
                     self.log_status( ds_status( project = self._project,
                                                 run     = run,
                                                 subrun  = subrun,
                                                 seq     = 0,
                                                 status  = kSTATUS_ERROR_TRANSFER_FAILED) )
                     continue
-                
-                if not os.path.isfile(satellite_file):
-                    self.error('The satellite file not found: %s' % satellite_file)
-                    continue
-                satellite_v.append(satellite_file)
 
             self.info('validated run: run=%d, subrun=%d ...' % (run,subrun))
             self.log_status( ds_status( project = self._project,
@@ -310,7 +329,7 @@ class mv_assembler_daq_files(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    test_obj = mv_assembler_daq_files()
+    test_obj = mv_assembler_daq_files(sys.argv[1])
 
     test_obj.process_newruns()
 

@@ -139,7 +139,11 @@ class ds_reader(pubdb_reader):
         
         (status,data) = self.fetchone()
         
-        info._status = int(status)
+        try:
+            info._status = int(status)
+        except Exception:
+            self._logger.error('Retrieved status is non-integer: %s' % status)
+            raise Exception
         info._data   = data
         return info
 
