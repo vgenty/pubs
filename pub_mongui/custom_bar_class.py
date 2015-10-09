@@ -127,7 +127,7 @@ class ProgressBarItem(QtGui.QGraphicsObject):
             self.history[istat].append(0)
 
         #If too many pending run/subruns are stored, trim the list
-        if self.n_history_updates > 500:
+        if self.n_history_updates > 1000:
             for mykey in self.history.keys():
                 self.history[mykey].pop(0)
 

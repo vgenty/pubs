@@ -136,7 +136,7 @@ reset_button.setMinimumSize(QtCore.QSize(0,0))
 reset_button.setMaximumSize(QtCore.QSize(10000,10000))
 reset_button.setGeometry(scene_xmin+0.10*scene_width, 0.10*scene_height,200,50)
 # reset_button.setStyleSheet("border-style: outset; border-width: 2px; border-radius: 0px; border-color: beige; font: bold 15px; color: black; padding: 4px;")
-scene.addWidget(reset_button)
+reset_button_widget = scene.addWidget(reset_button)
 reset_button.clicked.connect(resetCounters)
 
 relative_counter_checkbox = QtGui.QCheckBox()
@@ -144,6 +144,7 @@ relative_counter_checkbox.setText("Use Relative Counters")
 relative_counter_checkbox.setGeometry(scene_xmin+0.10*scene_width, 0.05*scene_height,200,25)
 relative_counter_checkbox.setStyleSheet("color: white; background-color: transparent; font: bold 15px; min-width: 15em")
 relative_counter_checkbox.setAutoFillBackground(True)
+relative_counter_checkbox.setChecked(True)
 scene.addWidget(relative_counter_checkbox)
 
 
@@ -314,6 +315,10 @@ def update_gui():
     # ==> timeprofiling: entire update_gui function takes 1.2 seconds if you take out the daemon text stuff
     # ==> timeprofiling: if you include daemon text stuff, update_gui takes 3.2 seconds
     #todo: put all of this in a separate thread, perhaps
+
+    #Hide "reset" button if reset checkbox isn't selected
+    if not relative_counter_checkbox.isChecked(): reset_button_widget.hide()
+    else: reset_button_widget.show()
 
     #This is the one DB query that returns all projects and array of different statuses per project
     gdbi.update()
