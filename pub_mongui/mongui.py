@@ -127,6 +127,20 @@ daemon_warning.setFont(warningfont)
 scene.addItem(daemon_text)
 # ==> timeprofiling: generating daemon text takes a longass time, until the daemon_log(start,end) function is fixed.
 
+def resetCounters():
+    gdbi.resetCounters()
+
+
+reset_button = QtGui.QPushButton()
+reset_button.setText("Reset Counters")
+reset_button.setMinimumSize(QtCore.QSize(0,0))
+reset_button.setMaximumSize(QtCore.QSize(10000,10000))
+reset_button.setGeometry(scene_xmin+0.02*scene_width, 0.02*scene_height,200,50)
+scene.addWidget(reset_button)
+reset_button.clicked.connect(resetCounters)
+
+
+
 for iprojname in projectnames:
 
     if iprojname not in template_params:
@@ -166,7 +180,8 @@ for iprojname in projectnames:
     #Get the maximum radius of for this pie chart from the template parameters
     max_radius = float(template_params[iprojname][2])
     #Compute the number of entries in the pie chart (denominator)
-    tot_n = gdbi.getTotNRunSubruns(iprojname)
+    # tot_n = gdbi.getTotNRunSubruns(iprojname)
+    tot_n = gdbi.getScaledNRunSubruns(iprojname)
     #Compute the radius if the pie chart, based on the number of entries
     ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
     #Compute the0000gn/T/s slices of the pie chart
@@ -205,7 +220,7 @@ for iprojname in projectnames:
     mysubtext.setPen(outline_pen)
     mysubtext.setZValue(1.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
-    ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())
+    ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname)
     mysubtext.setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
@@ -324,7 +339,8 @@ def update_gui():
         #Get the maximum radius of for this pie chart from the template parameters
         max_radius = float(template_params[iprojname][2])
         #Compute the number of entries in the pie chart (denominator)
-        tot_n = gdbi.getTotNRunSubruns(iprojname)
+        # tot_n = gdbi.getTotNRunSubruns(iprojname)
+        tot_n = gdbi.getScaledNRunSubruns(iprojname)
         #Compute the radius if the pie chart, based on the number of entries
         ir = gdbi.computePieRadius(iprojname, max_radius, tot_n)
         #Compute the0000gn/T/s slices of the pie chart
@@ -343,7 +359,7 @@ def update_gui():
         proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
         #Below the pie chart, update the written number of run/subruns
-        ngood, ninter, nerr = guiut.getNGoodInterError(proj_dict[iprojname].getHistory())    
+        ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname)#proj_dict[iprojname].getHistory())    
         projsubtext_dict[iprojname].setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time

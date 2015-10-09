@@ -17,24 +17,43 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
         self.daemwin = None
         self.easteregg_pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/kpic.png')
         self.easteregg_item = None
+        self.easteregg_drawn = False
+        # self.reset_button = QtGui.QPushButton()
+        # self.reset_button.setText("Reset Counters")
+        # self.addWidget(self.reset_button)
+        # self.reset_button.clicked.connect(self.resetCounters)
 
     def __del__(self):
         pass
 
+    # def resetCounters():
+    #     print "clicked button woohoo"
+
     #custom implementation of mouse click event in the scene
     #it gets the item clicked, and if its a piechart, it gives
     #access to the piechart's info to the top-level script
-    def mousePressEvent(self, event):
+    def mouseDoubleClickEvent(self, event):
+
+        # QtGui.QGraphicsScene.mousePressEvent(self, event)
+        # QtGui.QGraphicsView.mousePressEvent(self, event)
         item_clicked = self.itemAt(event.scenePos())
+
+        # item_clicked.mousePressEvent(event)
         if item_clicked is not None:
             if item_clicked.__module__ == 'custom_piechart_class' or \
                item_clicked.__module__ == 'custom_bar_class':
                 self.projwin = CustomProjectSubwindow(item_clicked)
+            # else: QtGui.QGraphicsScene.mousePressEvent(self, event) 
+            #     #item_clicked.mousePressEvent(event)
         else:
-            self.draw_easteregg()
+            if self.easteregg_drawn: 
+                self.remove_easteregg()
+            else: 
+                self.draw_easteregg()
+            self.easteregg_drawn = not self.easteregg_drawn
 
-    def mouseReleaseEvent(self, event):
-        self.remove_easteregg()
+    # def mouseReleaseEvent(self, event):
+    #     self.remove_easteregg()
 
     def draw_easteregg(self):
         self.easteregg_item = self.addPixmap(self.easteregg_pm)
