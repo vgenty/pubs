@@ -41,7 +41,7 @@ class GuiUtilsAPI():
       self.relevant_daemons = GuiUtils().getRelevantDaemons()
       self.threadLock = threadlock
       self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
-      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,False)
+      self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,True)
 
       #the querythread itSELF is a "daemon" (different than PUBS daemon)
       #the reason for this is to make sure the thread closes when the main program closes
@@ -145,15 +145,15 @@ class GuiUtilsAPI():
   def getEnabledProjectNames(self):
     return self.enabled_projects
 
-  def computePieSlices(self,projname):
+  def computePieSlices(self,projname,use_relative = False):
    
     if projname not in self.proj_dict.keys():
       print "Uh oh projname is not in dictionary. Figure out what happened..."
       return [ (1., 'r') ]
 
     # tot_n = self.getTotNRunSubruns(projname)
-    tot_n = self.getScaledNRunSubruns(projname)
-    statuses = self.getScaledNGoodInterError(projname)  
+    tot_n = self.getScaledNRunSubruns(projname, use_relative=use_relative)
+    statuses = self.getScaledNGoodInterError(projname, use_relative=use_relative)  
     #statuses is (n_good, n_inter, n_error)
 
     # OLD #
@@ -226,15 +226,17 @@ class GuiUtilsAPI():
     #Let's try including "good" statuses...
     return [ x for x in self.proj_dict[projname] ]
   
-  def getScaledNRunSubruns(self,projname):
+  def getScaledNRunSubruns(self,projname,use_relative = False):
     # compute the difference between last query ngood/nint/nbad and current query
     # sum only intermediate and error statuses
-    return sum(self.getScaledNGoodInterError(projname)[1:])
+    return sum(self.getScaledNGoodInterError(projname,use_relative)[1:])
 
-  def getScaledNGoodInterError(self,projname):
+  def getScaledNGoodInterError(self,projname,use_relative = False):
     #return difference in stored number good,inter,bad statuses (either 0's at initialization, or a snapshot when
     #user hit "reset" button) with the current number of those statuses
-    answer = [b - a for a, b in zip(self.stored_nGoodnInternError[projname],self.my_utils.getNGoodInterError(projname,self.proj_dict[projname]))]
+    if use_relative:
+      answer = [b - a for a, b in zip(self.stored_nGoodnInternError[projname],self.my_utils.getNGoodInterError(projname,self.proj_dict[projname]))]
+    else: answer = self.my_utils.getNGoodInterError(projname,self.proj_dict[projname])
     answer = tuple([ max(x,0) for x in answer ])
     return answer
 
@@ -287,7 +289,7 @@ class GuiUtils():
     #              4112:[47,75,101]
     #              }
     self.colors={ 1:[72, 118, 255] }#47, 75, 101] }#[0, 255, 255] } #[47, 75, 101] }
-    self.update_period = 10 #seconds
+    self.update_period = 1 #seconds
     self.relevant_daemons = [ 'ubdaq-prod-evb.fnal.gov', 'ubdaq-prod-near1.fnal.gov' ]
 
   def getColors(self):
