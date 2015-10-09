@@ -62,7 +62,7 @@ class production(ds_project_base):
                              self.kSUBMITTED     : self.isRunning,
                              self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
-                             self.kTOBERECOVERED : self.recover,
+                             self.kTOBERECOVERED : None,
                              self.kREADYFORSAM   : self.declare,
                              self.kDECLARED      : self.store }
         self.PROD_MULTIACTION = { self.kDONE          : None,
@@ -71,7 +71,7 @@ class production(ds_project_base):
                                   self.kSUBMITTED     : None,
                                   self.kRUNNING       : None,
                                   self.kFINISHED      : None,
-                                  self.kTOBERECOVERED : None,
+                                  self.kTOBERECOVERED : self.recover,
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None }
         self._max_runid = None
@@ -86,6 +86,7 @@ class production(ds_project_base):
         self._name_to_digit = {}
         self._digit_to_nsubruns = {}
         self._data = "None"
+        self._runid_status = {}
 
         if not self.loadProjectParams():
             self.info('Failed to load project @ %s' % self.now_str())
@@ -315,8 +316,39 @@ class production(ds_project_base):
         error_status   = current_status + 1000
 
         self._data = str( self._data )
+
+        # Merged subruns handled here.
+
         if self._data[:5] == 'Merge':
-            return current_status
+            merge_subrun = int(self._data[5:])
+            merge_runid = (run, merge_subrun)
+            if self._runid_status.has_key(merge_runid):
+                if self._runid_status[merge_runid] == istage + self.kREADYFORSAM:
+
+                    # If we get here, the merge batch job was successful, and we
+                    # can set the status for this subrun to ignore further processing.
+
+                    return 100
+
+                elif self._runid_status[merge_runid] == istage + self.kTOBERECOVERED:
+
+                    # If we get here, the merge batch job failed.  Set the 
+                    # status for this subrun to recover.
+
+                    return istage + kTOBERECOVERED
+
+                else:
+                    return current_status
+
+            else:
+
+                # This branch of the if shouldn't really ever happen (may require
+                # manual intervention to fix).
+
+                msg = 'No merge status for run %d, subrun %d.' % merge_runid
+                self.info(msg)
+                return current_status
+
         last_job_data = self._data.strip().split(':')[-1]
         job_data_list = last_job_data.split('+')
         jobid = job_data_list[0]
@@ -461,7 +493,7 @@ Job IDs    : %s
     # def check()
 
 
-    def recover( self, statusCode, istage, run, subrun ):
+    def recover( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
                              
@@ -474,7 +506,10 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
+        except PubsInputError:
+            self.info('Exception PubsInputError raised by project.get_pubs_stage')
+            return current_status
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -512,13 +547,44 @@ Job IDs    : %s
             return error_status
 
         # Now grab the parent job id and submit time
-        if self._data == None or self._data == "None" or len(self._data) == 0:
-            self._data = '%s+%f' % (jobid, time.time())
-        else:
-            self._data += ':%s+%f' % (jobid, time.time())
+        single_data = '%s+%f' % (jobid, time.time())
+        original_data = None
+        if self._data != None and self._data != "None" and len(self._data) != 0:
+            original_data = self._data
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Resubmitted jobs, job id: %s, status: %d" % ( self._data, statusCode ) )
+
+        # Here we need to convert the job data into a list with one entry for each subrun.
+        # In case of input from sam, we keep the original job id and copy it for each job,
+        # since we have no way of knowing what the job ids of the parallel workers will
+        # be at this point.  This jobid will be the dagman jobid, which will run until
+        # every worker is finished.
+        # In case of input from a file list, increment the process number encoded in
+        # the job id for each subrun, up to stobj.num_jobs jobs.
+
+        n1 = single_data.find('.')
+        n2 = single_data.find('@')
+        multi_data = []
+        if n1 > 0 and n2 > 0 and n2 > n1 and stobj.inputlist != '':
+            head = single_data[:n1+1]
+            tail = single_data[n2:]
+            process=0
+            for subrun in subruns:
+                if process < stobj.num_jobs:
+                    if original_data != None:
+                        multi_data.append('%s:%s%d%s' % (original_data, head, process, tail))
+                    else:
+                        multi_data.append('%s%d%s' % (head, process, tail))
+                else:
+                    multi_data.append('Merge %d' % subruns[0])
+                process += 1
+        else:
+            for subrun in subruns:
+                multi_data.append(single_data)
+        self._data = multi_data
+
+
 
         # Pretend I'm doing something
         time.sleep(5)
@@ -773,13 +839,16 @@ Stage      : %s
                         subruns.append(subrun)
                         if len(subruns) >= self._digit_to_nsubruns[istage] or len(all_subruns) == 0:
 
+                            subruns.sort()
                             statusCode = self.__decode_status__( fstatus )
 
                             # Do actions associated with multiple subruns.
 
                             multiaction = self.PROD_MULTIACTION[statusCode]
                             if multiaction != None:
-                                self._data = None
+                                status = self._api.get_status(ds_status(self._project,
+                                                                        run, subruns[0], 0))
+                                self._data = status._data
                                 self.info('Starting a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
@@ -797,6 +866,8 @@ Stage      : %s
                                                         seq     = 0,
                                                         status  = statusCode,
                                                         data    = self._data[process] )
+                                    runid = (run, subrun)
+                                    self._runid_status[runid] = statusCode
 
                                     # Log status
                                     self.log_status( status )
@@ -838,6 +909,9 @@ Stage      : %s
                                                 seq     = 0,
                                                 status  = statusCode,
                                                 data    = self._data )
+
+                            runid = (run, subrun)
+                            self._runid_status[runid] = statusCode
 
                             # Log status
                             self.log_status( status )
