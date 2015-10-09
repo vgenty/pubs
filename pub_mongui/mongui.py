@@ -130,21 +130,21 @@ scene.addItem(daemon_text)
 def resetCounters():
     gdbi.resetCounters()
 
-# def toggle_relative_counter():
-#     print "relative counter toggled!"
 reset_button = QtGui.QPushButton()
 reset_button.setText("Reset Counters")
 reset_button.setMinimumSize(QtCore.QSize(0,0))
 reset_button.setMaximumSize(QtCore.QSize(10000,10000))
 reset_button.setGeometry(scene_xmin+0.10*scene_width, 0.10*scene_height,200,50)
+# reset_button.setStyleSheet("border-style: outset; border-width: 2px; border-radius: 0px; border-color: beige; font: bold 15px; color: black; padding: 4px;")
 scene.addWidget(reset_button)
 reset_button.clicked.connect(resetCounters)
 
 relative_counter_checkbox = QtGui.QCheckBox()
 relative_counter_checkbox.setText("Use Relative Counters")
-# relative_counter_checkbox.stateChanged.connect(toggle_relative_counter)
+relative_counter_checkbox.setGeometry(scene_xmin+0.10*scene_width, 0.05*scene_height,200,25)
+relative_counter_checkbox.setStyleSheet("color: white; background-color: transparent; font: bold 15px; min-width: 15em")
+relative_counter_checkbox.setAutoFillBackground(True)
 scene.addWidget(relative_counter_checkbox)
-relative_counter_checkbox.setGeometry(scene_xmin+0.10*scene_width, 0.03*scene_height,200,50)
 
 
 for iprojname in projectnames:
