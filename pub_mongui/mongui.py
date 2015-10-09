@@ -162,7 +162,7 @@ for iprojname in projectnames:
     ichart = ProgressBarItem((iprojname,scene_xmin+scene_width*xloc, scene_ymin+scene_height*yloc, maxradius, 0, [ (1., 'y') ]))
 
     #Make sure progress bars are always in the front (all default z values are 0)
-    ichart.setZValue(1.0)
+    ichart.setZValue(2.0)
 
     #Initialize the piechart description from the stored text file
     if iprojname in proj_descripts.keys():
@@ -208,7 +208,7 @@ for iprojname in projectnames:
     mysupertext = QtGui.QGraphicsSimpleTextItem()
     mysupertext.setBrush(text_brush)
     mysupertext.setPen(outline_pen)
-    mysupertext.setZValue(1.0)
+    mysupertext.setZValue(2.0)
     mysupertext.setPos(ix,iy-proj_dict[iprojname].getHeight())
     mysupertext.setText(proj_dict[iprojname].getDescript())#iprojname)
     # mysupertext.setDefaultTextColor(QtGui.QColor('white'))
@@ -224,7 +224,7 @@ for iprojname in projectnames:
     mysubtext = QtGui.QGraphicsSimpleTextItem()
     mysubtext.setBrush(text_brush)
     mysubtext.setPen(outline_pen)
-    mysubtext.setZValue(1.0)
+    mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
     mysubtext.setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
@@ -272,7 +272,8 @@ for iprojname in projectnames:
         epy += proj_dict[parent].getHeight()*0.5
 
         #Let's try lines instead of arrows
-        scene.addLine(spx,spy,epx,epy,pen=line_pen)
+        myline = scene.addLine(spx,spy,epx,epy,pen=line_pen)
+        myline.setZValue(1.0)
         # if parent == 'prod_verify_binary_evb2dropbox_near1':
         #     print "starting at Binary Transfer Validation to %s"%iprojname
         #     print "(%f,%f) ==> (%f,%f)"%(spx,spy,epx,epy)

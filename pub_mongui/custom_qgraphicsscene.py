@@ -3,6 +3,7 @@ from pyqtgraph import QtCore, QtGui
 import os
 from custom_project_subwindow import CustomProjectSubwindow
 from custom_daemon_subwindow import CustomDaemonSubwindow
+import random
 
 class CustomQGraphicsScene(QtGui.QGraphicsScene):
     """
@@ -12,10 +13,15 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
     """
 
     def __init__(self, x, y, width, height):
+        self.scene_xmin, self.scene_ymin, self.scene_width, self.scene_height =  x, y, width, height
         QtGui.QGraphicsScene.__init__(self,x,y,width,height)
         self.projwin = None
         self.daemwin = None
-        self.easteregg_pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/kpic.png')
+        self.easteregg_pms = [QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/kpic.png'),
+        QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/epic.png'),
+        QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/apic.png'),
+        QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/kbpic.png')]
+
         self.easteregg_item = None
         self.easteregg_drawn = False
         # self.reset_button = QtGui.QPushButton()
@@ -56,8 +62,12 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
     #     self.remove_easteregg()
 
     def draw_easteregg(self):
-        self.easteregg_item = self.addPixmap(self.easteregg_pm)
-       
+        pm_todraw = random.choice(self.easteregg_pms)
+        pm_xloc = random.uniform(self.scene_xmin,self.scene_xmin+self.scene_width-pm_todraw.width())
+        pm_yloc = random.uniform(self.scene_ymin,self.scene_ymin+self.scene_height-pm_todraw.height())
+        self.easteregg_item = self.addPixmap(pm_todraw)        
+        self.easteregg_item.setPos(pm_xloc,pm_yloc)
+    
     def remove_easteregg(self):
         self.removeItem(self.easteregg_item)
 
