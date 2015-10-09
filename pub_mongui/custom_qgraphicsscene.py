@@ -24,16 +24,9 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
 
         self.easteregg_item = None
         self.easteregg_drawn = False
-        # self.reset_button = QtGui.QPushButton()
-        # self.reset_button.setText("Reset Counters")
-        # self.addWidget(self.reset_button)
-        # self.reset_button.clicked.connect(self.resetCounters)
 
     def __del__(self):
         pass
-
-    # def resetCounters():
-    #     print "clicked button woohoo"
 
     #custom implementation of mouse click event in the scene
     #it gets the item clicked, and if its a piechart, it gives
