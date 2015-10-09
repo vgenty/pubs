@@ -77,16 +77,19 @@ class production(ds_project_base):
         self._max_runid = None
         self._min_runid = None
         self._nruns     = None
+        self._nsubruns  = []
         self._xml_file  = ''
         self._stage_name    = []
         self._stage_digits  = []
         self._nresubmission = 3
         self._digit_to_name = {}
         self._name_to_digit = {}
+        self._digit_to_nsubruns = {}
         self._data = "None"
 
         if not self.loadProjectParams():
             self.info('Failed to load project @ %s' % self.now_str())
+            sys.exit(1)
 
     def loadProjectParams( self ):
 
@@ -116,6 +119,20 @@ class production(ds_project_base):
             self._max_runid = (int(proj_info._resource['MAX_RUN']),int(proj_info._resource['MAX_SUBRUN']))
             if proj_info._resource.has_key('MIN_RUN') and proj_info._resource.has_key('MIN_SUBRUN'):
                 self._min_runid = (int(proj_info._resource['MIN_RUN']),int(proj_info._resource['MIN_SUBRUN']))
+
+            # Set subrun multiplicity.
+
+            if proj_info._resource.has_key('NSUBRUNS'):
+                self._nsubruns = [int(x) for x in proj_info._resource['NSUBRUNS'].split(':')]
+            else:
+                self._nsubruns = [12] * len(self._stage_names)
+            if len(self._nsubruns) != len(self._stage_digits):
+                raise Exception
+            for x in xrange(len(self._stage_digits)):
+                digit = self._stage_digits[x]
+                nsubruns = self._nsubruns[x]
+                self._digit_to_nsubruns[digit] = nsubruns
+
         except Exception:
             self.error('Failed to load project parameters...')
             return False
@@ -131,6 +148,7 @@ class production(ds_project_base):
         if istage in self._stage_digits:
             statusCode = istage + self.kINITIATED
             self.info( "Next stage, statusCode: %d" % statusCode )
+            self._data = ''
 
         return statusCode
 
@@ -266,7 +284,7 @@ class production(ds_project_base):
         # be at this point.  This jobid will be the dagman jobid, which will run until
         # every worker is finished.
         # In case of input from a file list, increment the process number encoded in
-        # the job id for each subrun.
+        # the job id for each subrun, up to stobj.num_jobs jobs.
 
         n1 = single_data.find('.')
         n2 = single_data.find('@')
@@ -276,7 +294,10 @@ class production(ds_project_base):
             tail = single_data[n2:]
             process=0
             for subrun in subruns:
-                multi_data.append('%s%d%s' % (head, process, tail))
+                if process < stobj.num_jobs:
+                    multi_data.append('%s%d%s' % (head, process, tail))
+                else:
+                    multi_data.append('Merge %d' % subruns[0])
                 process += 1
         else:
             for subrun in subruns:
@@ -294,6 +315,8 @@ class production(ds_project_base):
         error_status   = current_status + 1000
 
         self._data = str( self._data )
+        if self._data[:5] == 'Merge':
+            return current_status
         last_job_data = self._data.strip().split(':')[-1]
         job_data_list = last_job_data.split('+')
         jobid = job_data_list[0]
@@ -742,13 +765,13 @@ Stage      : %s
                 for run in run_subruns.keys():
                     all_subruns = run_subruns[run].copy()
 
-                    # Process subruns in groups of 12.
+                    # Process subruns in groups.
 
                     subruns = []
                     while len(all_subruns) > 0:
                         subrun = all_subruns.pop()
                         subruns.append(subrun)
-                        if len(subruns) >= 12 or len(all_subruns) == 0:
+                        if len(subruns) >= self._digit_to_nsubruns[istage] or len(all_subruns) == 0:
 
                             statusCode = self.__decode_status__( fstatus )
 
