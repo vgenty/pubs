@@ -117,7 +117,8 @@ class GuiUtilsAPI():
       self.enabled_projects = ['']
     self.my_utils = GuiUtils()
     self.colors = self.my_utils.getColors()
-    self.reset_self = False
+    #True to reset counters on initialization of GUI
+    self.reset_self = True
 
   def resetCounters(self):
     print " >>> RESETTING PUBS MONITORING GUI COUNTERS AT %s <<<"%datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
