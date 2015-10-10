@@ -32,7 +32,7 @@ Action = setup
   # Dependent products
 
   setupRequired("postgresql v9_3_6 -q p279")
-  setupOptional("larbatch v01_16_00")
+  setupOptional("larbatch v01_17_00")
   setupOptional("sam_web_client")
   setupOptional("pyqtgraph")
 
