@@ -4,7 +4,7 @@
 #  @author kterao
 
 # python include
-import time,sys,datetime,os
+import time,sys,datetime,os,copy,pytz
 # pub_dbi package include
 from pub_dbi import DBException
 # dstream class include
@@ -63,10 +63,24 @@ class daq_uptime_monitor(ds_project_base):
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
         timerange_v=[]
+        utc_timezone = None
         for i in xrange(run):
 
             current_run = run - i
-            
+
+            last_subrun = self._api.get_last_subrun(self._run_table,current_run)
+
+            if last_subrun<0: continue
+
+            run_start_time_s,run_start_time_e = self._api.run_timestamp(self._run_table,current_run,0)
+            run_end_time_s,run_end_time_e = self._api.run_timestamp(self._run_table,current_run,last_subrun)
+
+            if not utc_timezone:
+                utc_timezone = copy.copy(run_start_time_s.tzinfo)
+
+            run_start_time_s = utc_timezone.fromutc(run_start_time_s).replace(tzinfo=None)
+            run_end_time_e = utc_timezone.fromutc(run_end_time_e).replace(tzinfo=None)
+            #print run_start_time_s,run_end_time_e
             try:
                 run_files = [x for x in samweb.listFiles('run_number %d' % current_run) if x.endswith('.ubdaq')]
                 if not run_files: continue
@@ -88,12 +102,24 @@ class daq_uptime_monitor(ds_project_base):
                 time_max = meta_max['end_time'].replace('T',' ').split('+')[0]
                 time_min = meta_min['start_time'].replace('T',' ').split('+')[0]
 
-                time_max = datetime.datetime.strptime(time_max,'%Y-%m-%d %H:%M:%S')
-                time_min = datetime.datetime.strptime(time_min,'%Y-%m-%d %H:%M:%S')
+                if not time_max.startswith('1970'):
 
-                timerange_v.append( (current_run,time_min,time_max) )
+                    time_max = datetime.datetime.strptime(time_max,'%Y-%m-%d %H:%M:%S')#.replace(tzinfo=pytz.utc)
+                    if time_max > run_end_time_e:
+                        run_end_time_e = time_max
+
+                if not time_min.startswith('1970'):
+                    time_min = datetime.datetime.strptime(time_min,'%Y-%m-%d %H:%M:%S')#.replace(tzinfo=pytz.utc)
+
+                    if time_min < run_start_time_s:
+                        run_start_time_s = time_min
+
+                #print run_start_time_s,run_end_time_e
+
+                timerange_v.append( (current_run,run_start_time_s,run_end_time_e) )
 
             except Exception as e:
+                self.error('Failed to extract metadta from run=%d' % current_run)
                 continue
 
             if timerange_v and (int(timerange_v[-1][1].strftime('%s')) + self._boundary_past) < time.time():
@@ -102,11 +128,12 @@ class daq_uptime_monitor(ds_project_base):
         hour_frac_map = {}
         for timerange in timerange_v:
             run,start,end = timerange
+            #print run,start,end
             duration = (end - start).total_seconds()
             if duration < 1: continue
 
             year,month,day,hour,minute = (start.year,start.month,start.day,start.hour,start.minute)
-            key_datetime = datetime.datetime.strptime('%s-%02d-%02d %02d:00:00' % (year,month,day,hour), '%Y-%m-%d %H:%M:%S')
+            key_datetime = datetime.datetime.strptime('%s-%02d-%02d %02d:00:00' % (year,month,day,hour), '%Y-%m-%d %H:%M:%S')#.replace(tzinfo=utc_timezone)
 
             if not key_datetime in hour_frac_map:
                 hour_frac_map[key_datetime] = 0
@@ -156,8 +183,11 @@ class daq_uptime_monitor(ds_project_base):
 
         # Correct "this hour fraction"
         current_hour = datetime.datetime.now() - max_key
+        #print current_hour,datetime.datetime.now(),max_key
+        #print ( 3600. / current_hour.seconds )
+        #print hour_frac_map[max_key]
         hour_frac_map[max_key] *= ( 3600. / current_hour.seconds )
-
+        #print hour_frac_map[max_key]
         dates = hour_frac_map.keys()
         dates.sort()
 

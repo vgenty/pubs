@@ -66,6 +66,34 @@ class ds_reader(pubdb_reader):
 
         return result
 
+    ## Function to get latest run
+    def get_last_run(self,table):
+
+        query = 'SELECT RunNumber FROM %s ORDER BY RunNumber DESC LIMIT 1' % table
+        
+        if not self.execute(query):
+            return -1
+
+        res = self.fetchone()
+
+        if not res: return -1
+        
+        return int(res[0])
+
+    ## Function to get latest subrun
+    def get_last_subrun(self,table,run):
+
+        query = 'SELECT SubRunNumber FROM %s WHERE RunNumber = %d ORDER BY SubRunNumber DESC LIMIT 1' % (table,int(run))
+        
+        if not self.execute(query):
+            return -1
+
+        res = self.fetchone()
+
+        if not res: return -1
+        
+        return int(res[0])
+
     ## Function to get project's resource
     def get_resource(self,project):
         
@@ -510,7 +538,9 @@ class ds_reader(pubdb_reader):
             self._logger.error('Run/SubRun must be positive integers!')
             return (None,None)
 
-        query = 'SELECT TimeStart, TimeStop FROM GetRunTimeStamp(\'%s\',%d,%d)' % (str(run_table),run,subrun)
+        query  = 'SELECT TimeStart  AT TIME ZONE \'posix/US/Central\','
+        query += 'TimeStop  AT TIME ZONE \'posix/US/Central\' '
+        query += ' FROM GetRunTimeStamp(\'%s\',%d,%d)' % (str(run_table),run,subrun)
 
         if not self.execute(query): return (None,None)
 

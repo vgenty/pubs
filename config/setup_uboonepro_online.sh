@@ -77,7 +77,7 @@ case `uname -n` in
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.ubdaq_handler_smc;
                 ;;
             (ubdaq-prod-evb*)
-	        setup uboonecode v04_22_00 -q prof:e7;
+	        setup uboonecode v04_26_00 -q prof:e7;
 	        #setup uboonedaq_datatypes v6_14_00 -q e7:prof;
 	        setup sam_web_client;
 		setup postgresql v9_3_6 -q p279;
@@ -95,7 +95,7 @@ case `uname -n` in
 		#setup uboonedaq_datatypes v6_13_06 -q e7:debug;
 		#we should setup the uboonedaq_datatypes by hand on near1, but instead
 		#let it be setup as a dependency of the uboonecode version
-		setup uboonecode v04_22_00 -q prof:e7;
+		setup uboonecode v04_26_00 -q prof:e7;
 		setup pyqtgraph;
                 export PUB_DAEMON_LOG_MODULE=dstream_online.near1_logger;
                 export PUB_DAEMON_HANDLER_MODULE=dstream_online.near1_handler;

@@ -394,6 +394,7 @@ class get_metadata( ds_project_base ):
             stime = etime = -12
 
             try:
+                read_gps=False
                 for line in last_event_cout.split('\n'):
                     if "run_number=" in line and "subrun" not in line :
                         self.debug('Extracting run_number... %s' % line.split('=')[-1])
@@ -406,25 +407,46 @@ class get_metadata( ds_project_base ):
                     if "event_number=" in line:
                         self.debug('Extracting event_number... %s' % line.split('=')[-1])
                         eevt = int(line.split('=')[-1])
-                    if "Localhost Time: (sec,usec)" in line:
-                        self.debug('Extracting Localhost Time... %s' % line.split(')')[-1].split(',')[0])
-                        etime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+                    if "GPS Time FROM EVENT:Object" in line:
+                        read_gps=True
+                    if "GPS time (second,micro,nano)" in line and read_gps:
+                        words=[]
+                        for w in line.split():
+                            if w.rstrip(',').isdigit(): words.append(int(w.rstrip(',')))
+                        if not len(words) == 3:
+                            self.error('GPS time stamp format could not be interpreted...')
+                            self.error(line)
+                            raise DSException()
+                        self.debug('Extracted GPS Time... %s' % words)
+                        etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                        read_gps=False
                     if "daq_version_label=" in line:
                         self.debug('DAQ version... %s' % line.split('=')[-1])
                         ver = line.split('=')[-1]
                         
+                read_gps=False
                 for line in first_event_cout.split('\n'):
                     if "event_number=" in line:
                         self.debug('Extracting event_number... %s' % line.split('=')[-1])
                         sevt = int(line.split('=')[-1].replace(' ',''))
-                    if "Localhost Time: (sec,usec)" in line:
-                        self.debug('Extracting Localhost Time... %s' % line.split(')')[-1].split(',')[0])
-                        stime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
+                    if "GPS Time FROM EVENT:Object" in line:
+                        read_gps=True
+                    if "GPS time (second,micro,nano)" in line and read_gps:
+                        words=[]
+                        for w in line.split():
+                            if w.rstrip(',').isdigit(): words.append(int(w.rstrip(',')))
+                        if not len(words) == 3:
+                            self.error('GPS time stamp format could not be interpreted...')
+                            self.error(line)
+                            raise DSException()
+                        self.debug('Extracted GPS Time... %s' % words)
+                        etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                        read_gps=False
 
                 status_v[i] = (3,None)
                 self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
-            except:
+            except ValueError,TypeError:
                 self.error ("Unexpected error: %s" % sys.exc_info()[0] )
                 self.error ("1st event:\n%s" % first_event_cout)
                 self.error ("Last event:\n%s" % last_event_cout)
