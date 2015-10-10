@@ -88,6 +88,7 @@ class get_metadata( ds_project_base ):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
+        self._nruns = 1
 #        self._out_dir = '%s' % (resource['OUTDIR'])
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
@@ -366,7 +367,9 @@ class get_metadata( ds_project_base ):
                             "data_tier": "raw", "event_count": 0,
                             "ub_project.name": "online", 
                             "ub_project.stage": "assembler", 
-                            "ub_project.version": self._pubsver }
+                            "ub_project.version": self._pubsver,
+                            'online.start_time_usec': '-1',
+                            'online.end_time_usec': '-1'}
             
             if mp.poll(i):
                 self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(i)))
@@ -389,10 +392,11 @@ class get_metadata( ds_project_base ):
                 continue
                                
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
-            ver = -12
-            sevt = eevt = -12
-            stime = etime = -12
-
+            ver = 'unknown'
+            sevt = eevt = 0
+            stime = etime = '1970-01-01:T00:00:00'
+            stime_usec=-1
+            etime_usec=-1
             try:
                 read_gps=False
                 for line in last_event_cout.split('\n'):
@@ -418,7 +422,8 @@ class get_metadata( ds_project_base ):
                             self.error(line)
                             raise DSException()
                         self.debug('Extracted GPS Time... %s' % words)
-                        etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                        etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
+                        etime_usec = words[1]
                         read_gps=False
                     if "daq_version_label=" in line:
                         self.debug('DAQ version... %s' % line.split('=')[-1])
@@ -440,7 +445,8 @@ class get_metadata( ds_project_base ):
                             self.error(line)
                             raise DSException()
                         self.debug('Extracted GPS Time... %s' % words)
-                        etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                        stime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
+                        stime_usec = words[1]
                         read_gps=False
 
                 status_v[i] = (3,None)
@@ -472,7 +478,9 @@ class get_metadata( ds_project_base ):
                          "data_tier": "raw", "event_count": eevt - sevt + 1 ,
                          "ub_project.name": "online", 
                          "ub_project.stage": "assembler", 
-                         "ub_project.version": self._pubsver }
+                         "ub_project.version": self._pubsver,
+                         'online.start_time_usec': str(stime_usec),
+                         'online.end_time_usec': str(etime_usec)}
             status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v

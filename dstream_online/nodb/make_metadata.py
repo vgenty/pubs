@@ -172,13 +172,16 @@ for i in xrange(len(flist_v)):
                  "data_tier": "raw", "event_count": 0,
                  "ub_project.name": "online",
                  "ub_project.stage": "assembler",
-                 "ub_project.version": 'v6_00_00' }
+                 "ub_project.version": 'v6_00_00',
+                 'online.start_time_usec': '-1',
+                 'online.eend_time_usec': '-1' }
     
     try:
         last_event_cout,first_event_cout = cout.split('SPLIT_HERE')
         ver = 'unknown'
         sevt = eevt = 0
         stime = etime = '1970-01-01T00:00:00'
+        stime_usec = etime_usec = -1
         read_gps = False
         for line in last_event_cout.split('\n'):
             if "run_number=" in line and "subrun" not in line :
@@ -203,11 +206,9 @@ for i in xrange(len(flist_v)):
                     print line
                     raise DSException()
                 #print 'Extracted GPS Time... %s' % words
-                etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
+                etime_usec = words[1]
                 read_gps=False
-
-            if "GPS time (second,micro,nano)" in line:
-                etime = datetime.datetime.fromtimestamp(float(line.split(')')[-1].split(',')[0])).replace(microsecond=0).isoformat()
             if "daq_version_label=" in line:
                 ver = line.split('=')[-1]
 
@@ -230,7 +231,8 @@ for i in xrange(len(flist_v)):
                     print line
                     raise DSException()
                 #print 'Extracted GPS Time... %s' % words
-                etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=words[1]).isoformat()
+                stime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
+                stime_usec = words[1]
                 read_gps=False
 
         print 'Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,fname,time.strftime('%Y-%m-%d %H:%M:%S'))
@@ -250,7 +252,9 @@ for i in xrange(len(flist_v)):
                      "data_tier": "raw", "event_count": eevt - sevt + 1 ,
                      "ub_project.name": "online",
                      "ub_project.stage": "assembler",
-                     "ub_project.version": 'v6_00_00' }
+                     "ub_project.version": 'v6_00_00',
+                     'online.start_time_usec': str(stime_usec),
+                     'online.end_time_usec': str(etime_usec) }
     except KeyError:
         print 'failed...'
         bad_json_v.append((run,subrun,fname))
