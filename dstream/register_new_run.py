@@ -49,7 +49,7 @@ class register_new_run(ds_project_base):
         self_run_bound = [] # list of RUN numbers defining the upper bound of the run number in a given directory
         self._experts = ''
         self._runtable = ''
-        
+        self._suffix = ''
         self.get_resource()
 
     ## @brief method to retrieve the project resource information if not yet done
@@ -61,7 +61,8 @@ class register_new_run(ds_project_base):
         self._run_bound = [ int(x) for x in resource['RUNBOUND'].split(":") ]
         self._experts   = resource['EXPERTS']
         self._runtable  = resource['RUNTABLE']
-
+        if 'SUFFIX' in resource:
+            self._suffix = resource['SUFFIX']
         
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -92,7 +93,11 @@ class register_new_run(ds_project_base):
 
             self.info('Looking for data files in: %s'%data_path)
 
-            dircontents = os.listdir(data_path)
+            dircontents = []
+            if self._suffix:
+                dircontents = [x for x in os.listdir(data_path) if x.endswith(self._suffix)]
+            else:
+                dircontents = os.listdir(data_path)
 
             # create a dictionary to keep track of
             # - file name ----- NAME
