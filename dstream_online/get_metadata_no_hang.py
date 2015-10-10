@@ -88,7 +88,6 @@ class get_metadata( ds_project_base ):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-        self._nruns = 1
 #        self._out_dir = '%s' % (resource['OUTDIR'])
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
