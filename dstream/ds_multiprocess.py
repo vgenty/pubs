@@ -25,6 +25,9 @@ class ds_multiprocess(ds_base):
 
         if arg is None: arg = self.__class__.__name__
         super(ds_multiprocess,self).__init__(arg)
+        self._proc_v=[]
+        self._cout_v=[]
+        self._cerr_v=[]
 
     def execute(self,cmd):
         active_ctr = self.active_count()
