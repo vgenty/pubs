@@ -458,7 +458,8 @@ class get_metadata( ds_project_base ):
                 status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
                 self.error('Failed extracting metadata: %s' % in_file)
                 continue
-
+            num_events = eevt - sevt + 1
+            if num_events < 0: num_events = 0
             # run number and subrun number in the metadata seem to be funny,
             # and currently we are using the values in the file name.
             # Also add ub_project.name/stage/version, and data_tier by hand
@@ -474,7 +475,7 @@ class get_metadata( ds_project_base ):
                          'group': 'uboone', 
                          "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
                          "application": {  "family": "online",  "name": "assembler", "version": ver }, 
-                         "data_tier": "raw", "event_count": eevt - sevt + 1 ,
+                         "data_tier": "raw", "event_count": num_events,
                          "ub_project.name": "online", 
                          "ub_project.stage": "assembler", 
                          "ub_project.version": self._pubsver,
