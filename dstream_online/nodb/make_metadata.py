@@ -72,6 +72,7 @@ for i in xrange(len(mp2_index_v)):
         checksum_dict = None
         checksum = -1
         print 'Checksum calculation failed!'
+        print cout,cerr
         sys.exit(1)
         continue
     checksum_v[checksum_index] = checksum
@@ -174,7 +175,7 @@ for i in xrange(len(flist_v)):
                  "ub_project.stage": "assembler",
                  "ub_project.version": 'v6_00_00',
                  'online.start_time_usec': '-1',
-                 'online.eend_time_usec': '-1' }
+                 'online.end_time_usec': '-1' }
     
     try:
         last_event_cout,first_event_cout = cout.split('SPLIT_HERE')
@@ -236,7 +237,8 @@ for i in xrange(len(flist_v)):
                 read_gps=False
 
         print 'Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,fname,time.strftime('%Y-%m-%d %H:%M:%S'))
-
+        num_events = eevt - sevt + 1
+        if num_events<0: num_events = 0
         jsonData = { 'file_name': os.path.basename(fname),
                      'file_type': "data",
                      'file_size': fsize,
@@ -249,13 +251,13 @@ for i in xrange(len(flist_v)):
                      'group': 'uboone',
                      "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" },
                      "application": {  "family": "online",  "name": "assembler", "version": ver },
-                     "data_tier": "raw", "event_count": eevt - sevt + 1 ,
+                     "data_tier": "raw", "event_count": num_events,
                      "ub_project.name": "online",
                      "ub_project.stage": "assembler",
                      "ub_project.version": 'v6_00_00',
                      'online.start_time_usec': str(stime_usec),
                      'online.end_time_usec': str(etime_usec) }
-    except KeyError:
+    except Exception:
         print 'failed...'
         bad_json_v.append((run,subrun,fname))
 
