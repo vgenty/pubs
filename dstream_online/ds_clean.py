@@ -62,8 +62,8 @@ class ds_clean(ds_project_base):
         self._in_dir = '%s' % (resource['DIR'])
         self._name_pattern = resource['NAME_PATTERN']
         self._disk_frac_limit = int(resource['USED_DISK_FRAC_LIMIT'].strip("%"))
-        if 'SATTELITE_EXTENSION' in resource:
-            self._satellite_extension = resource['SATTELITE_EXTENSION']
+        if 'SATELLITE_EXTENSION' in resource:
+            self._satellite_extension = resource['SATELLITE_EXTENSION']
         try:
             self._parent_project = []
             self.debug('Loading parents...')

@@ -278,53 +278,123 @@ class daq_uptime_monitor(ds_project_base):
         </center>
         """
         now = datetime.datetime.now()
-        shift_start = datetime.datetime(now.year, now.month, now.day, (int(now.hour)/8)*8, 0, 0)
-        shift_end = shift_start + datetime.timedelta(0,3600*8,0)
+        this_shift_start = datetime.datetime(now.year, now.month, now.day, (int(now.hour)/8)*8, 0, 0)
+        this_shift_end = this_shift_start + datetime.timedelta(0,3600*8,0)
+        shift_start_v=[]
+        shift_end_v=[]
+        for x in xrange(3):
+            start_ts = this_shift_start - datetime.timedelta(0,3600*8*x,0)
+            end_ts   = this_shift_end - datetime.timedelta(0,3600*8*x,0)
+            shift_start_v.append( start_ts )
+            shift_end_v.append( end_ts )
 
-        web_contents += '<h2>Run Statistics Summary for %s %s to %s</h2>\n' % ( shift_start.isoformat().split('T')[0],
-                                                                                shift_start.isoformat().split('T')[1],
-                                                                                shift_end.isoformat().split('T')[1] )
+        web_contents += '<h2>Run Statistics Summary for Last 24 Hours</h2>\n'
         web_contents += 'Table below shows the list of runs that is taken during your shift period.<br>\n'
-        web_contents += 'DAQ up-time during the current shift is shown in the 5th column.<br>\n'
+        web_contents += 'DAQ up-time during the current shift is shown in the next table (right).<br>\n'
         web_contents += 'Plots above show similar parameter for last 24 hours (left) and also for 7 days (right).\n'
         web_contents += '<br><br>\n'
+
+        web_contents += "<table style=\"width:100%\"><tr><td>\n"
         web_contents += \
         """
-        <table border='1' width=1000>
+        <table border='1' width=600>
         <tr>
-        <th> Run Number    </th>
+        <th> Run           </th>
         <th> SubRun Counts </th>
         <th> Start Time    </th>
-        <th> Run Length </th>
-        <th> DAQ UpTime for Current Shift</th>
+        <th> Run Length    </th>
         </tr>
         """
-        sum_time=0
+
+        current_shift  = 0
+        previous_shift = 1
+        sum_time_v=[0] * len(shift_start_v)
+        duration_v=[0] * len(shift_start_v)
         for i in xrange(len(self._runinfo_v)):
 
-            run,subrun,start,end = self._runinfo_v[ -1 - i ]
-            if end < shift_start: continue
+            #run,subrun,start,end = self._runinfo_v[ -1 - i ]
+            run,subrun,start,end = self._runinfo_v[ i ]
 
-            run_duration = 0
-            if start < shift_start:
-                run_duration = (end - shift_start).total_seconds()
+            break_loop = False
+            while end < shift_start_v[current_shift]:
+                current_shift  += 1
+                previous_shift += 1
+                if current_shift >= len(shift_start_v):
+                    break_loop = True
+                    break
+            if break_loop: break
+
+            for i in xrange(len(duration_v)):
+
+                duration_v[i] = 0
+            
+            # this run "ends within current shift" and either "start within current shift" or "started within previous shift"
+
+            if shift_start_v[current_shift] < start:
+                duration_v[current_shift] = (end - start).total_seconds()
             else:
-                run_duration = (end - start).total_seconds()
+                duration_v[current_shift] = (end - shift_start_v[current_shift]).total_seconds()
+                if previous_shift < len(shift_start_v):
+                    duration_v[previous_shift] = (shift_end_v[previous_shift] - start).total_seconds()
 
-            sum_time += run_duration
-            frac = float(sum_time)/float((shift_end-shift_start).total_seconds()) * 100.
+            for i in xrange(len(duration_v)):
+                
+                sum_time_v[i] += duration_v[i]
+
+            start_date = start.isoformat().split('T')[0]
+            start_date = start_date[start_date.find('-')+1:len(start_date)]
+            start_time = start.isoformat().split('T')[1]
             web_contents += "<tr>\n"
             web_contents += "<td align=\"center\"> %d</td>\n" % run
             web_contents += "<td align=\"center\"> %d</td>\n" % subrun
-            web_contents += "<td align=\"center\"> %s</td>\n" % str(start.isoformat().split('T')[-1])
+            web_contents += "<td align=\"center\"> %s %s</td>\n" % (start_date,start_time)
             web_contents += "<td align=\"center\"> %g [min.]</td>\n" % (float((end - start).total_seconds())/60.)
-            web_contents += "<td align=\"center\"> %g [min.] ... %g%%</td>\n" % (sum_time/60.,frac)
+
             web_contents += "</tr>\n"
+
+        web_contents += "</table> </td>\n"
+
+        web_contents += "<td><table border='1' width=600>\n"
+        web_contents += "<tr>\n"
+        web_contents += "<th></th>\n"
+        for i in xrange(len(sum_time_v)):
+            web_contents += "<th> Shift %s %s to %s </th>\n" % (shift_start_v[i].isoformat().split('T')[0],
+                                                                shift_start_v[i].isoformat().split('T')[1][0:5],
+                                                                shift_end_v[i].isoformat().split('T')[1][0:5])
+        web_contents += "</tr>\n"
+        web_contents += "<tr>\n"
+        web_contents += "<td align=\"center\"><b> Cumulative Run Length </b></td>\n"
+        for i in xrange(len(sum_time_v)):
+
+            up_time  = sum_time_v[i]
+            web_contents += "<td align=\"center\"><b>%d min.</td>\n" % int(up_time/60.)
             
-        web_contents += \
-        """
-        </table>\n
-        """
+        web_contents += "</tr>\n"
+        web_contents += "<td align=\"center\"><b> UpTime Fraction </b></td>\n"
+
+        for i in xrange(len(sum_time_v)):
+
+            up_time  = sum_time_v[i]
+            tot_time = (shift_end_v[i] - shift_start_v[i]).total_seconds()
+            frac = float(up_time)/float(tot_time) 
+            frac = int(frac*10000)
+            frac /= 100.
+            if not i:
+                tot_time = (now - shift_start_v[i]).total_seconds()
+            color = ''
+            if frac > 85.:
+                color = 'blue'
+            elif frac > 65.:
+                color = '#FF00FF'
+            else:
+                color = 'FF0000'
+                
+            web_contents += "<td align=\"center\"><b><font color=\"%s\"> %g%% </font></td>\n" % (color,frac)
+        
+        web_contents += "</tr>\n"
+        web_contents += "</table>\n"
+        web_contents += "</td></tr></table>\n"
+
         web_contents += "<br>Last Updated: %s %s<br>\n" % tuple(now.replace(microsecond=0).isoformat().split("T"))
         web_contents += \
         """
