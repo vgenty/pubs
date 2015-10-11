@@ -17,6 +17,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpc
+import matplotlib.dates as mpd
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter
 import numpy as np
 
@@ -37,7 +38,7 @@ class daq_uptime_monitor(ds_project_base):
 
         self._run_table='MainRun'
         self._boundary_past = 3600*24*7
-
+        self._runinfo_v = []
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
         
@@ -62,7 +63,7 @@ class daq_uptime_monitor(ds_project_base):
 
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
-        timerange_v=[]
+        self._runinfo_v = []
         utc_timezone = None
         for i in xrange(run):
 
@@ -73,6 +74,7 @@ class daq_uptime_monitor(ds_project_base):
             if last_subrun<0: continue
 
             run_start_time_s,run_start_time_e = self._api.run_timestamp(self._run_table,current_run,0)
+
             run_end_time_s,run_end_time_e = self._api.run_timestamp(self._run_table,current_run,last_subrun)
 
             if not utc_timezone:
@@ -82,7 +84,9 @@ class daq_uptime_monitor(ds_project_base):
             run_end_time_e = utc_timezone.fromutc(run_end_time_e).replace(tzinfo=None)
             #print run_start_time_s,run_end_time_e
             try:
+
                 run_files = [x for x in samweb.listFiles('run_number %d' % current_run) if x.endswith('.ubdaq')]
+
                 if not run_files: continue
                 subrun_max=0
                 subrun_min=1e9
@@ -96,19 +100,20 @@ class daq_uptime_monitor(ds_project_base):
                     if subrun_min > subrun: 
                         subrun_min = subrun
                         fname_min = f
+
                 meta_max = samweb.getMetadata(fname_max)
                 meta_min = samweb.getMetadata(fname_min)
 
                 time_max = meta_max['end_time'].replace('T',' ').split('+')[0]
                 time_min = meta_min['start_time'].replace('T',' ').split('+')[0]
 
-                if not time_max.startswith('1970'):
+                if not time_max.startswith('19'):
 
                     time_max = datetime.datetime.strptime(time_max,'%Y-%m-%d %H:%M:%S')#.replace(tzinfo=pytz.utc)
                     if time_max > run_end_time_e:
                         run_end_time_e = time_max
 
-                if not time_min.startswith('1970'):
+                if not time_min.startswith('19'):
                     time_min = datetime.datetime.strptime(time_min,'%Y-%m-%d %H:%M:%S')#.replace(tzinfo=pytz.utc)
 
                     if time_min < run_start_time_s:
@@ -116,19 +121,16 @@ class daq_uptime_monitor(ds_project_base):
 
                 #print run_start_time_s,run_end_time_e
 
-                timerange_v.append( (current_run,run_start_time_s,run_end_time_e) )
-
+                self._runinfo_v.append((current_run,last_subrun,run_start_time_s,run_end_time_e))
             except Exception as e:
                 self.error('Failed to extract metadta from run=%d' % current_run)
                 continue
-
-            if timerange_v and (int(timerange_v[-1][1].strftime('%s')) + self._boundary_past) < time.time():
+            if self._runinfo_v and (int(self._runinfo_v[-1][2].strftime('%s')) + self._boundary_past) < time.time():
                 break
-        
+
         hour_frac_map = {}
-        for timerange in timerange_v:
-            run,start,end = timerange
-            #print run,start,end
+        for runinfo in self._runinfo_v:
+            run,subrun,start,end = runinfo
             duration = (end - start).total_seconds()
             if duration < 1: continue
 
@@ -182,12 +184,10 @@ class daq_uptime_monitor(ds_project_base):
                 hour_frac_map[every_hour] = 0
 
         # Correct "this hour fraction"
-        current_hour = datetime.datetime.now() - max_key
-        #print current_hour,datetime.datetime.now(),max_key
-        #print ( 3600. / current_hour.seconds )
-        #print hour_frac_map[max_key]
-        hour_frac_map[max_key] *= ( 3600. / current_hour.seconds )
-        #print hour_frac_map[max_key]
+        #current_hour = datetime.datetime.now() - max_key
+        #hour_frac_map[max_key] *= ( 3600. / current_hour.seconds )
+
+        # Analysis
         dates = hour_frac_map.keys()
         dates.sort()
 
@@ -200,18 +200,25 @@ class daq_uptime_monitor(ds_project_base):
 
         fig, ax = plt.subplots(figsize=(12, 8))
 
-        plt.plot_date(dates,values,label='DAQ UpTime Fraction (7 Days)',marker='o',linestyle='-',color='blue')
+        overlay_range = [dates[0] + datetime.timedelta(0,-3600,0),dates[-1] + datetime.timedelta(0,3600,0)]
+        datenum = mpd.date2num(dates)
+
+        plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
+        plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
+        plt.plot_date(dates,values,label='DAQ UpTime Fraction\nHourly Average (7 Days)',marker='o',linestyle='-',color='blue')
+        plt.fill_between(dates,values,color='#81bef7')
+        #plt.hist(datenum,weights=values,bins=len(datenum),label='DAQ UpTime Fraction\nHourly Average (7 Days)',color='orange')
         ax.legend(prop={'size':20})
-        ax.set_xlim(dates[0],dates[-1])
-        ax.set_ylim(0,1.2)
+        ax.set_xlim(dates[0],dates[-1]+datetime.timedelta(0,60,0))
+        ax.set_ylim(0,1.3)
         ax.xaxis.set_major_locator( DayLocator() )
         #ax.xaxis.set_major_locator( HourLocator(np.arange(0,25,6)) )
-        ax.xaxis.set_minor_locator( HourLocator(np.arange(0,25,6)) )
+        #ax.xaxis.set_minor_locator( HourLocator(np.arange(0,24,6)) )
         ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d %H:%M:%S') )
         ax.fmt_xdata = DateFormatter('%Y-%m-%d %H:%M:%S')
-        plt.ylabel('DAQ UpTime Fraction',fontsize=20)
+        plt.ylabel('Hourly UpTime Fraction',fontsize=20)
         fig.autofmt_xdate()
-        plt.title('DAQ UpTime (Last 7 Days)')
+        plt.title('')
         plt.tick_params(labelsize=15)
         plt.grid()
         plt.show()
@@ -222,21 +229,111 @@ class daq_uptime_monitor(ds_project_base):
         # 24 hours
         #
         fig, ax = plt.subplots(figsize=(12, 8))
-
-        plt.plot_date(dates,values,label='DAQ UpTime Fraction (24 hour)',marker='o',linestyle='-',color='blue')
+#        datesnum = mpd.date2num(dates[0:25])
+#        values   = values[0:25]
+        plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
+        plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
+        plt.hist(datenum,weights=values,bins=len(datenum),label='DAQ UpTime Fraction\nHourly Average (24 Hours)',color='cyan')
+        #plt.plot_date(dates,values,label='DAQ UpTime Fraction (24 hour)',marker='o',linestyle='-',color='blue')
         ax.legend(prop={'size':20})
-        ax.set_xlim(dates[-24],dates[-1])
-        ax.set_ylim(0,1.2)
-        ax.xaxis.set_major_locator( HourLocator(np.arange(0,25,6)) )
+        ax.set_xlim(dates[-24],dates[-1]+datetime.timedelta(0,1,0))
+        ax.set_ylim(0,1.3)
+        ax.xaxis.set_major_locator( HourLocator(np.arange(0,24,6)) )
         ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d %H:%M:%S') )
         ax.fmt_xdata = DateFormatter('%Y-%m-%d %H:%M:%S')
-        plt.ylabel('DAQ UpTime Fraction',fontsize=20)
+        plt.ylabel('Hourly UpTime Fraction',fontsize=20)
         fig.autofmt_xdate()
-        plt.title('DAQ UpTime (Last 24 Hours)')
+        plt.title('')
         plt.tick_params(labelsize=15)
         plt.grid()
         plt.show()
         plt.savefig('%s/data/UpTimeShort.png' % os.environ['PUB_TOP_DIR'])
+
+    def make_html(self):
+        web_contents = \
+        """
+        <!DOCTYPE html>
+        <head>
+        <meta http-equiv="refresh" content="30">
+        </head>
+        <html>
+        <body>
+
+        <h1> DAQ Uptime Statistics </h1>
+        <center>
+        <table style="width:100%">
+        <tr>
+        <figure>
+        <td>
+        <img src="UpTimeShort.png" alt="DAQ UpTime (24 hour)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Last 24 Hours) </b></font></figcaption></center>
+        </td>
+        <td>
+        <img src="UpTimeLong.png" alt="DAQ UpTime (7 days)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Last 7 days) </b></font></figcaption></center>
+        </td>
+        </figure>
+        </tr>
+        </table>
+        </center>
+        """
+        now = datetime.datetime.now()
+        shift_start = datetime.datetime(now.year, now.month, now.day, (int(now.hour)/8)*8, 0, 0)
+        shift_end = shift_start + datetime.timedelta(0,3600*8,0)
+
+        web_contents += '<h2>Run Statistics Summary for %s %s to %s</h2>\n' % ( shift_start.isoformat().split('T')[0],
+                                                                                shift_start.isoformat().split('T')[1],
+                                                                                shift_end.isoformat().split('T')[1] )
+        web_contents += 'Table below shows the list of runs that is taken during your shift period.<br>\n'
+        web_contents += 'DAQ up-time during the current shift is shown in the 5th column.<br>\n'
+        web_contents += 'Plots above show similar parameter for last 24 hours (left) and also for 7 days (right).\n'
+        web_contents += '<br><br>\n'
+        web_contents += \
+        """
+        <table border='1' width=1000>
+        <tr>
+        <th> Run Number    </th>
+        <th> SubRun Counts </th>
+        <th> Start Time    </th>
+        <th> Run Length </th>
+        <th> DAQ UpTime for Current Shift</th>
+        </tr>
+        """
+        sum_time=0
+        for i in xrange(len(self._runinfo_v)):
+
+            run,subrun,start,end = self._runinfo_v[ -1 - i ]
+            if end < shift_start: continue
+
+            run_duration = 0
+            if start < shift_start:
+                run_duration = (end - shift_start).total_seconds()
+            else:
+                run_duration = (end - start).total_seconds()
+
+            sum_time += run_duration
+            frac = float(sum_time)/float((shift_end-shift_start).total_seconds()) * 100.
+            web_contents += "<tr>\n"
+            web_contents += "<td align=\"center\"> %d</td>\n" % run
+            web_contents += "<td align=\"center\"> %d</td>\n" % subrun
+            web_contents += "<td align=\"center\"> %s</td>\n" % str(start.isoformat().split('T')[-1])
+            web_contents += "<td align=\"center\"> %g [min.]</td>\n" % (float((end - start).total_seconds())/60.)
+            web_contents += "<td align=\"center\"> %g [min.] ... %g%%</td>\n" % (sum_time/60.,frac)
+            web_contents += "</tr>\n"
+            
+        web_contents += \
+        """
+        </table>\n
+        """
+        web_contents += "<br>Last Updated: %s %s<br>\n" % tuple(now.replace(microsecond=0).isoformat().split("T"))
+        web_contents += \
+        """
+        </body>
+        </html>
+        """
+        fout=open('%s/data/RunStat.html' % os.environ['PUB_TOP_DIR'],'w')
+        fout.write(web_contents)
+        fout.close()
 
 # A unit test section
 if __name__ == '__main__':
@@ -246,6 +343,8 @@ if __name__ == '__main__':
     test_obj.info('Start @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
     test_obj.process_newruns()
+
+    test_obj.make_html()
 
     test_obj.info('End @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
