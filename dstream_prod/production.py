@@ -851,6 +851,8 @@ Stage      : %s
                                 self._data = status._data
                                 self.info('Starting a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
+                                self.info('Run %s' % run)
+                                self.info('Subruns: %s' % str(subruns))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
                                 self.info('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
@@ -860,12 +862,18 @@ Stage      : %s
 
                                 process = 0
                                 for subrun in subruns:
+                                    data = self._data
+                                    if type(self._data) == type([]):
+                                        if process < len(self._data):
+                                            data = self._data[process]
+                                        else:
+                                            data = None
                                     status = ds_status( project = self._project,
                                                         run     = run,
                                                         subrun  = subrun,
                                                         seq     = 0,
                                                         status  = statusCode,
-                                                        data    = self._data[process] )
+                                                        data    = data )
                                     runid = (run, subrun)
                                     self._runid_status[runid] = statusCode
 
