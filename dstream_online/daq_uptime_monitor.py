@@ -184,9 +184,10 @@ class daq_uptime_monitor(ds_project_base):
                 hour_frac_map[every_hour] = 0
 
         # Correct "this hour fraction"
-        #current_hour = datetime.datetime.now() - max_key
-        #hour_frac_map[max_key] *= ( 3600. / current_hour.seconds )
-
+        print hour_frac_map[max_key]
+        current_hour = (datetime.datetime.now() - max_key)
+        hour_frac_map[max_key] *= ( 3600. / current_hour.total_seconds())
+        print hour_frac_map[max_key]
         # Analysis
         dates = hour_frac_map.keys()
         dates.sort()
@@ -354,33 +355,36 @@ class daq_uptime_monitor(ds_project_base):
 
         web_contents += "</table> </td>\n"
 
-        web_contents += "<td><table border='1' width=600>\n"
+        web_contents += "<td valign=\"top\"><table border='1' width=600>\n"
         web_contents += "<tr>\n"
         web_contents += "<th></th>\n"
         for i in xrange(len(sum_time_v)):
-            web_contents += "<th> Shift %s %s to %s </th>\n" % (shift_start_v[i].isoformat().split('T')[0],
-                                                                shift_start_v[i].isoformat().split('T')[1][0:5],
-                                                                shift_end_v[i].isoformat().split('T')[1][0:5])
+            index = len(sum_time_v) - i - 1
+            web_contents += "<th> Shift %s %s to %s </th>\n" % (shift_start_v[index].isoformat().split('T')[0],
+                                                                shift_start_v[index].isoformat().split('T')[1][0:5],
+                                                                shift_end_v[index].isoformat().split('T')[1][0:5])
         web_contents += "</tr>\n"
         web_contents += "<tr>\n"
         web_contents += "<td align=\"center\"><b> Cumulative Run Length </b></td>\n"
         for i in xrange(len(sum_time_v)):
-
-            up_time  = sum_time_v[i]
+            index = len(sum_time_v) - i - 1
+            up_time  = sum_time_v[index]
             web_contents += "<td align=\"center\"><b>%d min.</td>\n" % int(up_time/60.)
             
         web_contents += "</tr>\n"
         web_contents += "<td align=\"center\"><b> UpTime Fraction </b></td>\n"
 
         for i in xrange(len(sum_time_v)):
-
-            up_time  = sum_time_v[i]
-            tot_time = (shift_end_v[i] - shift_start_v[i]).total_seconds()
+            index = len(sum_time_v) - i - 1
+            up_time  = sum_time_v[index]
+            tot_time = (shift_end_v[index] - shift_start_v[index]).total_seconds()
+            if shift_end_v[index] > now:
+                tot_time = (now - shift_start_v[index]).total_seconds()
             frac = float(up_time)/float(tot_time) 
             frac = int(frac*10000)
             frac /= 100.
             if not i:
-                tot_time = (now - shift_start_v[i]).total_seconds()
+                tot_time = (now - shift_start_v[index]).total_seconds()
             color = ''
             if frac > 85.:
                 color = 'blue'

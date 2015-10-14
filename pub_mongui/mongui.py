@@ -230,7 +230,7 @@ for iprojname in projectnames:
     mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
-    mysubtext.setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
+    mysubtext.setText('%d Good   :   %d Intermediate   :   %d Error'%(ngood, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -374,7 +374,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setText('%d Good : %d Int : %d Err'%(ngood, ninter, nerr))
+        projsubtext_dict[iprojname].setText('%d Good   :   %d Intermediate   :   %d Error'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()
