@@ -323,30 +323,33 @@ class production(ds_project_base):
             merge_subrun = int(self._data[5:])
             merge_runid = (run, merge_subrun)
             if self._runid_status.has_key(merge_runid):
-                if self._runid_status[merge_runid] == istage + self.kREADYFORSAM:
+                merge_status = self._runid_status[merge_runid]
+            else:
+                merge_ds_status = self._api.get_status(ds_status(self._project, run,
+                                                                 merge_subrun, 0))
+                merge_status = merge_ds_status._status
+                self._runid_status[merge_runid] = merge_status
+                
+            if merge_status == istage + self.kREADYFORSAM or \
+                    merge_status == istage + self.kDECLARED or \
+                    merge_status == istage + 10:
 
-                    # If we get here, the merge batch job was successful, and we
-                    # can set the status for this subrun to ignore further processing.
+                # If we get here, the merge batch job was successful, and we
+                # can set the status for this subrun to ignore further processing.
 
-                    return 100
+                return 100
 
-                elif self._runid_status[merge_runid] == istage + self.kTOBERECOVERED:
+            elif self._runid_status[merge_runid] == istage + self.kTOBERECOVERED:
 
-                    # If we get here, the merge batch job failed.  Set the 
-                    # status for this subrun to recover.
+                # If we get here, the merge batch job failed.  Set the 
+                # status for this subrun to recover.
 
-                    return istage + kTOBERECOVERED
-
-                else:
-                    return current_status
+                return istage + kTOBERECOVERED
 
             else:
 
-                # This branch of the if shouldn't really ever happen (may require
-                # manual intervention to fix).
+                # Any other status, leave the current status the same.
 
-                msg = 'No merge status for run %d, subrun %d.' % merge_runid
-                self.info(msg)
                 return current_status
 
         last_job_data = self._data.strip().split(':')[-1]
