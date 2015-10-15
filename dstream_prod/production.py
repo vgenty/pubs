@@ -319,7 +319,7 @@ class production(ds_project_base):
 
         # Merged subruns handled here.
 
-        if self._data[:5] == 'Merge':
+        if self._data[:5] == 'Merge' and self._data.find(':') < 0:
             merge_subrun = int(self._data[5:])
             merge_runid = (run, merge_subrun)
             if self._runid_status.has_key(merge_runid):
