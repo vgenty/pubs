@@ -53,7 +53,8 @@ class production(ds_project_base):
             raise Exception
 
         self._project = arg
-
+        self._parent  = ''
+        self._parent_status = None
         # Actions associated with single subruns.
 
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
@@ -102,6 +103,9 @@ class production(ds_project_base):
         proj_info = self._api.project_info(self._project)
         
         try:
+            if 'PARENT' in proj_info._resource:
+                self._parent = proj_info._resource['PARENT']
+                exec('self._parent_status = int(%d)' % proj_info._resource['PARENT_STATUS'])
             self._nruns = int(proj_info._resource['NRUNS'])
             self._xml_file = proj_info._resource['XMLFILE']
             self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
@@ -808,10 +812,14 @@ Stage      : %s
                 fstatus = istage + istatus
                 self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
 
-                # Get (run, subrun) pairs from pubs database.
+                target_list = []
+                if fstatus == kINITIATED and self._parent:
+                    target_list = self.get_xtable_runs([self._project,self._parent],[fstatus,self._parent_status])
+                else:
+                    target_list = self.get_runs( self._project, fstatus )
 
                 run_subruns = {}
-                for x in self.get_runs( self._project, fstatus ):
+                for x in target_list:
                     
                     run    = int(x[0])
                     subrun = int(x[1])
