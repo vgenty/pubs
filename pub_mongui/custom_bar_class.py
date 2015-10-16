@@ -96,11 +96,8 @@ class ProgressBarItem(QtGui.QGraphicsObject):
 
         ##CURRENT appendHistory should take in {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
 
-        #Increment counter of number of history updates
-        self.n_history_updates = self.n_history_updates + 1
-
         #If history has never been updated before, create history dict.
-        if self.n_history_updates == 1:
+        if self.n_history_updates == 0:
             for istat_val in statuses_and_values_toappend:
                 status, value = istat_val[0], istat_val[1]
                 self.history[status] = [value]
@@ -115,7 +112,9 @@ class ProgressBarItem(QtGui.QGraphicsObject):
 
             #if this status has never been added to history, back-fill it with zeros
             if status not in self.history.keys():
-                self.history[status] = [0] * int(self.n_history_updates-1)
+                #This line causes a problem if there are a billion history updates and a new status shows up
+                #if the plot has been updating a long time, it will ahve removed old stuff
+                self.history[status] = [0] * int(self.n_history_updates)
 
             #add this status and value to the history
             self.history[status].append(value)
@@ -130,6 +129,9 @@ class ProgressBarItem(QtGui.QGraphicsObject):
         if self.n_history_updates > 1000:
             for mykey in self.history.keys():
                 self.history[mykey].pop(0)
+        else: 
+            #Increment counter of number of history updates
+            self.n_history_updates += 1
 
     def getHistory(self):
         return self.history
