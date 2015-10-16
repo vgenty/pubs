@@ -344,7 +344,7 @@ class production(ds_project_base):
                 # If we get here, the merge batch job failed.  Set the 
                 # status for this subrun to recover.
 
-                return istage + kTOBERECOVERED
+                return istage + self.kTOBERECOVERED
 
             else:
 
