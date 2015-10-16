@@ -122,10 +122,9 @@ class reg_files_to_sam( ds_project_base ):
                                             seq     = 0,
                                             status  = self._skip_status) )
                 ctr -= 1
-
+                
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
-            
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
         self._project_requirement[0] = kSTATUS_INIT
@@ -134,6 +133,7 @@ class reg_files_to_sam( ds_project_base ):
         ctr = self._nruns
         runid_v = []
         files_v = []
+
         for x in self.get_xtable_runs(self._project_list,
                                       self._project_requirement):
 
@@ -269,6 +269,8 @@ class reg_files_to_sam( ds_project_base ):
         # Fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         #for x in [(391,10,0,0)]:
+        for p in self._project_list:
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % p)
         for x in self.get_xtable_runs(self._project_list,
                                       self._project_requirement):
 
