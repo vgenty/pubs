@@ -128,7 +128,7 @@ class define_samdata(ds_project_base):
             #    self.error('Failed to create a definition: %s' % (self._defname_format % (run,seq)))
             #    continue
             self.info('Ready Run %d Sequence %d (file count %d)' % (run,seq,f_ctr))
-            continue
+
             for x in xrange(subrun_end - subrun_start + 1):
                 subrun = x + subrun_start
                 self.log_status( ds_status( project = self._project,
