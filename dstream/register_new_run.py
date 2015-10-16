@@ -220,11 +220,14 @@ class register_new_run(ds_project_base):
                     # insert into the death start
                     rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],file_creation, file_closing)
                     # offline
-                    self._offline_cursor.execute('SELECT InsertIntoTestRunTable(\'%s\',%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)' % (self._runtable,
-                                                                                                                                      info[0],
-                                                                                                                                      info[1],
-                                                                                                                                      file_creation,
-                                                                                                                                      file_closing) )
+                    self.debug('filling death star offline...')
+                    query = 'SELECT InsertIntoTestRunTable(\'%s\',%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)' % (self._runtable,
+                                                                                                                 info[0],
+                                                                                                                 info[1],
+                                                                                                                 file_creation,
+                                                                                                                 file_closing) 
+                    self.debug(query)
+                    self._offline_cursor.execute(query)
                     pubdb_conn.commit(self._offline_conn_info)
                     # Report starting
                     self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
