@@ -230,7 +230,7 @@ for iprojname in projectnames:
     mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
-    mysubtext.setText('%d Good   :   %d Intermediate   :   %d Error'%(ngood, ninter, nerr))
+    mysubtext.setText('%d Good : %d Intermediate : %d Error'%(ngood, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -299,7 +299,7 @@ for iprojname in projectnames:
 mytext = QtGui.QGraphicsSimpleTextItem()
 mytext.setBrush(text_brush)
 mytext.setPen(outline_pen)
-mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.90)
+mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.88)
 mytext.setText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
 # mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
@@ -307,12 +307,13 @@ myfont.setPointSize(12)
 mytext.setFont(myfont)
 scene.addItem(mytext)
 
-
+#warning message that pops up if GUI cannot connect to DB (or connection to DB ever fails)
+conn_warning = None
 
 def update_gui():
     global global_update_counter
     global_update_counter += 1
-    force_recreate_daemonwindow = True if not global_update_counter%100 else False
+    force_recreate_daemonwindow = True if not global_update_counter%1000 else False
   
     # ==> timeprofiling: entire update_gui function takes 1.2 seconds if you take out the daemon text stuff
     # ==> timeprofiling: if you include daemon text stuff, update_gui takes 3.2 seconds
@@ -334,6 +335,21 @@ def update_gui():
     if daemon_warning_content:      
         dwarnings = scene.openDaemonWindow(daemon_warning,force_recreate = force_recreate_daemonwindow)
     
+    #Check if gui query thread is successfully connected to the DB
+    if not gdbi.getIsConnAlive():
+        global conn_warning
+        if not conn_warning:
+            conn_warning_content = gdbi.genConnWarningText()
+            conn_warning = QtGui.QGraphicsTextItem()
+            conn_warning.setPlainText(conn_warning_content)
+            conn_warning.setDefaultTextColor(QtGui.QColor('white'))
+            warningfont = QtGui.QFont()
+            warningfont.setPointSize(50)
+            conn_warning.setFont(warningfont)
+            gwarnings = scene.openDaemonWindow(conn_warning,force_recreate = force_recreate_daemonwindow)
+        else:
+            gwarnings = scene.openDaemonWindow(conn_warning,force_recreate = force_recreate_daemonwindow)
+
     #Get a list of all projects from the DBI
     #Need to repeat this because otherwise when one project gets disabled or something,
     #"projects" needs to be updated to reflect that
@@ -374,7 +390,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setText('%d Good   :   %d Intermediate   :   %d Error'%(ngood, ninter, nerr))
+        projsubtext_dict[iprojname].setText('%d Good : %d Intermediate : %d Error'%(ngood, ninter, nerr))
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()
