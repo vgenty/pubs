@@ -15,6 +15,7 @@ from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_api
+from pub_dbi.pubdb_conn import pubdb_conn
 
 ## @class register_new_run
 #  @brief register a new run number in the DB
@@ -50,6 +51,19 @@ class register_new_run(ds_project_base):
         self._experts = ''
         self._runtable = ''
         self._suffix = ''
+
+        # Offline PUBS run table insertion needs a separate DB handle
+        self._offline_conn_info = pubdb_conn_info(os.environ['OFFLINE_PUB_PSQL_ADMIN_HOST'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_PORT'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_DB'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_USER'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_PASS'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_CONN_NTRY'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_CONN_SLEEP'],
+                                                  os.environ['OFFLINE_PUB_PSQL_ADMIN_ROLE'])
+
+        self._offline_cursor=None
+
         self.get_resource()
 
     ## @brief method to retrieve the project resource information if not yet done
@@ -63,6 +77,9 @@ class register_new_run(ds_project_base):
         self._runtable  = resource['RUNTABLE']
         if 'SUFFIX' in resource:
             self._suffix = resource['SUFFIX']
+
+        if not self._offline_cursor:
+            self._offline_cursor = pubdb_conn.cursor(self._offline_conn_info)
         
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
@@ -202,6 +219,13 @@ class register_new_run(ds_project_base):
                     self.info('filling death star...')
                     # insert into the death start
                     rundbWriter.insert_into_death_star(self._runtable,info[0],info[1],file_creation, file_closing)
+                    # offline
+                    self._offline_cursor.execute('SELECT InsertIntoTestRunTable(\'%s\',%d,%d,\'%s\'::TIMESTAMP,\'%s\'::TIMESTAMP)' % (self._runtable,
+                                                                                                                                      info[0],
+                                                                                                                                      info[1],
+                                                                                                                                      file_creation,
+                                                                                                                                      file_closing) )
+                    pubdb_conn.commit(self._offline_conn_info)
                     # Report starting
                     self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
 
