@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v04_26_02">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "swizzle_three_filters_run_REP_ZEROPAD_RUN_NUMBER">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e7:prof</qual>
+  </larsoft>
+
+  <!-- Project stages -->
+
+  <stage name="swizzle">
+    <inputdef>prod_assembler_binary_run_REP_ZEROPAD_RUN_NUMBER</inputdef>
+    <fcl>swizzle_with_three_filters.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&name;/swizzle_filter</outdir>
+    <logdir>/uboone/data/users/uboonepro/swizzle/&release;/&name;/swizzle_filter</logdir>
+    <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&name;/swizzle_filter</workdir>
+    <numjobs>100</numjobs>
+    <datatier>raw</datatier>
+    <defname>prod_swizzled_unmerged_run_REP_ZEROPAD_RUN_NUMBER</defname>
+    <maxfilesperjob>10</maxfilesperjob>
+  </stage>
+
+  <stage name="mergefilter">
+    <inputstream>rawfilter</inputstream>
+    <fcl>copy_raw.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&name;/swizzle_mergefilter</outdir>
+    <logdir>/uboone/data/users/uboonepro/swizzle/&release;/&name;/swizzle_mergefilter</logdir>
+    <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&name;/swizzle_mergefilter</workdir>
+    <numjobs>10</numjobs>
+    <datatier>raw</datatier>
+    <defname>prod_swizzled_rawfilter_run_REP_ZEROPAD_RUN_NUMBER</defname>
+    <maxfilesperjob>1000</maxfilesperjob>
+  </stage>
+
+  <stage name="mergeprescale">
+    <inputstream>rawprescale</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_raw.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&name;/swizzle_mergeprescale</outdir>
+    <logdir>/uboone/data/users/uboonepro/swizzle/&release;/&name;/swizzle_mergeprescale</logdir>
+    <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&name;/swizzle_mergeprescale</workdir>
+    <numjobs>10</numjobs>
+    <datatier>raw</datatier>
+    <defname>prod_swizzled_rawprescale_run_REP_ZEROPAD_RUN_NUMBER</defname>
+    <maxfilesperjob>1000</maxfilesperjob>
+  </stage>
+
+  <stage name="mergenotpc">
+    <inputstream>rawnotpc</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_raw.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&name;/swizzle_mergenotpc</outdir>
+    <logdir>/uboone/data/users/uboonepro/&release;/&name;/swizzle_mergenotpc</logdir>
+    <workdir>/uboone/data/users/uboonepro/work/&release;/&name;/swizzle_mergenotpc</workdir>
+    <numjobs>10</numjobs>
+    <datatier>raw</datatier>
+    <defname>prod_swizzled_rawnotpc_run_REP_ZEROPAD_RUN_NUMBER</defname>
+    <maxfilesperjob>1000</maxfilesperjob>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>

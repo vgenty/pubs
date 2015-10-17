@@ -36,20 +36,37 @@ class define_samdata(ds_project_base):
         self._nruns = 0
         self._num_subrun_per_job = 0
         self._runtable = ''
-        self._list_format = "data_tier = 'raw' and file_type = data and file_format = binaryraw-uncompressed and run_number = %d and availability: physical"
-        self._declare_format = "data_tier = 'raw' and file_type = data and file_format = binaryraw-uncompressed and run_number = %d and run_number >= %d.%d and run_number <= %d.%d"
-        self._defname_format = 'prod_assembler_binary_run_%07d_jobseq_%04d'
+        self._list_format = ''
+        self._declare_format = ''
+        self._defname_format = ''
         self._input_file_extension = 'ubdaq'
+        self._max_run = 1e12
         
-    ## @brief
+    ## @brief load project parameters
     def get_resource(self):
         proj_info = self._api.project_info(self._project)
 
         self._nruns = int(proj_info._resource['NRUNS'])
+        if 'MAX_RUN' in proj_info._resource:
+            self._max_run = int(proj_info._resource['MAX_RUN'])
         self._num_subrun_per_job = int(proj_info._resource['NUM_SUBRUN_PER_JOB'])
         self._runtable = proj_info._runtable
         self._input_file_extension = proj_info._resource['INPUT_EXTENSION']
 
+        self._declare_format = proj_info._resource['SAM_DECLARE_FORMAT']
+        self._defname_format = proj_info._resource['SAM_DEFNAME_FORMAT']
+        self._list_format = proj_info._resource['SAM_LIST_FORMAT']
+
+    ## @brief getter for a formatted string
+    def sam_query_formatter(self,format,run,subrun=-1):
+        res = str(format)
+        res = res.replace('REP_RUN_NUMBER',str(int(run)))
+        res = res.replace('REP_ZEROPAD_RUN_NUMBER','%07d' % int(run))
+        if subrun>0:
+            res = res.replace('REP_SUBRUN_NUMBER',str(int(subrun)))
+            res = res.replace('REP_ZEROPAD_SUBRUN_NUMBER','%07d' % int(subrun))
+        return res
+        
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
 
@@ -60,7 +77,9 @@ class define_samdata(ds_project_base):
         # Fetch runs from DB and process for # runs specified for this instance.
         runsubrun_list = []
         for x in self.get_runs(self._project,1):
-            runsubrun_list.append((int(x[0]),int(x[1])))
+            run,subrun = (int(x[0]),int(x[1]))
+            if run > self._max_run: continue
+            runsubrun_list.append((run,subrun))
         self.info('Files to be processed: %d' % len(runsubrun_list))
         last_run = self._api.get_last_run(self._runtable)
         last_subrun = self._api.get_last_subrun(self._runtable,last_run)
@@ -73,7 +92,7 @@ class define_samdata(ds_project_base):
             if run in runlist: continue
             runlist.append(run)
 
-            query = self._list_format % run
+            query = self.sam_query_formatter(self._list_format,run)
             self.debug('Query: %s' % query)
             filelist = samweb.listFiles(query)
             self.info('Run %d found %d files...' % (run,len(filelist)))
@@ -121,12 +140,13 @@ class define_samdata(ds_project_base):
             
             #defname = self._defname_format % (run,seq)
             #query   = self._declare_format % (run,run,subrun_start,run,subrun_end)
-            #continue
-            #try:
-            #    samweb.createDefinition(defname,query)
-            #except Exception:
-            #    self.error('Failed to create a definition: %s' % (self._defname_format % (run,seq)))
-            #    continue
+            defname = self.sam_query_formatter(self._defname_format,run)
+            query   = self.sam_query_formatter(self._declare_format,run)
+            try:
+                samweb.descDefinition(defname)
+            except samweb_cli.DefinitionNotFound:
+                samweb.createDefinition(defname,query)
+
             self.info('Ready Run %d Sequence %d (file count %d)' % (run,seq,f_ctr))
 
             for x in xrange(subrun_end - subrun_start + 1):

@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v04_26_02">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "test_neutrino_id_reco_run_REP_ZEROPAD_RUN_NUMBER">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e7:prof</qual>
+    <!--local>/uboone/app/users/greenlee/toolsrel/local.tar</local-->
+  </larsoft>
+
+  <!-- Project stages -->
+
+  <stage name="reco">
+    <inputdef>test_swizzled_rawfilter_run_REP_ZEROPAD_RUN_NUMBER</inputdef>
+    <fcl>reco_uboone_data_wflash_neutrinoID.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/neutrino_id/&release;/&name;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/neutrino_id/&release;/&name;</logdir>
+    <workdir>/uboone/data/uboonepro/work/neutrino_id/&release;/&name;</workdir>
+    <numjobs>100</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>test_&name;_&release;</defname>
+    <maxfilesperjob>1</maxfilesperjob>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>
