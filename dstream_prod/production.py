@@ -80,6 +80,8 @@ class production(ds_project_base):
         self._nruns     = None
         self._nsubruns  = []
         self._xml_file  = ''
+        self._xml_outdir   = ''
+        self._xml_template = False
         self._stage_name    = []
         self._stage_digits  = []
         self._nresubmission = 3
@@ -92,6 +94,25 @@ class production(ds_project_base):
         if not self.loadProjectParams():
             self.info('Failed to load project @ %s' % self.now_str())
             sys.exit(1)
+
+    def getXML(self,run,remake=False):
+
+        if not self._xml_template: return self._xml_file
+        
+        out_xml_name = '%s/%s_run_%07d.xml' % (self._xml_outdir,self._project,int(run))
+        
+        if not remake and os.path.isfile(out_xml_name): return out_xml_name
+
+        if not os.path.isfile(self._xml_file):
+            raise DSException('Input XML template does not exist: %s' % self._xml_template)
+
+        fout = open(out_xml_name,'w')
+        contents = open(self._xml_template,'r').read()
+        contents = contents.replace('RUN_NUMBER','%07d' % int(run))
+        fout.write(contents)
+        fout.close()
+
+        return out_xml_name
 
     def loadProjectParams( self ):
 
@@ -108,6 +129,12 @@ class production(ds_project_base):
                 exec('self._parent_status = int(%d)' % proj_info._resource['PARENT_STATUS'])
             self._nruns = int(proj_info._resource['NRUNS'])
             self._xml_file = proj_info._resource['XMLFILE']
+            if 'XML_TEMPLATE' in proj_info._resource:
+                if self._xml_file:
+                    self.error('Resource has both XMLFILE and XML_TEMPLATE (not allowed!)')
+                    raise DSException()
+                self._xml_template = proj_info._resource['XML_TEMPLATE']
+                self._xml_outdir = proj_info._resource['XML_OUTDIR']
             self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
             self._experts = proj_info._resource['EXPERTS']
             self._period = proj_info._period
@@ -234,7 +261,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -262,7 +289,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
+        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -428,7 +455,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -513,7 +540,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
         except PubsInputError:
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
@@ -538,7 +565,7 @@ Job IDs    : %s
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
+        self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -619,7 +646,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -711,7 +738,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -838,7 +865,6 @@ Stage      : %s
                         run_subruns[run].add(subrun)
 
                 # Loop over runs.
-
                 for run in run_subruns.keys():
                     all_subruns = run_subruns[run].copy()
 
