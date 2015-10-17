@@ -41,6 +41,7 @@ class define_samdata(ds_project_base):
         self._defname_format = ''
         self._input_file_extension = 'ubdaq'
         self._max_run = 1e12
+        self._min_run = 0
         
     ## @brief load project parameters
     def get_resource(self):
@@ -49,6 +50,8 @@ class define_samdata(ds_project_base):
         self._nruns = int(proj_info._resource['NRUNS'])
         if 'MAX_RUN' in proj_info._resource:
             self._max_run = int(proj_info._resource['MAX_RUN'])
+        if 'MIN_RUN' in proj_info._resource:
+            self._min_run = int(proj_info._resource['MIN_RUN'])
         self._num_subrun_per_job = int(proj_info._resource['NUM_SUBRUN_PER_JOB'])
         self._runtable = proj_info._runtable
         self._input_file_extension = proj_info._resource['INPUT_EXTENSION']
@@ -76,11 +79,14 @@ class define_samdata(ds_project_base):
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
         # Fetch runs from DB and process for # runs specified for this instance.
         runsubrun_list = []
+
         for x in self.get_runs(self._project,1):
             run,subrun = (int(x[0]),int(x[1]))
             if run > self._max_run: continue
+            if run < self._min_run: continue
             runsubrun_list.append((run,subrun))
         self.info('Files to be processed: %d' % len(runsubrun_list))
+
         last_run = self._api.get_last_run(self._runtable)
         last_subrun = self._api.get_last_subrun(self._runtable,last_run)
         
@@ -120,7 +126,7 @@ class define_samdata(ds_project_base):
             last_seq = int(subrun_max) / int(self._num_subrun_per_job)
 
             if seq == last_seq:
-                num_file_necessary = subrun_max - last_seq * self._num_subrun_per_job
+                num_file_necessary = subrun_max - last_seq * self._num_subrun_per_job + 1
             
             if f_ctr < num_file_necessary:
                 self.debug('Skip Run %d Sequence %d (file count %d/%d)' % (run,seq,f_ctr,num_file_necessary))
@@ -129,13 +135,14 @@ class define_samdata(ds_project_base):
             # Check if all subruns in this sequence exists
             subrun_start = seq * self._num_subrun_per_job
             subrun_end = subrun_start + num_file_necessary - 1
+
             skip = False
             for x in xrange(subrun_end - subrun_start + 1):
                 subrun = x + subrun_start
-                if not (run,subrun) in runsubrun_list:
-                    self.warning('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
-                    skip=True
-                    break
+                #if not (run,subrun) in runsubrun_list:
+                #    self.warning('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
+                #    skip=True
+                #    break
             if skip: continue
             
             #defname = self._defname_format % (run,seq)
@@ -151,12 +158,15 @@ class define_samdata(ds_project_base):
 
             for x in xrange(subrun_end - subrun_start + 1):
                 subrun = x + subrun_start
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = 0 ) )
-
+                try:
+                    self.log_status( ds_status( project = self._project,
+                                                run     = run,
+                                                subrun  = subrun,
+                                                seq     = 0,
+                                                status  = 0 ) )
+                    time.sleep(0.1)
+                except Exception:
+                    self.error('Run %d SubRun %d does not exist for %s' % (run,subrun,self._project))
 # A unit test section
 if __name__ == '__main__':
 
