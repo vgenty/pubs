@@ -815,9 +815,14 @@ class ds_master(ds_writer,ds_reader):
         info._ver    = orig_info._ver
 
         resource = ''
-        for x in info._resource.keys():
+        for key,value in info._resource.iteritems():
 
-            resource += '%s=>%s,' % (x, info._resource[x])
+            if type(value) == type(str()):
+                if not value.startswith('"'):
+                    value = '"%s' % value
+                if not value.endswith('"'):
+                    value = '%s"' % value
+            resource += '%s=>%s,' % (key,value)
 
         resource = resource.rstrip(',')
 

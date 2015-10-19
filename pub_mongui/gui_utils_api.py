@@ -36,6 +36,7 @@ class GuiUtilsAPI():
       except:
         print "Unable to connect to database in query thread... womp womp :("
 
+      self.is_conn_alive = self.dbi.is_conn_alive()
       self.queried_proj_dict = self.dbi.list_status()
       self.projects = self.dbi.list_projects()
       self.relevant_daemons = GuiUtils().getRelevantDaemons()
@@ -50,6 +51,7 @@ class GuiUtilsAPI():
     def run(self):
       #self.threadLock.acquire()
       while True:
+        self.is_conn_alive = self.dbi.is_conn_alive()
         self.queried_proj_dict = self.dbi.list_status()
         self.projects = self.dbi.list_projects()
         for servername in self.relevant_daemons:
@@ -91,6 +93,9 @@ class GuiUtilsAPI():
         KeyError('What?? Server not in daemon_last_logtimes.keys() inside of gui_utils_api thread.')
       return tmp_lastlogtime
 
+    def getIsConnAlive(self):
+      return self.is_conn_alive
+
   def __init__(self):
 
     threadLock = threading.Lock()
@@ -119,6 +124,7 @@ class GuiUtilsAPI():
     self.colors = self.my_utils.getColors()
     #True to reset counters on initialization of GUI
     self.reset_self = True
+    self.is_conn_alive = self.querythread.getIsConnAlive()
 
   def resetCounters(self):
     print " >>> RESETTING PUBS MONITORING GUI COUNTERS AT %s <<<"%datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -130,6 +136,7 @@ class GuiUtilsAPI():
     self.querythread.exit()
 
   def update(self):
+    self.is_conn_alive = self.querythread.getIsConnAlive()
     self.proj_dict = self.querythread.getProjDict()
     self.enabled_projects = [ x._project for x in self.querythread.getProjects() ]
 
@@ -269,6 +276,23 @@ class GuiUtilsAPI():
     #if daemon_warning actually had nothing in it, return no daemon warning
     return (text_content,warning_content) if warning_content else (text_content, '')
 
+  def genConnWarningText(self):
+    text_content = 'PUBS monitoring GUI was unable to connect to the PUBS database.\nSomething has gone awry!\nTell an expert!\n'
+    text_content += 'This warning generated at %s.'%datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p")
+    return text_content
+
+  def getIsConnAlive(self):
+    return self.is_conn_alive
+
+
+
+
+
+
+
+
+
+
 class GuiUtils():
   #Class that does NOT connect to any DB but just holds various constants/utility functions
   def __init__(self):
@@ -373,3 +397,4 @@ class GuiUtils():
     answer = math.sqrt(math.pow(endpoint[1]-startpoint[1],2)+math.pow(endpoint[0]-startpoint[0],2))
     return 50.
     # return answer
+

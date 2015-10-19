@@ -78,6 +78,7 @@ case `uname -n` in
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
+	setup sam_web_client v2_0
 	setup postgresql v9_3_6 -q p279
 	setup larbatch v01_14_00
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`

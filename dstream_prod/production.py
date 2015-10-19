@@ -53,7 +53,8 @@ class production(ds_project_base):
             raise Exception
 
         self._project = arg
-
+        self._parent  = ''
+        self._parent_status = None
         # Actions associated with single subruns.
 
         self.PROD_ACTION = { self.kDONE          : self.checkNext,
@@ -79,6 +80,8 @@ class production(ds_project_base):
         self._nruns     = None
         self._nsubruns  = []
         self._xml_file  = ''
+        self._xml_outdir   = ''
+        self._xml_template = False
         self._stage_name    = []
         self._stage_digits  = []
         self._nresubmission = 3
@@ -92,6 +95,26 @@ class production(ds_project_base):
             self.info('Failed to load project @ %s' % self.now_str())
             sys.exit(1)
 
+    def getXML(self,run,remake=False):
+
+        if not self._xml_template: return self._xml_file
+        
+        out_xml_name = '%s/%s_run_%07d.xml' % (self._xml_outdir,self._project,int(run))
+        
+        if not remake and os.path.isfile(out_xml_name): return out_xml_name
+
+        if not os.path.isfile(self._xml_template):
+            raise DSException('Input XML template does not exist: %s' % self._xml_template)
+
+        fout = open(out_xml_name,'w')
+        contents = open(self._xml_template,'r').read()
+        contents = contents.replace('REP_RUN_NUMBER','%d' % int(run))
+        contents = contents.replace('REP_ZEROPAD_RUN_NUMBER','%07d' % int(run))
+        fout.write(contents)
+        fout.close()
+
+        return out_xml_name
+
     def loadProjectParams( self ):
 
         # Attempt to connect DB. If failure, abort
@@ -102,8 +125,28 @@ class production(ds_project_base):
         proj_info = self._api.project_info(self._project)
         
         try:
+            if 'PARENT' in proj_info._resource:
+                self._parent = proj_info._resource['PARENT']
+                exec('self._parent_status = int(%s)' % proj_info._resource['PARENT_STATUS'])
             self._nruns = int(proj_info._resource['NRUNS'])
-            self._xml_file = proj_info._resource['XMLFILE']
+            if 'XML_TEMPLATE' in proj_info._resource:
+                if self._xml_file:
+                    raise DSException('Resource has both XMLFILE and XML_TEMPLATE (not allowed!)')
+                self._xml_template = proj_info._resource['XML_TEMPLATE']
+                self._xml_outdir = proj_info._resource['XML_OUTDIR']
+                if not '/' in self._xml_template:
+                    self._xml_template = '%s/dstream_prod/xml/%s' % (os.environ['PUB_TOP_DIR'],self._xml_template)
+                if not os.path.isfile(self._xml_template):
+                    raise DSException('XML template file not found: %s' % self._xml_template)
+                if not os.path.isdir(self._xml_outdir):
+                    os.makedirs(self._xml_outdir)
+            elif not 'XMLFILE' in proj_info._resource:
+                raise DSException('XML file not specified in resource!')
+            else:
+                self._xml_file = proj_info._resource['XMLFILE']
+                if not os.path.isfile(self._xml_file):
+                    raise DSException('XML file not found: %s' % self._xml_file)
+
             self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
             self._experts = proj_info._resource['EXPERTS']
             self._period = proj_info._period
@@ -134,9 +177,9 @@ class production(ds_project_base):
                 nsubruns = self._nsubruns[x]
                 self._digit_to_nsubruns[digit] = nsubruns
 
-        except Exception:
+        except Exception as e:
             self.error('Failed to load project parameters...')
-            return False
+            raise e
 
         self.info('Project loaded @ %s' % self.now_str())
         return True
@@ -209,11 +252,11 @@ class production(ds_project_base):
         success_codes = ['JOBSUBJOBID']
         for code in failure_codes:
             if stat_str.find(code) >=0:
-                print "found:",code
+                #print "found:",code
                 return False
         for code in success_codes:
             if stat_str.find(code) < 0:
-                print "not found:",code
+                #print "not found:",code
                 return False
         return True
 
@@ -230,7 +273,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -258,7 +301,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
+        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -306,7 +349,7 @@ class production(ds_project_base):
         self._data = multi_data
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # Here we may need some checks
         return statusCode
@@ -424,7 +467,7 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -488,7 +531,7 @@ Job IDs    : %s
         self.info("Checked job, status: %d" % statusCode)
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # Here we may need some checks
 
@@ -509,7 +552,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
         except PubsInputError:
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
@@ -534,7 +577,7 @@ Job IDs    : %s
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self._xml_file, stage ) )
+        self.info( 'Resubmit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -590,7 +633,7 @@ Job IDs    : %s
 
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # Here we may need some checks
         return statusCode
@@ -615,7 +658,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -684,7 +727,7 @@ Job IDs    : %s
         self.info("SAM declarations, status: %d" % statusCode)
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # Here we may need some checks
 
@@ -707,7 +750,7 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self._xml_file, '', stage, run, [subrun], self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -766,7 +809,7 @@ Job IDs    : %s
            istage += 10
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # If all the stages complete, send an email to experts
         if not istage in self._stage_digits:
@@ -782,7 +825,7 @@ Stage      : %s
         self.info("SAM store, status: %d" % statusCode)
 
         # Pretend I'm doing something
-        time.sleep(5)
+        #time.sleep(5)
 
         # Here we may need some checks
 
@@ -808,10 +851,14 @@ Stage      : %s
                 fstatus = istage + istatus
                 self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
 
-                # Get (run, subrun) pairs from pubs database.
+                target_list = []
+                if fstatus == self.kINITIATED and self._parent:
+                    target_list = self.get_xtable_runs([self._project,self._parent],[fstatus,self._parent_status])
+                else:
+                    target_list = self.get_runs( self._project, fstatus )
 
                 run_subruns = {}
-                for x in self.get_runs( self._project, fstatus ):
+                for x in target_list:
                     
                     run    = int(x[0])
                     subrun = int(x[1])
@@ -830,7 +877,6 @@ Stage      : %s
                         run_subruns[run].add(subrun)
 
                 # Loop over runs.
-
                 for run in run_subruns.keys():
                     all_subruns = run_subruns[run].copy()
 
@@ -852,12 +898,12 @@ Stage      : %s
                                 status = self._api.get_status(ds_status(self._project,
                                                                         run, subruns[0], 0))
                                 self._data = status._data
-                                self.info('Starting a multiple subrun action: %s @ %s' % (
+                                self.debug('Starting a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
-                                self.info('Run %s' % run)
-                                self.info('Subruns: %s' % str(subruns))
+                                self.debug('Run %s' % run)
+                                self.debug('Subruns: %s' % str(subruns))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
-                                self.info('Finished a multiple subrun action: %s @ %s' % (
+                                self.debug('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
                                 # Create a status object to be logged to DB (if necessary)
@@ -907,10 +953,10 @@ Stage      : %s
                                                                     run, subrun, 0))
                             self._data = status._data
 
-                            self.info('Starting an action: %s @ %s' % (
+                            self.debug('Starting an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
                             statusCode = action( statusCode, istage, run, subrun )
-                            self.info('Finished an action: %s @ %s' % (
+                            self.debug('Finished an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
