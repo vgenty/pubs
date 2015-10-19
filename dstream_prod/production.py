@@ -477,6 +477,25 @@ class production(ds_project_base):
                 self.error(line)
             return statusCode + istage 
 
+        # Make sure there is only a single subdirectory in the output and log directories.
+
+        nout = 0
+        nlog = 0
+        for path, subdirs, files in os.walk(stobj.outdir):
+            if path != stobj.outdir:
+                nout += 1
+        for path, subdirs, files in os.walk(stobj.logdir):
+            if path != stobj.logdir:
+                nlog += 1
+
+        # If there is more than one subdirectory in either place, return an error.
+
+        if nout > 1 or nlog > 1:
+            self.error('More than one batch subdirectory.')
+            self.error('Output directory: %s' % stobj.outdir)
+            self.error('Log directory: %s' % stobj.logdir)
+            return statusCode + 1000
+
         # Do check.
         try:
             real_stdout = sys.stdout
