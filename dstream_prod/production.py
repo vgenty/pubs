@@ -90,7 +90,7 @@ class production(ds_project_base):
         self._digit_to_nsubruns = {}
         self._data = "None"
         self._runid_status = {}
-
+        self._jobstat = ''
         if not self.loadProjectParams():
             self.info('Failed to load project @ %s' % self.now_str())
             sys.exit(1)
@@ -181,6 +181,22 @@ class production(ds_project_base):
             self.error('Failed to load project parameters...')
             raise e
 
+        # Get job stat
+        jobstat = self._jobstat_from_log()
+        if not jobstat[0]:
+            self.warning('Fetching job status from log file failed! Try running cmd...')
+            jobstat = self._jobstat_from_cmd(jobid)
+        
+        if not jobstat[0]:
+            text = ''
+            if not jobstat[1]:
+                text = 'No job log found...'
+            else:
+                text = 'Job log indicates query has failed (see below).\n %s' % jobstat[1]
+            self.error(text)
+            raise DSException()
+        
+        self._jobstat = jobstat[1]
         self.info('Project loaded @ %s' % self.now_str())
         return True
 
@@ -196,7 +212,7 @@ class production(ds_project_base):
 
         return statusCode
 
-    def _jobstat_from_log(self, submit_time):
+    def _jobstat_from_log(self, submit_time=None):
         result = (False,'')
         if not os.path.isfile(self.JOBSUB_LOG):
             subject = 'Failed fetching job log'
@@ -211,9 +227,10 @@ class production(ds_project_base):
 
         mod_time = os.path.getmtime(self.JOBSUB_LOG)
         self.info('Job log modification time: %s' % time.ctime(mod_time))
-        self.info('Submit time: %s' % time.ctime(submit_time))
-        if mod_time < submit_time + 60:
-            return result
+        if submit_time:
+            self.info('Submit time: %s' % time.ctime(submit_time))
+            if mod_time < submit_time + 60:
+                return result
 
         log_age = time.time() - mod_time
         if log_age + 10 > self._period:
@@ -398,35 +415,14 @@ class production(ds_project_base):
         last_job_data = self._data.strip().split(':')[-1]
         job_data_list = last_job_data.split('+')
         jobid = job_data_list[0]
-        if len(job_data_list) > 1:
-            submit_time = float(job_data_list[1])
-        else:
-            submit_time = float(0)
 
-        # Main command
-        jobstat = self._jobstat_from_log(submit_time)
-        if not jobstat[0]:
-            self.warning('Fetching job status from log file failed! Try running cmd...')
-            jobstat = self._jobstat_from_cmd(jobid)
-        
-        if not jobstat[0]:
-            subject = 'Failed to fetch job status!'
-            text = ''
-            if not jobstat[1]:
-                text = 'No job log found...'
-            else:
-                text = 'Job log indicates query has failed (see below).\n %s' % jobstat[1]
-            text += '\n'
-            text += 'PUBS status remains same (%d)' % current_status
-            self.error(subject)
-            self.error(text)
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
-            return current_status
+        #if len(job_data_list) > 1:
+        #    submit_time = float(job_data_list[1])
+        #else:
+        #    submit_time = float(0)
 
         is_running = False
-        target_jobs = [x for x in jobstat[1].split('\n') if x.startswith(jobid)]
+        target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
         for line in target_jobs:
             words = line.split()
             job_state = words[5]
