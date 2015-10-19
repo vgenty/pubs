@@ -394,10 +394,13 @@ class get_metadata( ds_project_base ):
             ver = 'unknown'
             sevt = eevt = 0
             stime = etime = '1970-01-01:T00:00:00'
-            stime_usec=-1
-            etime_usec=-1
+            stime_usec = etime_usec  = -1
+            stime_secs = etime_secs = -1
+            sdaqclock = edaqclock = -1
+
             try:
                 read_gps=False
+                read_daqclock=False
                 for line in last_event_cout.split('\n'):
                     if "run_number=" in line and "subrun" not in line :
                         self.debug('Extracting run_number... %s' % line.split('=')[-1])
@@ -423,12 +426,27 @@ class get_metadata( ds_project_base ):
                         self.debug('Extracted GPS Time... %s' % words)
                         etime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
                         etime_usec = words[1]
+                        etime_secs = (words[0], words[1])
                         read_gps=False
+                    if "Trigger Board Clock Time FROM EVENT:Object" in line:
+                        read_daqclock=True
+                    if "Trigger Clock: (frame,sample,div)" in line and read_daqclock:
+                        words=[]
+                        for w in line.split():
+                            if w.rstrip(',').isdigit(): words.append(int(w.rstrip(',')))
+                        if not len(words) == 3:
+                            self.error('DAQClock time first-event format could not be interpreted...')
+                            self.error(line)
+                            raise DSException()
+                        self.debug('Extracted DAQClock Time... %s' % words)
+                        edaqclock = (words[0],words[1],words[2])
+                        read_daqclock=False
                     if "daq_version_label=" in line:
                         self.debug('DAQ version... %s' % line.split('=')[-1])
                         ver = line.split('=')[-1]
                         
                 read_gps=False
+                read_daqclock=False
                 for line in first_event_cout.split('\n'):
                     if "event_number=" in line:
                         self.debug('Extracting event_number... %s' % line.split('=')[-1])
@@ -446,7 +464,31 @@ class get_metadata( ds_project_base ):
                         self.debug('Extracted GPS Time... %s' % words)
                         stime = datetime.datetime.fromtimestamp(words[0]).replace(microsecond=0).isoformat()
                         stime_usec = words[1]
+                        stime_secs = (words[0], words[1])
                         read_gps=False
+                    if "Trigger Board Clock Time FROM EVENT:Object" in line:
+                        read_daqclock=True
+                    if "Trigger Clock: (frame,sample,div)" in line and read_daqclock:
+                        words=[]
+                        for w in line.split():
+                            if w.rstrip(',').isdigit(): words.append(int(w.rstrip(',')))
+                        if not len(words) == 3:
+                            self.error('DAQClock time last-event format could not be interpreted...')
+                            self.error(line)
+                            raise DSException()
+                        self.debug('Extracted DAQClock Time... %s' % words)
+                        sdaqclock = (words[0],words[1],words[2])
+                        read_daqclock=False
+
+                # Need to fix it cuz it's pre-PPS
+                # Gotta get out of isoformat strings to do the maths.
+                if datetime.datetime.fromtimestamp(stime_secs[0].replace(microsecond=0)).year < 2015 and edaqclock is not -1 and sdaqclock is not -1 and etime is not -1 and stime is not -1:  
+                    start_prePPS = stime
+                    dt = sum([i*j for (i, j) in zip(tuple(map(lambda x, y: x - y, edaqclock, sdacqclock)) , (1600.0,0.5,0.00624)) ]) # dot-product, musec
+                    stime_tmp = etime_secs[0]*1.0E6 + etime_secs[1] - dt
+                    stime = datetime.datetime.fromtimestamp(int(stime_tmp * 1.0E-6)).replace(microsecond=0).isoformat
+                    stime_usec = int ( (stime_tmp * 1.0E-6 - stime) * 1.0E6)
+                    self.info('Changed start time from ' + start_prePPS + ' to ' + stime + ' and ' + stime_usec + ' microseconds.')
 
                 status_v[i] = (3,None)
                 self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
