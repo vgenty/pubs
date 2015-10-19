@@ -79,13 +79,18 @@ class define_samdata(ds_project_base):
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
         # Fetch runs from DB and process for # runs specified for this instance.
         runsubrun_list = []
-
+        subrun_ctr = {}
         for x in self.get_runs(self._project,1):
             run,subrun = (int(x[0]),int(x[1]))
             if run > self._max_run: continue
             if run < self._min_run: continue
             runsubrun_list.append((run,subrun))
+            if not run in subrun_ctr:
+                subrun_ctr[run]=0
+            subrun_ctr[run] += 1
         self.info('Files to be processed: %d' % len(runsubrun_list))
+        for r in subrun_ctr:
+            self.debug('Run %d ... %d subruns' % (r,subrun_ctr[r]))
 
         last_run = self._api.get_last_run(self._runtable)
         last_subrun = self._api.get_last_subrun(self._runtable,last_run)
