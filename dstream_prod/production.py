@@ -627,7 +627,10 @@ Job IDs    : %s
                 process += 1
         else:
             for subrun in subruns:
-                multi_data.append(single_data)
+                if original_data != None:
+                    multi_data.append('%s:%s' % (original_data, single_data))
+                else:
+                    multi_data.append(single_data)
         self._data = multi_data
 
 
