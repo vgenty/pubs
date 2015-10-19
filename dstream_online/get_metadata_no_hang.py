@@ -482,12 +482,13 @@ class get_metadata( ds_project_base ):
 
                 # Need to fix it cuz it's pre-PPS
                 # Gotta get out of isoformat strings to do the maths.
-                if datetime.datetime.fromtimestamp(stime_secs[0].replace(microsecond=0)).year < 2015 and edaqclock is not -1 and sdaqclock is not -1 and etime is not -1 and stime is not -1:  
+                if datetime.datetime.fromtimestamp(stime_secs[0]).replace(microsecond=0).year < 2015 and edaqclock is not -1 and sdaqclock is not -1 and etime is not -1 and stime is not -1:  
                     start_prePPS = stime
-                    dt = sum([i*j for (i, j) in zip(tuple(map(lambda x, y: x - y, edaqclock, sdacqclock)) , (1600.0,0.5,0.00624)) ]) # dot-product, musec
+                    dt = sum([i*j for (i, j) in zip(tuple(map(lambda x, y: x - y, edaqclock, sdaqclock)) , (1600.0,0.5,0.00624)) ]) # dot-product, musec
                     stime_tmp = etime_secs[0]*1.0E6 + etime_secs[1] - dt
-                    stime = datetime.datetime.fromtimestamp(int(stime_tmp * 1.0E-6)).replace(microsecond=0).isoformat
-                    stime_usec = int ( (stime_tmp * 1.0E-6 - stime) * 1.0E6)
+                    #pdb.set_trace()
+                    stime = datetime.datetime.fromtimestamp(int(stime_tmp * 1.0E-6)).replace(microsecond=0).isoformat()
+                    stime_usec = str ( int (stime_tmp - ( int(stime_tmp *1.0E-6) * 1.0E6)) )
                     self.info('Changed start time from ' + start_prePPS + ' to ' + stime + ' and ' + stime_usec + ' microseconds.')
 
                 status_v[i] = (3,None)
