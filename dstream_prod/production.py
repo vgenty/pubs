@@ -185,7 +185,7 @@ class production(ds_project_base):
         jobstat = self._jobstat_from_log()
         if not jobstat[0]:
             self.warning('Fetching job status from log file failed! Try running cmd...')
-            jobstat = self._jobstat_from_cmd(jobid)
+            jobstat = self._jobstat_from_cmd()
         
         if not jobstat[0]:
             text = ''
