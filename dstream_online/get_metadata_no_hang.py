@@ -234,14 +234,14 @@ class get_metadata( ds_project_base ):
         if not len(status_v) == len(runid_v):
             raise DSException('Logic error: status vector from %s must match # of run ids!' % str(action))
 
-        for i in xrange(len(status_v)):
+        for index_run in xrange(len(status_v)):
 
-            run,subrun = runid_v[i]
-            status,data = status_v[i]
+            run,subrun = runid_v[index_run]
+            status,data = status_v[index_run]
             if data is None:
                 data = ''
             if data and type(data) == type(dict()):
-                fout = open('%s.json' % infile_v[i], 'w')
+                fout = open('%s.json' % infile_v[index_run], 'w')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
             # Create a status object to be logged to DB (if necessary)
@@ -280,9 +280,9 @@ class get_metadata( ds_project_base ):
 
         mp = ds_multiprocess(self._project)
 
-        for i in xrange(len(in_file_v)):
+        for index_run in xrange(len(in_file_v)):
 
-            in_file = in_file_v[i]
+            in_file = in_file_v[index_run]
             
             cmd = cmd_template % (in_file,in_file)
             index, active_counter = mp.execute(cmd)
@@ -327,28 +327,28 @@ class get_metadata( ds_project_base ):
 
         # Now extract MetaData for successful ones
         status_v=[]
-        for i in xrange(len(in_file_v)):
+        for index_run in xrange(len(in_file_v)):
 
             status_v.append((3,None))
-            in_file = in_file_v[i]
-            out,err = mp.communicate(i)
+            in_file = in_file_v[index_run]
+            out,err = mp.communicate(index_run)
             fsize = os.path.getsize(in_file)
-            run,subrun = runid_v[i]
+            run,subrun = runid_v[index_run]
 
             checksum = ''
             if checksum_v:
-                checksum = checksum_v[i]
+                checksum = checksum_v[index_run]
             else:
                 ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
 
                 if not ref_status._status == 0:
                     self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                    status_v[i] = (kSTATUS_INIT,None)
+                    status_v[index_run] = (kSTATUS_INIT,None)
                     continue
 
                 if not ref_status._data:
                     self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                    status_v[i] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
+                    status_v[index_run] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                     continue
 
                 checksum = ref_status._data
@@ -373,8 +373,8 @@ class get_metadata( ds_project_base ):
                             'online.start_time_usec': '-1',
                             'online.end_time_usec': '-1'}
             
-            if mp.poll(i):
-                self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(i)))
+            if mp.poll(index_run):
+                self.error('Metadata extraction failed on %s w/ return code %d.' % (in_file,mp.poll(index_run)))
                 ref_status = self._api.get_status( ds_status( self._project, run, subrun, 0 ) )
                 ntrial_past = 0
                 try:
@@ -384,13 +384,13 @@ class get_metadata( ds_project_base ):
                     ntrial_past = 0
                 if ntrial_past <= self._nretrial:
                     self.info('Will give a re-trial later (%d/%d)' % (ntrial_past,self._nretrial))
-                    status_v[i] = (kSTATUS_INIT,ntrial_past)
+                    status_v[index_run] = (kSTATUS_INIT,ntrial_past)
                     continue
-                if not mp.poll(i) in [2,-9]:
-                    status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
+                if not mp.poll(index_run) in [2,-9]:
+                    status_v[index_run] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,None)
                     continue
                 self.info('Return code = 2... will provide invalid metadata and move on!')
-                status_v[i] = (kSTATUS_TO_BE_VALIDATED,badJsonData)
+                status_v[index_run] = (kSTATUS_TO_BE_VALIDATED,badJsonData)
                 continue
                                
             last_event_cout,first_event_cout = out.split('SPLIT_HERE')
@@ -494,7 +494,7 @@ class get_metadata( ds_project_base ):
                     stime_usec = str ( int (stime_tmp - ( int(stime_tmp *1.0E-6) * 1.0E6)) )
                     self.info('Changed start time from ' + start_prePPS + ' to ' + stime + ' and ' + stime_usec + ' microseconds.')
 
-                status_v[i] = (3,None)
+                status_v[index_run] = (3,None)
                 self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except ValueError,TypeError:
@@ -527,7 +527,7 @@ class get_metadata( ds_project_base ):
                          "ub_project.version": self._pubsver,
                          'online.start_time_usec': str(stime_usec),
                          'online.end_time_usec': str(etime_usec)}
-            status_v[i] = (kSTATUS_TO_BE_VALIDATED,jsonData)
+            status_v[index_run] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
 
