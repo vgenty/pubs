@@ -74,7 +74,7 @@ class get_metadata( ds_project_base ):
         self._max_proc_time = 50
         self._parallelize = 0
         self._min_run = 0
-
+        self._max_run = 1e12
         self._nretrial = 5
 
         self._nskip = 0
@@ -110,6 +110,8 @@ class get_metadata( ds_project_base ):
 
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
+        if 'MAX_RUN' in resource:
+            self._max_run = int(resource['MAX_RUN'])
 
         self._ref_project = resource['REF_PROJECT']
 
@@ -177,6 +179,7 @@ class get_metadata( ds_project_base ):
             (run, subrun) = (int(x[0]), int(x[1]))
 
             if run < self._min_run: break
+            if run > self._max_run: continue
             # Counter decreases by 1
             if ctr <= 0: break
 
@@ -482,12 +485,13 @@ class get_metadata( ds_project_base ):
 
                 # Need to fix it cuz it's pre-PPS
                 # Gotta get out of isoformat strings to do the maths.
-                if datetime.datetime.fromtimestamp(stime_secs[0].replace(microsecond=0)).year < 2015 and edaqclock is not -1 and sdaqclock is not -1 and etime is not -1 and stime is not -1:  
+                if datetime.datetime.fromtimestamp(stime_secs[0]).replace(microsecond=0).year < 2015 and edaqclock is not -1 and sdaqclock is not -1 and etime is not -1 and stime is not -1:  
                     start_prePPS = stime
-                    dt = sum([i*j for (i, j) in zip(tuple(map(lambda x, y: x - y, edaqclock, sdacqclock)) , (1600.0,0.5,0.00624)) ]) # dot-product, musec
+                    dt = sum([i*j for (i, j) in zip(tuple(map(lambda x, y: x - y, edaqclock, sdaqclock)) , (1600.0,0.5,0.00624)) ]) # dot-product, musec
                     stime_tmp = etime_secs[0]*1.0E6 + etime_secs[1] - dt
-                    stime = datetime.datetime.fromtimestamp(int(stime_tmp * 1.0E-6)).replace(microsecond=0).isoformat
-                    stime_usec = int ( (stime_tmp * 1.0E-6 - stime) * 1.0E6)
+                    #pdb.set_trace()
+                    stime = datetime.datetime.fromtimestamp(int(stime_tmp * 1.0E-6)).replace(microsecond=0).isoformat()
+                    stime_usec = str ( int (stime_tmp - ( int(stime_tmp *1.0E-6) * 1.0E6)) )
                     self.info('Changed start time from ' + start_prePPS + ' to ' + stime + ' and ' + stime_usec + ' microseconds.')
 
                 status_v[i] = (3,None)
