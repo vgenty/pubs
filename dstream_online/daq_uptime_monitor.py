@@ -184,10 +184,10 @@ class daq_uptime_monitor(ds_project_base):
                 hour_frac_map[every_hour] = 0
 
         # Correct "this hour fraction"
-        print hour_frac_map[max_key]
+        #print hour_frac_map[max_key]
         current_hour = (datetime.datetime.now() - max_key)
         hour_frac_map[max_key] *= ( 3600. / current_hour.total_seconds())
-        print hour_frac_map[max_key]
+        #print hour_frac_map[max_key]
         # Analysis
         dates = hour_frac_map.keys()
         dates.sort()
@@ -250,6 +250,52 @@ class daq_uptime_monitor(ds_project_base):
         plt.show()
         plt.savefig('%s/data/UpTimeShort.png' % os.environ['PUB_TOP_DIR'])
 
+        #
+        # 1 week (daily)
+        #
+        days_frac_map={}
+        for date in dates:
+            year,month,day = (date.year,date.month,date.day)
+            day_key = datetime.datetime.strptime('%s-%02d-%02d 12:00:00' % (year,month,day), '%Y-%m-%d %H:%M:%S')#.replace(tzinfo=utc_timezone)
+            if not day_key in days_frac_map:
+                days_frac_map[day_key] = []
+            days_frac_map[day_key].append(hour_frac_map[date])
+
+        for day in days_frac_map:
+            ar = np.array(days_frac_map[day])
+            days_frac_map[day] = ar.mean()
+
+        dates = days_frac_map.keys()
+        dates.sort()
+        
+        values = []
+        for date in dates:
+            values.append(days_frac_map[date])
+
+        fig, ax = plt.subplots(figsize=(12, 8))
+
+        overlay_range = [dates[0] + datetime.timedelta(0,-3600,0),dates[-1] + datetime.timedelta(0,3600,0)]
+        datenum = mpd.date2num(dates)
+
+        plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
+        plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
+        plt.hist(datenum,weights=values,bins=len(datenum),label='DAQ UpTime Fraction\nDaily Average (7 days)',color='#81bef7')
+        ax.legend(prop={'size':20})
+        ax.set_xlim(dates[0],dates[-1]+datetime.timedelta(0,60,0))
+        ax.set_ylim(0,1.3)
+        ax.xaxis.set_major_locator( DayLocator() )
+        #ax.xaxis.set_major_locator( HourLocator(np.arange(0,25,6)) )
+        #ax.xaxis.set_minor_locator( HourLocator(np.arange(0,24,6)) )
+        ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d %H:%M:%S') )
+        ax.fmt_xdata = DateFormatter('%Y-%m-%d %H:%M:%S')
+        plt.ylabel('Daily UpTime Fraction',fontsize=20)
+        fig.autofmt_xdate()
+        plt.title('')
+        plt.tick_params(labelsize=15)
+        plt.grid()
+        plt.show()
+        plt.savefig('%s/data/UpTimeLongDaily.png' % os.environ['PUB_TOP_DIR'])
+
     def make_html(self):
         web_contents = \
         """
@@ -266,15 +312,19 @@ class daq_uptime_monitor(ds_project_base):
         <tr>
         <figure>
         <td>
-        <img src="UpTimeShort.png" alt="DAQ UpTime (24 hour)" style="width:600px;height:400px;" border="2"/>
-        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Last 24 Hours) </b></font></figcaption></center>
+        <img src="UpTimeShort.png" alt="DAQ UpTime (Hourly, 24 hour)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 24 Hours) </b></font></figcaption></center>
         </td>
         <td>
-        <img src="UpTimeLong.png" alt="DAQ UpTime (7 days)" style="width:600px;height:400px;" border="2"/>
-        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Last 7 days) </b></font></figcaption></center>
+        <img src="UpTimeLong.png" alt="DAQ UpTime (Hourly, 7 days)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 7 days) </b></font></figcaption></center>
+        </td>
+        <td>
+        <img src="UpTimeLongDaily.png" alt="DAQ UpTime (Daily, 24 hour)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Daily, Last 24 Hours) </b></font></figcaption></center>
         </td>
         </figure>
-        </tr>
+        </tr>        
         </table>
         </center>
         """
