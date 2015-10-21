@@ -957,6 +957,7 @@ Stage      : %s
                     run    = int(x[0])
                     subrun = int(x[1])
                     runid = (run,subrun)
+
                     if self._max_runid and runid > self._max_runid:
                         continue
                     if self._min_runid and runid < self._min_runid:
@@ -1045,6 +1046,8 @@ Stage      : %s
 
                             status = self._api.get_status(ds_status(self._project,
                                                                     run, subrun, 0))
+                            old_data  = status._data
+                            old_state = status._status
                             self._data = status._data
 
                             self.debug('Starting an action: %s @ %s' % (
@@ -1054,18 +1057,16 @@ Stage      : %s
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
-                            status = ds_status( project = self._project,
-                                                run     = run,
-                                                subrun  = subrun,
-                                                seq     = 0,
-                                                status  = statusCode,
-                                                data    = self._data )
+                            if not old_state == statusCode or not self._data == old_data:
+                                self.log_status( ds_status( project = self._project,
+                                                            run     = run,
+                                                            subrun  = subrun,
+                                                            seq     = 0,
+                                                            status  = statusCode,
+                                                            data    = self._data ) )
 
                             runid = (run, subrun)
                             self._runid_status[runid] = statusCode
-
-                            # Log status
-                            self.log_status( status )
 
                             # Counter decreases by 1
                             ctr -=1
