@@ -503,9 +503,15 @@ class production(ds_project_base):
         nout = 0
         nlog = 0
         for path, subdirs, files in os.walk(stobj.outdir):
+            dname = path.split('/')[-1]
+            if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
+                continue
             if path != stobj.outdir:
                 nout += 1
         for path, subdirs, files in os.walk(stobj.logdir):
+            dname = path.split('/')[-1]
+            if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
+                continue
             if path != stobj.logdir:
                 nlog += 1
 
