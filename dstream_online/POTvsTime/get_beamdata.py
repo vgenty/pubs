@@ -1,6 +1,9 @@
-import os,sys
+import os,sys,commands
 import numpy
 import datetime 
+
+# verbosity flag
+VERBOSE=False
 
 # define start/end time for search
 start = datetime.datetime.strptime('2015-10-16T00:00:00','%Y-%m-%dT%H:%M:%S')
@@ -18,14 +21,17 @@ def getBeamData(start=start,end=end,outfile=outfile):
 
     cmd = 'wget -O %s %s'%(outfile,webpage)
 
-    print
-    print 'saving beam info between times: [%s, %s]'%(start,end)
-    print 'saving to output file %s'%outfile
-    print cmd
+    if VERBOSE:
+        print
+        print 'saving beam info between times: [%s, %s]'%(start,end)
+        print 'saving to output file %s'%outfile
+        print cmd
     
-    os.system(cmd)
-    print 'done!'
-    print
+    stdout = commands.getoutput(cmd)
+    if VERBOSE:
+        print stdout
+        print 'done!'
+        print
 
 if __name__ == '__main__' :
     

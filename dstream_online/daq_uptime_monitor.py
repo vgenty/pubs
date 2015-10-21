@@ -20,6 +20,7 @@ import matplotlib.colors as mpc
 import matplotlib.dates as mpd
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter
 import numpy as np
+import POTvsTime.POTvsTime
 
 ## @class daq_uptime_monitor
 #  @brief kterao should give a brief comment here
@@ -39,6 +40,8 @@ class daq_uptime_monitor(ds_project_base):
         self._run_table='MainRun'
         self._boundary_past = 3600*24*7
         self._runinfo_v = []
+        self._update_period_ppp_vs_intensity = 1800
+        
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
         
@@ -296,6 +299,18 @@ class daq_uptime_monitor(ds_project_base):
         plt.show()
         plt.savefig('%s/data/UpTimeLongDaily.png' % os.environ['PUB_TOP_DIR'])
 
+        #
+        # PPP vs. Intensity
+        #
+        intensity_png = '%s/%s' % (os.environ['PUB_TOP_DIR'],POTvsTime.POTvsTime.outfile)
+        update = not os.path.isfile(intensity_png)
+        if not update:
+            update = (time.time() - os.path.getmtime(intensity_png)) > self._update_period_ppp_vs_intensity
+
+        if update:
+            POTvsTime.POTvsTime.getRunsVsIntensity(intensity_png,True)
+        
+
     def make_html(self):
         web_contents = \
         """
@@ -450,8 +465,19 @@ class daq_uptime_monitor(ds_project_base):
         web_contents += "</td></tr></table>\n"
 
         web_contents += "<br>Last Updated: %s %s<br>\n" % tuple(now.replace(microsecond=0).isoformat().split("T"))
+
         web_contents += \
         """
+        <h2>Beam Intensity Summary for Last 24 Hours</h2>
+        <center>
+        <figure>
+        """
+        web_contents += '<img src="%s" alt="Beam Intensity Plot" style="width:600px;height:400px;" border="2"/>\n' % POTvsTime.POTvsTime.outfile
+        web_contents += \
+        """
+        <figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 24 Hours) </b></font></figcaption>
+        </figure>
+        </center>        
         </body>
         </html>
         """

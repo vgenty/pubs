@@ -7,6 +7,8 @@ from dstream.ds_api import ds_reader
 from pub_dbi.pubdb_conn import pubdb_conn
 from pub_dbi import DBException, pubdb_conn_info
 
+# verbosity flag
+VERBOSE = False
 
 # define start/end time for search
 start = datetime.datetime.strptime('2015-10-16T00:00:00','%Y-%m-%dT%H:%M:%S')
@@ -22,14 +24,16 @@ def getRunTimes(start=start,end=end,fout=outfile):
 
     fout = open(outfile,'w+')
 
-    print 'Scan between times : [%s, %s]'%(start,end)
+    if VERBOSE:
+        print 'Scan between times : [%s, %s]'%(start,end)
 
     k=ds_reader()
     k.connect()
     
     # get last run information
     last_run = k.get_last_run('MainRun')
-    print 'last run on DB is : ',last_run
+    if VERBOSE:
+        print 'last run on DB is : ',last_run
 
     # go backwards in run-time until a run
     # falls before the start time we are
@@ -61,9 +65,10 @@ def getRunTimes(start=start,end=end,fout=outfile):
             if (ss > end):
                 currentRun -= 1
                 continue
-        
-            print 'run start : %s'%ss
-            print 'run end   : %s'%ee
+
+            if VERBOSE:
+                print 'run start : %s'%ss
+                print 'run end   : %s'%ee
 
             fout.write('%i,%s,%s,%i\n'%(currentRun,ss,ee,nsubrun))
 

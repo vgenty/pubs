@@ -7,28 +7,45 @@ import matplotlib.dates as dts
 import datetime
 import numpy as np
 
-# import specific functions to use
-from get_beamdata import getBeamData
-from get_runtimes import getRunTimes
+# verbose flag
+VERBOSE = False
+
+# import specific get* modules
+import get_beamdata, get_runtimes
+
+get_beamdata.VERBOSE = VERBOSE
+get_runtimes.VERBOSE = VERBOSE
 
 # start and end-time to consider
 end   = datetime.datetime.now()
 start = end - datetime.timedelta(hours=24)
-fbeam = 'beam.csv'
-fruns = 'runs.csv'
+outfile = 'ppp_vs_intensity.png'
+
+# beam data file name getter
+def getBeamDataFileName(): return get_beamdata.outfile
+
+# runtime data file name getter
+def getRunTimesDataFileName(): return get_runtimes.outfile
 
 #regenearte variable decides if run info and beam info should
 # be downloaded again or not
-def getRunsVsIntensity(regenerate=True):
+def getRunsVsIntensity(outdir='',regenerate=True):
 
-    if (regenerate):
+    beamdata_file = getBeamDataFileName()
+    runtimes_file = getRunTimesDataFileName()
+
+    if outdir:
+        beamdata_file = '%s/%s' % (outdir,beamdata_file)
+        runtimes_file = '%s/%s' % (outdir,runtimes_file)
+
+    if regenerate or not os.path.isfile(beamdata_file) or not os.path.isfile(runtimes_file):
         # first, collect beam information
-        getBeamData(start,end,fbeam)
-    # second, get run info for the times of interest
-        getRunTimes(start,end,fruns)
+        get_beamdata.getBeamData(start,end,beamdata_file)
+        # second, get run info for the times of interest
+        get_runtimes.getRunTimes(start,end,runtimes_file)
 
     # focus on run-time information first (get start/end time for runs)
-    run_file = open(fruns,'r')
+    run_file = open(runtimes_file,'r')
     runs = []
     rstart = []
     rend = []
@@ -45,8 +62,8 @@ def getRunsVsIntensity(regenerate=True):
         rend_str   = str(words[2])
         subruns    = int((words[3]).split('/n')[0])
         nevents    = subruns*50
-
-        print 'run : %i subrun : %i events : %i'%(run,subruns,nevents)
+        if VERBOSE:
+            print 'run : %i subrun : %i events : %i'%(run,subruns,nevents)
 
         runstart = datetime.datetime.strptime(rstart_str,'%Y-%m-%d %H:%M:%S')
         runend   = datetime.datetime.strptime(rend_str,  '%Y-%m-%d %H:%M:%S')
@@ -61,7 +78,7 @@ def getRunsVsIntensity(regenerate=True):
         events.append(nevents)
 
     # now look at beam information
-    beam_file = open(fbeam,'r')
+    beam_file = open(beamdata_file,'r')
         
     Tmin = 2000000000000
     Tmax = 0
@@ -126,10 +143,11 @@ def getRunsVsIntensity(regenerate=True):
     maxtime = datetime.datetime.fromtimestamp(Tmax/1000.)
 
     dt = (Tmax-Tmin)/(1000.*3600.) # hours
-    
-    print 'total time [hrs] : %.02f'%dt
-    print 'total ppp  [E12] : %i'%pppTot
-    print 'avg ppp    [E12] : %.02f'%(pppTot/cntr)
+
+    if VERBOSE:
+        print 'total time [hrs] : %.02f'%dt
+        print 'total ppp  [E12] : %i'%pppTot
+        print 'avg ppp    [E12] : %.02f'%(pppTot/cntr)
     
     fig,ax = plt.subplots(figsize=(18,10))
     
@@ -152,9 +170,10 @@ def getRunsVsIntensity(regenerate=True):
         lblctr += 1
         if (lblctr%3 != 0):
             label.set_visible(False)
-            
-    print 'mintime: ',mintime
-    print 'maxtime: ',maxtime
+
+    if VERBOSE:
+        print 'mintime: ',mintime
+        print 'maxtime: ',maxtime
 
     # plot time-intervals for runs
     for i in xrange(len(runs)):
@@ -162,8 +181,9 @@ def getRunsVsIntensity(regenerate=True):
         rstart_date = dts.date2num(rstart[i])
         rend_date   = dts.date2num(rend[i])
 
-        print 'run % i : [%s,%s]'%(runs[i],rstart[i],rend[i])
-        print 'run ctr: ',run_ctr[i]
+        if VERBOSE:
+            print 'run % i : [%s,%s]'%(runs[i],rstart[i],rend[i])
+            print 'run ctr: ',run_ctr[i]
 
         if (rend_date < dts.date2num(mintime)):
             continue
@@ -187,9 +207,10 @@ def getRunsVsIntensity(regenerate=True):
     plt.ylabel('Intensity [ppp E12]',fontsize=16)
     plt.title('Run and Intensity Information',fontsize=16)
     plt.grid()
-    plt.savefig('ppp_vs_time.png')
+    out_png_name = outfile
+    if outdir: out_png_name = '%s/%s' % (outdir,outfile)
+    plt.savefig(out_png_name)
     plt.show()
-
 
 if __name__ == '__main__' :
 
