@@ -460,14 +460,17 @@ class production(ds_project_base):
         msg = 'jobid: %s ... status: ' % jobid
         if statusCode == self.kRUNNING:
             msg += 'RUNNING'
+            msg += ' (%d)' % (statusCode + istage)
+            self.debug(msg)
         elif statusCode == self.kFINISHED:
             msg += 'FINISHED'
+            msg += ' (%d)' % (statusCode + istage)
+            self.info(msg)
         elif statusCode == self.kSUBMITTED:
             msg += 'SUBMITTED'
+            msg += ' (%d)' % (statusCode + istage)
+            self.debug(msg)
         statusCode += istage
-        msg += ' (%d)' % statusCode
-        self.info(msg)
-
         return statusCode
 
     def check( self, statusCode, istage, run, subrun ):
