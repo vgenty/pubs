@@ -149,7 +149,7 @@ def getRunsVsIntensity(outdir='',regenerate=True):
         print 'total ppp  [E12] : %i'%pppTot
         print 'avg ppp    [E12] : %.02f'%(pppTot/cntr)
     
-    fig,ax = plt.subplots(figsize=(18,10))
+    fig,ax = plt.subplots(figsize=(21,10))
     
     dates = dts.date2num(time_v)
     plt.scatter(dates,ppp_v,edgecolor=None,marker='.',lw=0)
@@ -193,20 +193,26 @@ def getRunsVsIntensity(outdir='',regenerate=True):
             continue
         pppavg      = run_ppp[i]/run_ctr[i] 
         
-        plt.axvspan(rstart_date, rend_date, color='k', alpha=0.3, lw=2)
+        plt.axvspan(rstart_date, rend_date, color='orange', alpha=0.3, lw=4)
 
         if (run_sec[i] > 3600):
             xpos = (rstart_date+rend_date)/2.
             # if within time-bounds of axes
             if ( (xpos < dts.date2num(maxtime)) and (xpos > dts.date2num(mintime)) ):
-                ax.text((rstart_date+rend_date)/2., 2.0,'run %i : ppp %.02f'%(runs[i],pppavg),
-                        fontsize=14, color='k',horizontalalignment='center',
+                ypos = 1.8
+                if pppavg > 1.6: ypos = 0.2
+                ax.text(xpos,
+                        ypos,
+                        'run %i : ppp %.02f'%(runs[i],pppavg),
+                        weight='bold',
+                        fontsize=16, color='k',horizontalalignment='center',
                         verticalalignment='bottom',rotation='vertical')
     plt.ylim([-0.1,3.0])
-    plt.xlabel('Date',fontsize=16)
-    plt.ylabel('Intensity [ppp E12]',fontsize=16)
-    plt.title('Run and Intensity Information',fontsize=16)
+    plt.xlabel('Date (US/Central)',fontsize=20)
+    plt.ylabel('Intensity [ppp E12]',fontsize=20)
+    plt.title('Run and Intensity Information',fontsize=20)
     plt.grid()
+    plt.tick_params(labelsize=18)
     out_png_name = outfile
     if outdir: out_png_name = '%s/%s' % (outdir,outfile)
     plt.savefig(out_png_name)
