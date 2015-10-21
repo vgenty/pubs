@@ -277,26 +277,42 @@ class production(ds_project_base):
                 return False
         return True
 
+    def check_subruns(self, xml, prjname, stagename, run, subruns, version):
+        bad_subruns = []
+        self.info('Checking subruns')
+        for subrun in subruns:
+            try:
+                project.get_pubs_stage(xml, prjname, stagename, run, [subrun], version)
+            except:
+                bad_subruns.append(subrun)
+        self.info('Bad subruns: %s' % str(bad_subruns))
+
+        # Modify the subrun list in situ.
+
+        for subrun in bad_subruns:
+            subruns.remove(subrun)
+
     def submit( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
         
         # Report starting
-        # self.info()
+        self.info('Submit run %d, subruns %s' % (run, str(subruns)))
         self._data = str( self._data )
 
         # Main command
         stage = self._digit_to_name[istage]
 
         # Get project and stage object.
+        xml = self.getXML(run)
+        input_error = False
         try:
-            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
         except PubsInputError:
-            self.info('Exception PubsInputError raised by project.get_pubs_stage')
-            return current_status
+            input_error = True
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -305,6 +321,37 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
+
+        # Check subruns, if we got a PubsInputError exception.
+
+        if input_error:
+
+            # Update list of good subruns.
+
+            self.check_subruns(xml, '', stage, run, subruns, self._version)
+            self.info('Good subruns: %s' % str(subruns))
+
+            # Regenerate pubs stage info using updated subrun list.
+            # We do not expect an exception this time.  But if we get one, treat it
+            # in the standard way.
+
+            try:
+                probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            except PubsDeadEndError:
+                self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
+                return 100
+            except PubsInputError:
+                self.info('Exception PubsInputError raised by project.get_pubs_stage')
+                return current_status
+            except:
+                self.error('Exception raised by project.get_pubs_stage:')
+                e = sys.exc_info()
+                for item in e:
+                    self.error(item)
+                    for line in traceback.format_tb(e[2]):
+                        self.error(line)
+                        return current_status
+                    sys.exit(1)
 
         # Submit job.
         jobid=''
@@ -559,18 +606,19 @@ Job IDs    : %s
         error_status   = current_status + 1000
                              
         # Report starting
-        # self.info()
+        self.info('Recover run %d, subruns %s' % (run, str(subruns)))
         self._data = str( self._data )
 
         # Main command
         stage = self._digit_to_name[istage]
 
         # Get project and stage object.
+        xml = self.getXML(run)
+        input_error = False
         try:
-            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
         except PubsInputError:
-            self.info('Exception PubsInputError raised by project.get_pubs_stage')
-            return current_status
+            input_error = True
         except:
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
@@ -579,6 +627,34 @@ Job IDs    : %s
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
+
+        # Check subruns, if we got a PubsInputError exception.
+
+        if input_error:
+
+            # Update list of good subruns.
+
+            self.check_subruns(xml, '', stage, run, subruns, self._version)
+            self.info('Good subruns: %s' % str(subruns))
+
+            # Regenerate pubs stage info using updated subrun list.
+            # We do not expect an exception this time.  But if we get one, treat it
+            # in the standard way.
+
+            try:
+                probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            except PubsInputError:
+                self.info('Exception PubsInputError raised by project.get_pubs_stage')
+                return current_status
+            except:
+                self.error('Exception raised by project.get_pubs_stage:')
+                e = sys.exc_info()
+                for item in e:
+                    self.error(item)
+                    for line in traceback.format_tb(e[2]):
+                        self.error(line)
+                        return current_status
+                    sys.exit(1)
 
         # Submit job.
         jobid=''
