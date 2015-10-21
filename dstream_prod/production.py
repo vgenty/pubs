@@ -921,8 +921,9 @@ Stage      : %s
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
-                    self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (run,subrun,self.now_str()))
+                    self.debug('Found run/subrun: %s/%s' % (run,subrun))
                     if not run_subruns.has_key(run):
+                        self.info('Found run: %s ... inspecting @ %s' % (run,self.now_str()))
                         run_subruns[run] = set()
                     if not subrun in run_subruns[run]:
                         run_subruns[run].add(subrun)
