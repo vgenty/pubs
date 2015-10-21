@@ -278,6 +278,17 @@ class production(ds_project_base):
         return True
 
     def check_subruns(self, xml, prjname, stagename, run, subruns, version):
+
+        # First check if we are reading files from sam.
+
+        probj = project.get_project(xml, prjname, stagename)
+        stobj = probj.get_stage(stagename)
+
+        # If we are reading from sam, don't check anything in this function.
+
+        if stobj.inputdef != '':
+            return
+
         bad_subruns = []
         self.info('Checking subruns')
         for subrun in subruns:
