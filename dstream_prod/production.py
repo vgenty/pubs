@@ -79,6 +79,7 @@ class production(ds_project_base):
         self._min_runid = None
         self._nruns     = None
         self._nsubruns  = []
+        self._store     = []
         self._xml_file  = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -176,6 +177,17 @@ class production(ds_project_base):
                 digit = self._stage_digits[x]
                 nsubruns = self._nsubruns[x]
                 self._digit_to_nsubruns[digit] = nsubruns
+
+            # Set store flag.
+
+            if proj_info._resource.has_key('STORE'):
+                self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
+            else:
+
+                # Default is to store only final stage.
+
+                self._store = [0] * len(self._stage_names)
+                self._store[-1] = 1
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -798,10 +810,10 @@ Job IDs    : %s
 
     def store( self, statusCode, istage, run, subrun ):
 
-        # Only store the final stage.
-        # If this is not the final stage, advance to the next stage.
+        # Check store flag.
 
-        if istage != self._stage_digits[-1]:
+        if not self._store[istage]:
+            self.info('Skipping store.')
             statusCode = self.kDONE
             istage += 10
             return statusCode + istage
@@ -822,6 +834,7 @@ Job IDs    : %s
             return statusCode + istage 
 
         # Do store.
+        self.info('Doing store.')
         try:
             real_stdout = sys.stdout
             real_stderr = sys.stderr
