@@ -83,7 +83,7 @@ class production(ds_project_base):
         self._xml_file  = ''
         self._xml_outdir   = ''
         self._xml_template = False
-        self._stage_name    = []
+        self._stage_names   = []
         self._stage_digits  = []
         self._nresubmission = 3
         self._digit_to_name = {}
@@ -289,31 +289,35 @@ class production(ds_project_base):
                 return False
         return True
 
-    def check_subruns(self, xml, prjname, stagename, run, subruns, version):
+    # This function checks whether a single (run, subrun) pair is good or not.
+    # Return True (good) or False (bad).
+
+    def check_subrun(self, stagename, run, subrun):
+
+        xml = self.getXML(run)
 
         # First check if we are reading files from sam.
 
-        probj = project.get_project(xml, prjname, stagename)
+        probj = project.get_project(xml, '', stagename)
         stobj = probj.get_stage(stagename)
 
-        # If we are reading from sam, don't check anything in this function.
+        # If we are reading from sam, always return True.
 
         if stobj.inputdef != '':
-            return
+            return True
 
-        bad_subruns = []
-        self.info('Checking subruns')
-        for subrun in subruns:
-            try:
-                project.get_pubs_stage(xml, prjname, stagename, run, [subrun], version)
-            except:
-                bad_subruns.append(subrun)
-        self.info('Bad subruns: %s' % str(bad_subruns))
+        # Check if this (run, subrun) has pubs input available.
 
-        # Modify the subrun list in situ.
+        result = False
+        try:
+            project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
+            result = True
+        except:
+            result = False
 
-        for subrun in bad_subruns:
-            subruns.remove(subrun)
+        # Done.
+
+        return result
 
     def submit( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
@@ -325,17 +329,9 @@ class production(ds_project_base):
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
-        xml = self.getXML(run)
-
-        # Validate subruns.
-        self.check_subruns(xml, '', stage, run, subruns, self._version)
-        if len(subruns) == 0:
-            return current_status
-
         try:
-            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -364,6 +360,13 @@ class production(ds_project_base):
                 self.error(line)
             return current_status
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+
+        # Delete the job log, which is now obsolete.
+
+        try:
+            os.remove(self.JOBSUB_LOG)
+        except:
+            pass
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -618,17 +621,9 @@ Job IDs    : %s
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
-        xml = self.getXML(run)
-
-        # Validate subruns.
-        self.check_subruns(xml, '', stage, run, subruns, self._version)
-        if len(subruns) == 0:
-            return current_status
-
         try:
-            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsInputError:
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
@@ -950,6 +945,10 @@ Stage      : %s
                         continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
+
+                    if istatus == self.kINITIATED or istatus == self.kTOBERECOVERED:
+                        if not self.check_subrun(self._digit_to_name[istage], run, subrun):
+                            continue
 
                     self.debug('Found run/subrun: %s/%s' % (run,subrun))
                     if not run_subruns.has_key(run):
