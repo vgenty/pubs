@@ -14,7 +14,7 @@ HTML_PRE = """<!DOCTYPE html><head>
     <center>
     <table style="width:100%"><tr><td>
 
-          <table border='0' width=1000>
+          <table border='0' width=1400>
             <tr>
               <th> Run Number    </th>
               <th> Start Time    </th>
