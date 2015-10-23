@@ -19,10 +19,12 @@ HTML_PRE = """<!DOCTYPE html><head>
               <th> Run Number    </th>
               <th> Start Time    </th>
               <th> End Time      </th>
+              <th> Duration [hrs]</th>
               <th> SubRun Counts </th>
               <th> Events        </th>
               <th> Tot ppp [E12] </th>
-              <th> ppp/event [E12]</th>"""
+              <th> ppp/event [E12]</th>
+              <th> Event Rate [Hz]</th>"""
 
 HTML_POST = """</table> </td>
 </center>
@@ -46,14 +48,16 @@ def generateRunSummaryPage(html = 'RunSummary.html'):
     for line in stats:
         words = line.split()
         table_entry = """<tr>
+<td align="left"> %s </td>
 <td align="center"> %s </td>
 <td align="center"> %s </td>
-<td align="center"> %s </td>
-<td align="center"> %s </td>
-<td align="center"> %s </td>
-<td align="center"> %s </td>
-<td align="center"> %s </td>
-</tr>"""%(words[0],'%s %s'%(words[1],words[2]),'%s %s'%(words[3],words[4]),words[5],words[6],words[7],words[8])
+<td align="left"> %s </td>
+<td align="left"> %s </td>
+<td align="left"> %s </td>
+<td align="left"> %s </td>
+<td align="left"> %s </td>
+<td align="left"> %s </td>
+</tr>"""%(words[0],'%s %s'%(words[1],words[2]),'%s %s'%(words[3],words[4]),words[5],words[6],words[7],words[8],words[9],words[10])
         f_html.write(table_entry)
         
 
