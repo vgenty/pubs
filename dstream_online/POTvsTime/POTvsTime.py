@@ -13,6 +13,9 @@ VERBOSE = False
 # import specific get* modules
 import get_beamdata, get_runtimes
 
+# import function to update HTML page
+import runsummarytemplate
+
 get_beamdata.VERBOSE = VERBOSE
 get_runtimes.VERBOSE = VERBOSE
 
@@ -34,9 +37,24 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     beamdata_file = getBeamDataFileName()
     runtimes_file = getRunTimesDataFileName()
 
+    # open file in which to save RunSummary information
+    runSummary_file = open('RunSummary.csv','r')
+    # get the latest run with info on the RunSummary page
+    lastSummaryRun = 0
+    for line in runSummary_file:
+        lastSummaryRun = int(line.split()[0])
+        break
+    runSummary_file.close()
+    runSummary_file = open('RunSummary.csv','a')
+    # go to the beginning of the file to pre-pend 
+    # new run information
+    runSummary_file.seek(0)
+    
+
     if outdir:
         beamdata_file = '%s/%s' % (outdir,beamdata_file)
         runtimes_file = '%s/%s' % (outdir,runtimes_file)
+        runstats_file = '%s/%s' % (outdir,runtimes_file)
 
     if regenerate or not os.path.isfile(beamdata_file) or not os.path.isfile(runtimes_file):
         # first, collect beam information
@@ -178,6 +196,16 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     # plot time-intervals for runs
     for i in xrange(len(runs)):
 
+        # save run info to RunSummary page if
+        # this is a "new" run
+        # also, ignore the current run (i==0)
+        if ( (runs[i] > lastSummaryRun) and i!=0 ):
+            ppp_avg = 0
+            if (events[i] != 0):
+                ppp_avg = run_ppp[i]/events[i]
+            runStats = '%i %s %s %i %i %.02f %.02f\n'%(runs[i],rstart[i],rend[i],int(events[i]/50.),events[i],run_ppp[i],ppp_avg)
+            runSummary_file.write(runStats)
+
         rstart_date = dts.date2num(rstart[i])
         rend_date   = dts.date2num(rend[i])
 
@@ -207,7 +235,7 @@ def getRunsVsIntensity(outdir='',regenerate=True):
                         weight='bold',
                         fontsize=16, color='k',horizontalalignment='center',
                         verticalalignment='bottom',rotation='vertical')
-    plt.ylim([-0.1,3.0])
+    plt.ylim([-0.1,4.0])
     plt.xlabel('Date (US/Central)',fontsize=20)
     plt.ylabel('Intensity [ppp E12]',fontsize=20)
     plt.title('Run and Intensity Information',fontsize=20)
@@ -218,6 +246,9 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     plt.savefig(out_png_name)
     plt.show()
 
+    # now generate HTML page with run stats
+    runsummarytemplate.generateRunSummaryPage()
+
 if __name__ == '__main__' :
 
     regenerate = True
@@ -225,4 +256,4 @@ if __name__ == '__main__' :
         if (sys.argv[1] == '0'):
             regenerate = False
     
-    getRunsVsIntensity(regenerate)
+    getRunsVsIntensity(os.environ['PUB_TOP_DIR'],regenerate)
