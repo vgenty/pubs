@@ -37,8 +37,11 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     beamdata_file = getBeamDataFileName()
     runtimes_file = getRunTimesDataFileName()
 
+    # name of csv file where to save run summary info
+    runsummaryCSV = 'RunSummary.csv'
+
     # open file in which to save RunSummary information
-    runSummary_file = open('RunSummary.csv','r')
+    runSummary_file = open('%s/%s'%(outdir,runsummaryCSV),'r')
     # get the latest run with info on the RunSummary page
     lastSummaryRun = 0
     old_run_summary = []
@@ -47,7 +50,7 @@ def getRunsVsIntensity(outdir='',regenerate=True):
             lastSummaryRun = int(line.split()[0])
         old_run_summary.append(line)
     runSummary_file.close()
-    runSummary_file = open('RunSummary.csv','w+')
+    runSummary_file = open('%s/%s'%(outdir,runsummaryCSV),'w+')
 
     if outdir:
         beamdata_file = '%s/%s' % (outdir,beamdata_file)
@@ -257,7 +260,7 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     runSummary_file.close()
 
     # now generate HTML page with run stats
-    runsummarytemplate.generateRunSummaryPage()
+    runsummarytemplate.generateRunSummaryPage('%s/%s'%(outdir,runsummaryCSV),'%s/RunSummary.html'%outdir)
 
 if __name__ == '__main__' :
 
