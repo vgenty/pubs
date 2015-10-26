@@ -485,6 +485,8 @@ class daq_uptime_monitor(ds_project_base):
         <figcaption><font size=4 color="0080ff"><b>PPP Intensity (24 Hours) </b></font></figcaption>
         </figure>
         </center>        
+        <br> Link to RunSummary page with statistics per run: <br>
+        <a href='http://ubdaq-prod-near2.fnal.gov/Pubs/RunSummary.html'>RunSummary Page</a>
         </body>
         </html>
         """
