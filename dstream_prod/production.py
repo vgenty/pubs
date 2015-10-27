@@ -460,42 +460,44 @@ class production(ds_project_base):
 
                 return current_status
 
-        last_job_data = self._data.strip().split(':')[-1]
-        job_data_list = last_job_data.split('+')
-        jobid = job_data_list[0]
-
-        #if len(job_data_list) > 1:
-        #    submit_time = float(job_data_list[1])
-        #else:
-        #    submit_time = float(0)
+        # Check the status of all job ids listed in job data.
 
         is_running = False
-        target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
-        for line in target_jobs:
-            words = line.split()
-            job_state = words[5]
-            if job_state == 'X': continue
-            is_running = True
-            if job_state == 'R':
-                statusCode = self.kRUNNING
-                break
+        for job_data in self._data.strip().split(':'):
+            job_data_list = job_data.split('+')
+            jobid = job_data_list[0]
+
+            #if len(job_data_list) > 1:
+            #    submit_time = float(job_data_list[1])
+            #else:
+            #    submit_time = float(0)
+
+            job_status = 0
+            target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
+            for line in target_jobs:
+                words = line.split()
+                job_state = words[5]
+                if job_state == 'X':
+                    continue
+                job_status = self.kSUBMITTED
+                is_running = True
+                if job_state == 'R':
+                    job_status = self.kRUNNING
+                    statusCode = self.kRUNNING
+                    break
+            msg = 'jobid: %s: ' % jobid
+            if job_status == self.kSUBMITTED:
+                msg += 'SUBMITTED'
+            elif job_status == self.kRUNNING:
+                msg += 'RUNNING'
+            elif job_status == 0:
+                msg += 'FINISHED'
+            else:
+                msg += 'UNKNOWN'
+            self.info(msg)
 
         if not is_running:
             statusCode = self.kFINISHED
-
-        msg = 'jobid: %s ... status: ' % jobid
-        if statusCode == self.kRUNNING:
-            msg += 'RUNNING'
-            msg += ' (%d)' % (statusCode + istage)
-            self.debug(msg)
-        elif statusCode == self.kFINISHED:
-            msg += 'FINISHED'
-            msg += ' (%d)' % (statusCode + istage)
-            self.info(msg)
-        elif statusCode == self.kSUBMITTED:
-            msg += 'SUBMITTED'
-            msg += ' (%d)' % (statusCode + istage)
-            self.debug(msg)
         statusCode += istage
         return statusCode
 
