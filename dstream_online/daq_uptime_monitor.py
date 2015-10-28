@@ -268,12 +268,23 @@ class daq_uptime_monitor(ds_project_base):
         # 1 week (daily)
         #
         days_frac_map={}
+        first_date = None
+        end_date = None
         for date in dates:
             year,month,day = (date.year,date.month,date.day)
             day_key = datetime.datetime.strptime('%s-%02d-%02d 12:00:00' % (year,month,day), '%Y-%m-%d %H:%M:%S')#.replace(tzinfo=utc_timezone)
+            if not first_date:
+                first_date = copy.copy(day_key)
+                end_date = copy.copy(day_key)
+            if first_date < day_key: first_date = copy.copy(day_key)
+            if end_date < day_key: end_date = copy.copy(day_key)
+
+            day_key -= datetime.timedelta(0,24*3600,0)
             if not day_key in days_frac_map:
                 days_frac_map[day_key] = []
             days_frac_map[day_key].append(hour_frac_map[date])
+
+            #print date,' => ',day_key
 
         for day in days_frac_map:
             ar = np.array(days_frac_map[day])
@@ -281,7 +292,7 @@ class daq_uptime_monitor(ds_project_base):
 
         dates = days_frac_map.keys()
         dates.sort()
-        
+
         values = []
         for date in dates:
             values.append(days_frac_map[date])
@@ -290,12 +301,18 @@ class daq_uptime_monitor(ds_project_base):
 
         overlay_range = [dates[0] + datetime.timedelta(0,-3600,0),dates[-1] + datetime.timedelta(0,3600,0)]
         datenum = mpd.date2num(dates)
+        #print datenum
 
-        plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
-        plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
-        plt.hist(datenum,weights=values,bins=len(datenum),label='DAQ UpTime Fraction\nDaily Average (7 days)',color='#81bef7')
+        first_date = dates[0]  + datetime.timedelta(0,-12*3600)
+        end_date   = dates[-1] + datetime.timedelta(0,12*3600)
+
+        #plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
+        #plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
+        plt.hist(datenum,weights=values,bins=len(datenum),range=mpd.date2num((first_date,end_date)),label='DAQ UpTime Fraction\nDaily Average (7 days)',color='#81bef7')
         ax.legend(prop={'size':20})
-        ax.set_xlim(dates[0],dates[-1]+datetime.timedelta(0,60,0))
+        ax.set_xlim(first_date + datetime.timedelta(0,-10,0),
+                    end_date + datetime.timedelta(0,-10,0))
+        #print dates[0],dates[-1]
         ax.set_ylim(0,1.3)
         ax.xaxis.set_major_locator( DayLocator() )
         #ax.xaxis.set_major_locator( HourLocator(np.arange(0,25,6)) )
@@ -303,7 +320,9 @@ class daq_uptime_monitor(ds_project_base):
         ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d') )
         ax.fmt_xdata = DateFormatter('%Y-%m-%d %H:%M:%S')
         plt.ylabel('Daily UpTime Fraction',fontsize=20)
+        #ax.xaxis.labelpad=200
         fig.autofmt_xdate()
+        #ax.tick_params(direction='right', pad=15)
         plt.title('')
         plt.tick_params(labelsize=15)
         plt.grid()
