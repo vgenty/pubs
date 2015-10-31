@@ -251,6 +251,7 @@ class transfer( ds_project_base ):
 
             self.info('Transferring %s @ %s' % (in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
+            time.sleep(0.1)
             index,active_ctr = mp.execute(cmd)
 
             if not self._parallelize:

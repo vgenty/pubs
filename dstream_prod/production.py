@@ -84,7 +84,7 @@ class production(ds_project_base):
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
-        self._stage_name    = []
+        self._stage_names   = []
         self._stage_digits  = []
         self._nresubmission = 3
         self._digit_to_name = {}
@@ -181,6 +181,14 @@ class production(ds_project_base):
 
             if 'NJOBS_LIMIT' in proj_info._resource:
                 self._njobs_limit = int(proj_info._resource['NJOBS_LIMIT'])
+
+            # Set store flag.
+            if proj_info._resource.has_key('STORE'):
+                self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
+            else:
+                # Default is to store only final stage.
+                self._store = [0] * len(self._stage_names)
+                self._store[-1] = 1
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -282,32 +290,34 @@ class production(ds_project_base):
                 return False
         return True
 
-    def check_subruns(self, xml, prjname, stagename, run, subruns, version):
+    # This function checks whether a single (run, subrun) pair is good or not.
+    # Return True (good) or False (bad).
+
+    def check_subrun(self, stagename, run, subrun):
+
+        xml = self.getXML(run)
 
         # First check if we are reading files from sam.
 
-        probj = project.get_project(xml, prjname, stagename)
+        probj = project.get_project(xml, '', stagename)
         stobj = probj.get_stage(stagename)
 
-        # If we are reading from sam, don't check anything in this function.
+        # If we are reading from sam, always return True.
 
         if stobj.inputdef != '':
-            return
+            return True
 
-        bad_subruns = []
-        self.debug('Checking subruns')
-        for subrun in subruns:
-            try:
-                project.get_pubs_stage(xml, prjname, stagename, run, [subrun], version)
-            except:
-                bad_subruns.append(subrun)
-        if bad_subruns:
-            self.info('Bad subruns: %s' % str(bad_subruns))
+        # Check if this (run, subrun) has pubs input available.
+        result = False
+        try:
+            project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
+            result = True
+        except:
+            result = False
 
-        # Modify the subrun list in situ.
+        # Done.
 
-        for subrun in bad_subruns:
-            subruns.remove(subrun)
+        return result
 
     def submit( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
@@ -319,17 +329,9 @@ class production(ds_project_base):
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
-        xml = self.getXML(run)
-
-        # Validate subruns.
-        self.check_subruns(xml, '', stage, run, subruns, self._version)
-        if len(subruns) == 0:
-            return current_status
-
         try:
-            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -358,6 +360,13 @@ class production(ds_project_base):
                 self.error(line)
             return current_status
         self.debug( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+
+        # Delete the job log, which is now obsolete.
+
+        try:
+            os.remove(self.JOBSUB_LOG)
+        except:
+            pass
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -451,42 +460,44 @@ class production(ds_project_base):
 
                 return current_status
 
-        last_job_data = self._data.strip().split(':')[-1]
-        job_data_list = last_job_data.split('+')
-        jobid = job_data_list[0]
-
-        #if len(job_data_list) > 1:
-        #    submit_time = float(job_data_list[1])
-        #else:
-        #    submit_time = float(0)
+        # Check the status of all job ids listed in job data.
 
         is_running = False
-        target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
-        for line in target_jobs:
-            words = line.split()
-            job_state = words[5]
-            if job_state == 'X': continue
-            is_running = True
-            if job_state == 'R':
-                statusCode = self.kRUNNING
-                break
+        for job_data in self._data.strip().split(':'):
+            job_data_list = job_data.split('+')
+            jobid = job_data_list[0]
+
+            #if len(job_data_list) > 1:
+            #    submit_time = float(job_data_list[1])
+            #else:
+            #    submit_time = float(0)
+
+            job_status = 0
+            target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
+            for line in target_jobs:
+                words = line.split()
+                job_state = words[5]
+                if job_state == 'X':
+                    continue
+                job_status = self.kSUBMITTED
+                is_running = True
+                if job_state == 'R':
+                    job_status = self.kRUNNING
+                    statusCode = self.kRUNNING
+                    break
+            msg = 'jobid: %s: ' % jobid
+            if job_status == self.kSUBMITTED:
+                msg += 'SUBMITTED'
+            elif job_status == self.kRUNNING:
+                msg += 'RUNNING'
+            elif job_status == 0:
+                msg += 'FINISHED'
+            else:
+                msg += 'UNKNOWN'
+            self.info(msg)
 
         if not is_running:
             statusCode = self.kFINISHED
-
-        msg = 'jobid: %s ... status: ' % jobid
-        if statusCode == self.kRUNNING:
-            msg += 'RUNNING'
-            msg += ' (%d)' % (statusCode + istage)
-            self.debug(msg)
-        elif statusCode == self.kFINISHED:
-            msg += 'FINISHED'
-            msg += ' (%d)' % (statusCode + istage)
-            self.info(msg)
-        elif statusCode == self.kSUBMITTED:
-            msg += 'SUBMITTED'
-            msg += ' (%d)' % (statusCode + istage)
-            self.debug(msg)
         statusCode += istage
         return statusCode
 
@@ -612,17 +623,9 @@ Job IDs    : %s
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
-        xml = self.getXML(run)
-
-        # Validate subruns.
-        self.check_subruns(xml, '', stage, run, subruns, self._version)
-        if len(subruns) == 0:
-            return current_status
-
         try:
-            probj, stobj = project.get_pubs_stage(xml, '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsInputError:
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
@@ -810,10 +813,10 @@ Job IDs    : %s
 
     def store( self, statusCode, istage, run, subrun ):
 
-        # Only store the final stage.
-        # If this is not the final stage, advance to the next stage.
+        # Check store flag.
 
-        if istage != self._stage_digits[-1]:
+        if not self._store[istage]:
+            self.info('Skipping store.')
             statusCode = self.kDONE
             istage += 10
             return statusCode + istage
@@ -834,6 +837,7 @@ Job IDs    : %s
             return statusCode + istage 
 
         # Do store.
+        self.info('Doing store.')
         try:
             real_stdout = sys.stdout
             real_stderr = sys.stderr
@@ -943,6 +947,10 @@ Stage      : %s
                         continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
+
+                    if istatus == self.kINITIATED or istatus == self.kTOBERECOVERED:
+                        if not self.check_subrun(self._digit_to_name[istage], run, subrun):
+                            continue
 
                     self.debug('Found run/subrun: %s/%s' % (run,subrun))
                     if not run_subruns.has_key(run):
