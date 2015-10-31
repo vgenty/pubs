@@ -75,11 +75,13 @@ class production(ds_project_base):
                                   self.kTOBERECOVERED : self.recover,
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None }
-        self._max_runid = None
-        self._min_runid = None
-        self._nruns     = None
-        self._nsubruns  = []
-        self._xml_file  = ''
+        self._max_runid   = None
+        self._min_runid   = None
+        self._nruns       = None
+        self._njobs       = 0
+        self._njobs_limit = None
+        self._nsubruns    = []
+        self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
         self._stage_name    = []
@@ -176,6 +178,9 @@ class production(ds_project_base):
                 digit = self._stage_digits[x]
                 nsubruns = self._nsubruns[x]
                 self._digit_to_nsubruns[digit] = nsubruns
+
+            if 'NJOBS_LIMIT' in proj_info._resource:
+                self._njobs_limit = int(proj_info._resource['NJOBS_LIMIT'])
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -290,13 +295,14 @@ class production(ds_project_base):
             return
 
         bad_subruns = []
-        self.info('Checking subruns')
+        self.debug('Checking subruns')
         for subrun in subruns:
             try:
                 project.get_pubs_stage(xml, prjname, stagename, run, [subrun], version)
             except:
                 bad_subruns.append(subrun)
-        self.info('Bad subruns: %s' % str(bad_subruns))
+        if bad_subruns:
+            self.info('Bad subruns: %s' % str(bad_subruns))
 
         # Modify the subrun list in situ.
 
@@ -351,7 +357,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+        self.debug( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Tentatively do so; need to change!!!
         if not jobid:
