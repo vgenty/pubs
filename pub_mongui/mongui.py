@@ -35,6 +35,7 @@ my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
 my_params = 'pubs_diagram_100615_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
+_max_errors_before_warning = 100 # number of error statuses for a project (when in relative mode) before a warning window pops up
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
@@ -126,6 +127,14 @@ warningfont.setPointSize(50)
 daemon_warning.setFont(warningfont)
 scene.addItem(daemon_text)
 # ==> timeprofiling: generating daemon text takes a longass time, until the daemon_log(start,end) function is fixed.
+
+# last-updated timestamp:
+last_update_text = QtGui.QGraphicsTextItem()
+last_update_text.setPos(scene_xmin+0.02*scene_width, scene_height*0.88)
+last_update_text.setPlainText("GUI Initialized, has not yet updated.")
+last_update_text.setDefaultTextColor(QtGui.QColor('white'))
+last_update_text.setFont(myfont)
+scene.addItem(last_update_text)
 
 def resetCounters():
     gdbi.resetCounters()
@@ -230,7 +239,7 @@ for iprojname in projectnames:
     mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
-    mysubtext.setText('%d Good : %d Intermediate : %d Error'%(ngood, ninter, nerr))
+    mysubtext.setText('%d Complete : %d Queue : %d Error'%(ngood, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -390,7 +399,15 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setText('%d Good : %d Intermediate : %d Error'%(ngood, ninter, nerr))
+        projsubtext_dict[iprojname].setText('%d Complete : %d Queue : %d Error'%(ngood, ninter, nerr))
+        #If in relative mode and more than 100 statuses for a project are error, throw a warning
+        if relative_counter_checkbox.isChecked() and nerr > _max_errors_before_warning:
+            warning_message_str = "Project %s has too many errors! It has %d errors (in relative mode). Tell a PUBS expert!" % (iprojname,nerr)
+            warning_message = scene.openDaemonWindow(warning_message_str,force_recreate = force_recreate_daemonwindow)
+
+
+    #Last updated timestamp (last time the querying thread finished a query):
+    last_update_text.setPlainText("GUI Last Updated: "+gdbi.getLastUpdatedString())
 
     #Redraw everything in the scene. No need to create/destroy pie charts every time
     scene.update()
