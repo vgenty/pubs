@@ -1,3 +1,4 @@
+import sys
 from dstream.ds_api import ds_reader
 from dstream_online.ds_online_constants import *
 import samweb_cli
@@ -8,6 +9,9 @@ SAM_LIST_FORMAT_STORED = "data_tier = raw and file_type = data and file_format =
 SQL_CMD_FORMAT = 'SELECT Run, SubRun FROM prod_transfer_binary_evb2dropbox_near1 WHERE Status=%d ORDER BY Run DESC, SubRun DESC LIMIT %d' 
 SQL_CMD_FORMAT = SQL_CMD_FORMAT % (kSTATUS_VALIDATE_DATA,LIMIT_NRUNS)
 FNAME_SUFFIX_FORMAT = '%07d-%05d.ubdaq'
+
+if len(sys.argv)>1:
+    LIMIT_NRUNS = int(sys.argv[1])
 
 k=ds_reader()
 samweb = samweb_cli.SAMWebClient(experiment='uboone')
