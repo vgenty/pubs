@@ -219,4 +219,4 @@ if __name__ == '__main__' :
         if (sys.argv[1] == '0'):
             regenerate = False
     
-    getRunsVsIntensity(regenerate)
+    getRunsVsIntensity('',regenerate)
