@@ -91,12 +91,14 @@ class daq_uptime_monitor(ds_project_base):
 
             run_end_time_s,run_end_time_e = self._api.run_timestamp(self._run_table,current_run,last_subrun)
 
-            if not utc_timezone:
-                utc_timezone = copy.copy(run_start_time_s.tzinfo)
+            #if not utc_timezone:
+                
+            utc_timezone_s = copy.copy(run_start_time_s.tzinfo)
+            utc_timezone_e = copy.copy(run_end_time_e.tzinfo)
 
-            run_start_time_s = utc_timezone.fromutc(run_start_time_s).replace(tzinfo=None)
-            run_end_time_e = utc_timezone.fromutc(run_end_time_e).replace(tzinfo=None)
-            #print run_start_time_s,run_end_time_e
+            run_start_time_s = utc_timezone_s.fromutc(run_start_time_s).replace(tzinfo=None)
+            run_end_time_e = utc_timezone_e.fromutc(run_end_time_e).replace(tzinfo=None)
+
             try:
 
                 run_files = [x for x in samweb.listFiles('run_number %d' % current_run) if x.endswith('.ubdaq')]
