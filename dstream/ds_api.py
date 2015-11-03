@@ -180,7 +180,7 @@ class ds_reader(pubdb_reader):
     # Fetch run & sub-runs for a specified project (tname) with a specified status.\n
     # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.\n
-    def get_runs(self,tname,status,new_to_old=True):
+    def get_runs(self,tname,status,new_to_old=True,limit=None):
 
         if not type(tname)==type(str()) or not type(status)==type(int()):
             self._logger.critical('Invalid input data type!')
@@ -189,7 +189,13 @@ class ds_reader(pubdb_reader):
             self._logger.critical('Project %s does not exist!' % tname)
             return []
 
-        query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d) ORDER BY Run, SubRun, Seq ASC;' % (tname,status)
+        query = 'SELECT Run,SubRun,Seq,ProjectVer FROM GetRuns(\'%s\',%d) ORDER BY Run, SubRun, Seq ASC' % (tname,status)
+
+        if limit:
+
+            query += ' LIMIT %d' % limit
+
+        query += ';'
 
         runs =[]
         if not self.execute(query): return runs

@@ -20,7 +20,7 @@ import matplotlib.colors as mpc
 import matplotlib.dates as mpd
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter
 import numpy as np
-import POTvsTime.POTvsTime
+import dstream_online.POTvsTime.POTvsTime as POTvsTime
 
 ## @class daq_uptime_monitor
 #  @brief kterao should give a brief comment here
@@ -62,6 +62,17 @@ class daq_uptime_monitor(ds_project_base):
         if not self._run_table:
             self.get_resource()
 
+        #
+        # PPP vs. Intensity
+        #
+        intensity_png = '%s/data/%s' % (os.environ['PUB_TOP_DIR'],POTvsTime.outfile)
+        update = not os.path.isfile(intensity_png)
+        if not update:
+            update = (time.time() - os.path.getmtime(intensity_png)) > self._update_period_ppp_vs_intensity
+
+        if update:
+            POTvsTime.getRunsVsIntensity('%s/data' % os.environ['PUB_TOP_DIR'],True)
+        
         run,subrun = self._api.get_last_run_subrun(self._run_table)
 
         samweb = samweb_cli.SAMWebClient(experiment="uboone")
@@ -257,12 +268,23 @@ class daq_uptime_monitor(ds_project_base):
         # 1 week (daily)
         #
         days_frac_map={}
+        first_date = None
+        end_date = None
         for date in dates:
             year,month,day = (date.year,date.month,date.day)
             day_key = datetime.datetime.strptime('%s-%02d-%02d 12:00:00' % (year,month,day), '%Y-%m-%d %H:%M:%S')#.replace(tzinfo=utc_timezone)
+            if not first_date:
+                first_date = copy.copy(day_key)
+                end_date = copy.copy(day_key)
+            if first_date < day_key: first_date = copy.copy(day_key)
+            if end_date < day_key: end_date = copy.copy(day_key)
+
+            day_key -= datetime.timedelta(0,24*3600,0)
             if not day_key in days_frac_map:
                 days_frac_map[day_key] = []
             days_frac_map[day_key].append(hour_frac_map[date])
+
+            #print date,' => ',day_key
 
         for day in days_frac_map:
             ar = np.array(days_frac_map[day])
@@ -270,7 +292,7 @@ class daq_uptime_monitor(ds_project_base):
 
         dates = days_frac_map.keys()
         dates.sort()
-        
+
         values = []
         for date in dates:
             values.append(days_frac_map[date])
@@ -279,37 +301,34 @@ class daq_uptime_monitor(ds_project_base):
 
         overlay_range = [dates[0] + datetime.timedelta(0,-3600,0),dates[-1] + datetime.timedelta(0,3600,0)]
         datenum = mpd.date2num(dates)
+        #print datenum
 
-        plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
-        plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
-        plt.hist(datenum,weights=values,bins=len(datenum),label='DAQ UpTime Fraction\nDaily Average (7 days)',color='#81bef7')
+        first_date = dates[0]  + datetime.timedelta(0,-12*3600)
+        end_date   = dates[-1] + datetime.timedelta(0,12*3600)
+
+        #plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
+        #plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
+        plt.hist(datenum,weights=values,bins=len(datenum),range=mpd.date2num((first_date,end_date)),label='DAQ UpTime Fraction\nDaily Average (7 days)',color='#81bef7')
         ax.legend(prop={'size':20})
-        ax.set_xlim(dates[0],dates[-1]+datetime.timedelta(0,60,0))
+        ax.set_xlim(first_date + datetime.timedelta(0,-10,0),
+                    end_date + datetime.timedelta(0,-10,0))
+        #print dates[0],dates[-1]
         ax.set_ylim(0,1.3)
         ax.xaxis.set_major_locator( DayLocator() )
         #ax.xaxis.set_major_locator( HourLocator(np.arange(0,25,6)) )
         #ax.xaxis.set_minor_locator( HourLocator(np.arange(0,24,6)) )
-        ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d %H:%M:%S') )
+        ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d') )
         ax.fmt_xdata = DateFormatter('%Y-%m-%d %H:%M:%S')
         plt.ylabel('Daily UpTime Fraction',fontsize=20)
+        #ax.xaxis.labelpad=200
         fig.autofmt_xdate()
+        #ax.tick_params(direction='right', pad=15)
         plt.title('')
         plt.tick_params(labelsize=15)
         plt.grid()
         plt.show()
         plt.savefig('%s/data/UpTimeLongDaily.png' % os.environ['PUB_TOP_DIR'])
 
-        #
-        # PPP vs. Intensity
-        #
-        intensity_png = '%s/%s' % (os.environ['PUB_TOP_DIR'],POTvsTime.POTvsTime.outfile)
-        update = not os.path.isfile(intensity_png)
-        if not update:
-            update = (time.time() - os.path.getmtime(intensity_png)) > self._update_period_ppp_vs_intensity
-
-        if update:
-            POTvsTime.POTvsTime.getRunsVsIntensity(intensity_png,True)
-        
 
     def make_html(self):
         web_contents = \
@@ -322,27 +341,10 @@ class daq_uptime_monitor(ds_project_base):
         <body>
 
         <h1> DAQ Uptime Statistics </h1>
-        <center>
-        <table style="width:100%">
-        <tr>
-        <figure>
-        <td>
-        <img src="UpTimeShort.png" alt="DAQ UpTime (Hourly, 24 hour)" style="width:600px;height:400px;" border="2"/>
-        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 24 Hours) </b></font></figcaption></center>
-        </td>
-        <td>
-        <img src="UpTimeLong.png" alt="DAQ UpTime (Hourly, 7 days)" style="width:600px;height:400px;" border="2"/>
-        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 7 days) </b></font></figcaption></center>
-        </td>
-        <td>
-        <img src="UpTimeLongDaily.png" alt="DAQ UpTime (Daily, 24 hour)" style="width:600px;height:400px;" border="2"/>
-        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Daily, Last 24 Hours) </b></font></figcaption></center>
-        </td>
-        </figure>
-        </tr>        
-        </table>
-        </center>
+        Brief run statistics summary page for recently taken runs.<br>
+        The page is created by online PUBS and maintained by DataManagement group.
         """
+
         now = datetime.datetime.now()
         this_shift_start = datetime.datetime(now.year, now.month, now.day, (int(now.hour)/8)*8, 0, 0)
         this_shift_end = this_shift_start + datetime.timedelta(0,3600*8,0)
@@ -357,7 +359,6 @@ class daq_uptime_monitor(ds_project_base):
         web_contents += '<h2>Run Statistics Summary for Last 24 Hours</h2>\n'
         web_contents += 'Table below shows the list of runs that is taken during your shift period.<br>\n'
         web_contents += 'DAQ up-time during the current shift is shown in the next table (right).<br>\n'
-        web_contents += 'Plots above show similar parameter for last 24 hours (left) and also for 7 days (right).\n'
         web_contents += '<br><br>\n'
 
         web_contents += "<table style=\"width:100%\"><tr><td>\n"
@@ -468,16 +469,43 @@ class daq_uptime_monitor(ds_project_base):
 
         web_contents += \
         """
+        <h2> DAQ UpTime Plots </h2>
+        <center>
+        <table style="width:100%">
+        <tr>
+        <figure>
+        <td>
+        <img src="UpTimeShort.png" alt="DAQ UpTime (Hourly, 24 hour)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 24 Hours) </b></font></figcaption></center>
+        </td>
+        <td>
+        <img src="UpTimeLong.png" alt="DAQ UpTime (Hourly, 7 days)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 7 days) </b></font></figcaption></center>
+        </td>
+        <td>
+        <img src="UpTimeLongDaily.png" alt="DAQ UpTime (Daily, 24 hour)" style="width:600px;height:400px;" border="2"/>
+        <center><figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Daily, Last 24 Hours) </b></font></figcaption></center>
+        </td>
+        </figure>
+        </tr>        
+        </table>
+        </center>
+        """
+
+        web_contents += \
+        """
         <h2>Beam Intensity Summary for Last 24 Hours</h2>
         <center>
         <figure>
         """
-        web_contents += '<img src="%s" alt="Beam Intensity Plot" style="width:600px;height:400px;" border="2"/>\n' % POTvsTime.POTvsTime.outfile
+        web_contents += '<img src="%s" alt="Beam Intensity Plot" style="width:1200px;height:666px;" border="2"/>\n' % POTvsTime.outfile
         web_contents += \
         """
-        <figcaption><font size=4 color="0080ff"><b> DAQ UpTime (Hourly, Last 24 Hours) </b></font></figcaption>
+        <figcaption><font size=4 color="0080ff"><b>PPP Intensity (24 Hours) </b></font></figcaption>
         </figure>
         </center>        
+        <br> Link to RunSummary page with statistics per run: <br>
+        <a href='http://ubdaq-prod-near2.fnal.gov/Pubs/RunSummary.html'>RunSummary Page</a>
         </body>
         </html>
         """

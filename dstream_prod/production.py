@@ -79,10 +79,11 @@ class production(ds_project_base):
         self._min_runid = None
         self._nruns     = None
         self._nsubruns  = []
+        self._store     = []
         self._xml_file  = ''
         self._xml_outdir   = ''
         self._xml_template = False
-        self._stage_name    = []
+        self._stage_names   = []
         self._stage_digits  = []
         self._nresubmission = 3
         self._digit_to_name = {}
@@ -177,6 +178,17 @@ class production(ds_project_base):
                 nsubruns = self._nsubruns[x]
                 self._digit_to_nsubruns[digit] = nsubruns
 
+            # Set store flag.
+
+            if proj_info._resource.has_key('STORE'):
+                self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
+            else:
+
+                # Default is to store only final stage.
+
+                self._store = [0] * len(self._stage_names)
+                self._store[-1] = 1
+
         except Exception as e:
             self.error('Failed to load project parameters...')
             raise e
@@ -185,7 +197,7 @@ class production(ds_project_base):
         jobstat = self._jobstat_from_log()
         if not jobstat[0]:
             self.warning('Fetching job status from log file failed! Try running cmd...')
-            jobstat = self._jobstat_from_cmd(jobid)
+            jobstat = self._jobstat_from_cmd()
         
         if not jobstat[0]:
             text = ''
@@ -277,20 +289,49 @@ class production(ds_project_base):
                 return False
         return True
 
+    # This function checks whether a single (run, subrun) pair is good or not.
+    # Return True (good) or False (bad).
+
+    def check_subrun(self, stagename, run, subrun):
+
+        xml = self.getXML(run)
+
+        # First check if we are reading files from sam.
+
+        probj = project.get_project(xml, '', stagename)
+        stobj = probj.get_stage(stagename)
+
+        # If we are reading from sam, always return True.
+
+        if stobj.inputdef != '':
+            return True
+
+        # Check if this (run, subrun) has pubs input available.
+
+        result = False
+        try:
+            project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
+            result = True
+        except:
+            result = False
+
+        # Done.
+
+        return result
+
     def submit( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
         
         # Report starting
-        # self.info()
+        self.info('Submit run %d, subruns %s' % (run, str(subruns)))
         self._data = str( self._data )
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsDeadEndError:
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
@@ -319,6 +360,13 @@ class production(ds_project_base):
                 self.error(line)
             return current_status
         self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+
+        # Delete the job log, which is now obsolete.
+
+        try:
+            os.remove(self.JOBSUB_LOG)
+        except:
+            pass
 
         # Tentatively do so; need to change!!!
         if not jobid:
@@ -412,40 +460,45 @@ class production(ds_project_base):
 
                 return current_status
 
-        last_job_data = self._data.strip().split(':')[-1]
-        job_data_list = last_job_data.split('+')
-        jobid = job_data_list[0]
-
-        #if len(job_data_list) > 1:
-        #    submit_time = float(job_data_list[1])
-        #else:
-        #    submit_time = float(0)
+        # Check the status of all job ids listed in job data.
 
         is_running = False
-        target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
-        for line in target_jobs:
-            words = line.split()
-            job_state = words[5]
-            if job_state == 'X': continue
-            is_running = True
-            if job_state == 'R':
-                statusCode = self.kRUNNING
-                break
+        for job_data in self._data.strip().split(':'):
+            job_data_list = job_data.split('+')
+            jobid = job_data_list[0]
+
+            #if len(job_data_list) > 1:
+            #    submit_time = float(job_data_list[1])
+            #else:
+            #    submit_time = float(0)
+
+            job_status = 0
+            target_jobs = [x for x in self._jobstat.split('\n') if x.startswith(jobid)]
+            for line in target_jobs:
+                words = line.split()
+                job_state = words[5]
+                if job_state == 'X':
+                    continue
+                job_status = self.kSUBMITTED
+                is_running = True
+                if job_state == 'R':
+                    job_status = self.kRUNNING
+                    statusCode = self.kRUNNING
+                    break
+            msg = 'jobid: %s: ' % jobid
+            if job_status == self.kSUBMITTED:
+                msg += 'SUBMITTED'
+            elif job_status == self.kRUNNING:
+                msg += 'RUNNING'
+            elif job_status == 0:
+                msg += 'FINISHED'
+            else:
+                msg += 'UNKNOWN'
+            self.info(msg)
 
         if not is_running:
             statusCode = self.kFINISHED
-
-        msg = 'jobid: %s ... status: ' % jobid
-        if statusCode == self.kRUNNING:
-            msg += 'RUNNING'
-        elif statusCode == self.kFINISHED:
-            msg += 'FINISHED'
-        elif statusCode == self.kSUBMITTED:
-            msg += 'SUBMITTED'
         statusCode += istage
-        msg += ' (%d)' % statusCode
-        self.info(msg)
-
         return statusCode
 
     def check( self, statusCode, istage, run, subrun ):
@@ -478,9 +531,15 @@ class production(ds_project_base):
         nout = 0
         nlog = 0
         for path, subdirs, files in os.walk(stobj.outdir):
+            dname = path.split('/')[-1]
+            if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
+                continue
             if path != stobj.outdir:
                 nout += 1
         for path, subdirs, files in os.walk(stobj.logdir):
+            dname = path.split('/')[-1]
+            if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
+                continue
             if path != stobj.logdir:
                 nlog += 1
 
@@ -559,15 +618,14 @@ Job IDs    : %s
         error_status   = current_status + 1000
                              
         # Report starting
-        # self.info()
+        self.info('Recover run %d, subruns %s' % (run, str(subruns)))
         self._data = str( self._data )
 
         # Main command
         stage = self._digit_to_name[istage]
-
-        # Get project and stage object.
         try:
-            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns, self._version)
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
+                                                  self._version)
         except PubsInputError:
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
@@ -755,10 +813,10 @@ Job IDs    : %s
 
     def store( self, statusCode, istage, run, subrun ):
 
-        # Only store the final stage.
-        # If this is not the final stage, advance to the next stage.
+        # Check store flag.
 
-        if istage != self._stage_digits[-1]:
+        if not self._store[istage]:
+            self.info('Skipping store.')
             statusCode = self.kDONE
             istage += 10
             return statusCode + istage
@@ -779,6 +837,7 @@ Job IDs    : %s
             return statusCode + istage 
 
         # Do store.
+        self.info('Doing store.')
         try:
             real_stdout = sys.stdout
             real_stderr = sys.stderr
@@ -881,6 +940,7 @@ Stage      : %s
                     run    = int(x[0])
                     subrun = int(x[1])
                     runid = (run,subrun)
+
                     if self._max_runid and runid > self._max_runid:
                         continue
                     if self._min_runid and runid < self._min_runid:
@@ -888,8 +948,13 @@ Stage      : %s
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
-                    self.info('Found run/subrun: %s/%s ... inspecting @ %s' % (run,subrun,self.now_str()))
+                    if istatus == self.kINITIATED or istatus == self.kTOBERECOVERED:
+                        if not self.check_subrun(self._digit_to_name[istage], run, subrun):
+                            continue
+
+                    self.debug('Found run/subrun: %s/%s' % (run,subrun))
                     if not run_subruns.has_key(run):
+                        self.info('Found run: %s ... inspecting @ %s' % (run,self.now_str()))
                         run_subruns[run] = set()
                     if not subrun in run_subruns[run]:
                         run_subruns[run].add(subrun)
@@ -969,6 +1034,8 @@ Stage      : %s
 
                             status = self._api.get_status(ds_status(self._project,
                                                                     run, subrun, 0))
+                            old_data  = status._data
+                            old_state = status._status
                             self._data = status._data
 
                             self.debug('Starting an action: %s @ %s' % (
@@ -978,18 +1045,16 @@ Stage      : %s
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
-                            status = ds_status( project = self._project,
-                                                run     = run,
-                                                subrun  = subrun,
-                                                seq     = 0,
-                                                status  = statusCode,
-                                                data    = self._data )
+                            if not old_state == statusCode or not self._data == old_data:
+                                self.log_status( ds_status( project = self._project,
+                                                            run     = run,
+                                                            subrun  = subrun,
+                                                            seq     = 0,
+                                                            status  = statusCode,
+                                                            data    = self._data ) )
 
                             runid = (run, subrun)
                             self._runid_status[runid] = statusCode
-
-                            # Log status
-                            self.log_status( status )
 
                             # Counter decreases by 1
                             ctr -=1

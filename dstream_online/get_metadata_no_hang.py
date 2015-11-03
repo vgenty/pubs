@@ -303,7 +303,7 @@ class get_metadata( ds_project_base ):
 
                     if (int(time_slept*10)%50) == 0:
                         self.info('Parallel processing %d runs (%d/%d left)...' % (active_counter,
-                                                                                   i-active_counter,
+                                                                                   index_run-active_counter,
                                                                                    len(in_file_v)))
 
                     active_counter = mp.active_count()

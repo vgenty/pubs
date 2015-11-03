@@ -16,13 +16,11 @@ end   = datetime.datetime.strptime('2015-10-17T00:00:00','%Y-%m-%dT%H:%M:%S')
 # output file
 outfile = 'runs.csv'
 
-
-
 utc_timezone = None
 
 def getRunTimes(start=start,end=end,fout=outfile):
 
-    fout = open(outfile,'w+')
+    fout = open(fout,'w+')
 
     if VERBOSE:
         print 'Scan between times : [%s, %s]'%(start,end)
