@@ -239,7 +239,7 @@ for iprojname in projectnames:
     mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
     ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
-    mysubtext.setText('%d Complete : %d Queue : %d Error'%(ngood, ninter, nerr))
+    mysubtext.setText('%d Complete : %d Queued : %d Error'%(ngood, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -309,7 +309,7 @@ mytext = QtGui.QGraphicsSimpleTextItem()
 mytext.setBrush(text_brush)
 mytext.setPen(outline_pen)
 mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.88)
-mytext.setText('Legend:\nGreen: Fully completed\nOrange: Intermediate status.\nRed: Error status.\nGray: Project Disabled')
+mytext.setText('Legend:\nGreen: Fully completed\nOrange: Queued status.\nRed: Error status.\nGray: Project Disabled')
 # mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
 myfont.setPointSize(12)
@@ -399,7 +399,7 @@ def update_gui():
 
         #Below the pie chart, update the written number of run/subruns
         ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setText('%d Complete : %d Queue : %d Error'%(ngood, ninter, nerr))
+        projsubtext_dict[iprojname].setText('%d Complete : %d Queued : %d Error'%(ngood, ninter, nerr))
         #If in relative mode and more than 100 statuses for a project are error, throw a warning
         if relative_counter_checkbox.isChecked() and nerr > _max_errors_before_warning:
             warning_message_str = "Project %s has too many errors! It has %d errors (in relative mode). Tell a PUBS expert!" % (iprojname,nerr)
