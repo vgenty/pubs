@@ -29,6 +29,7 @@ class GuiUtilsAPI():
       self.name = name  
       # DB interface:
       self.dbi = ds_reader(pubdb_conn_info.reader_info())
+      self.last_updated = "Not yet updated! Hold your horses..."
     
       #Establish a connection to the database through the DBI
       try:
@@ -43,7 +44,8 @@ class GuiUtilsAPI():
       self.threadLock = threadlock
       self.daemon_last_logtimes = dict.fromkeys(self.relevant_daemons,None)
       self.daemon_is_enabled = dict.fromkeys(self.relevant_daemons,True)
-
+      self.last_updated = datetime.datetime.today().strftime("%A %B %d, %Y %I:%M%p")
+      
       #the querythread itSELF is a "daemon" (different than PUBS daemon)
       #the reason for this is to make sure the thread closes when the main program closes
       self.setDaemon(True)
@@ -57,7 +59,7 @@ class GuiUtilsAPI():
         for servername in self.relevant_daemons:
           self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
           self.daemon_is_enabled[servername] = self.dbi.daemon_info(servername)._enable
-
+        self.last_updated = datetime.datetime.today().strftime("%A %B %d, %Y %I:%M%p")
         #self.threadLock.release()
         time.sleep(10)
 
@@ -95,6 +97,9 @@ class GuiUtilsAPI():
 
     def getIsConnAlive(self):
       return self.is_conn_alive
+
+    def getLastUpdatedString(self):
+      return self.last_updated
 
   def __init__(self):
 
@@ -164,26 +169,27 @@ class GuiUtilsAPI():
     statuses = self.getScaledNGoodInterError(projname, use_relative=use_relative)  
     #statuses is (n_good, n_inter, n_error)
 
-    # OLD #
-    # statuses = self.proj_dict[projname]
-    #statuses looks like [(0,15),(1,23),(2,333), (status, number_of_that_status)]
-
     slices = []
-    #one giant green slice for fully completed project (no intermediat or error statuses)
+    #one giant green slice for fully completed project (no intermediate or error statuses)
     if statuses[1] == 0 and statuses[2] == 0:
       return [ ( 1., 'g' ) ]
     if tot_n == 0:
       return [ (1., 'g' ) ]
 
-    #one giant green slice for just-reset project
-    # if len(statuses) == 1 and self.my_utils.isGoodStatus(statuses[0][0]):
-    #   return [ ( 1., 'g' ) ]
-    # if len(statuses) == 0:
-    #   print "WHATTTTT"
-
     # fraction_good = float(statuses[0])/tot_n
     fraction_inter = float(statuses[1])/tot_n
     fraction_err = float(statuses[2])/tot_n
+
+    #If in relative mode, if any error states are present, make half of the bar red.
+    #(if all are error states, entire bar should be red)
+    if use_relative and fraction_err and fraction_inter:
+      fraction_err = 0.5
+      fraction_inter = 0.5
+    elif use_relative and fraction_err and not fraction_inter:
+      fraction_err = 1.0
+      fraction_inter = 0.0
+
+
 
     # slices.append( (fraction_good,'g') )
     slices.append( (fraction_inter,[255,140,0]) )
@@ -246,6 +252,10 @@ class GuiUtilsAPI():
       answer = [b - a for a, b in zip(self.stored_nGoodnInternError[projname],self.my_utils.getNGoodInterError(projname,self.proj_dict[projname]))]
     else: answer = self.my_utils.getNGoodInterError(projname,self.proj_dict[projname])
     answer = tuple([ max(x,0) for x in answer ])
+    # #temp debug:
+    # if projname == "prod_binary_checksum_evb":
+    #   answer = ( 10, 20, 5 )
+
     return answer
 
   def getDaemonStatuses(self, servername):
@@ -266,7 +276,10 @@ class GuiUtilsAPI():
     warning_content = ''
     for dname in self.my_utils.getRelevantDaemons():
         d_enabled, d_running = self.getDaemonStatuses(dname)
-        text_content += 'Daemon: %s. Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
+        if d_enabled and d_running:
+          text_content += 'Daemon: %s is ENABLED and RUNNING.\n' % dname
+        else:
+          text_content += 'Daemon: %s: Enabled = %d, Running = %d.\n' % (dname, d_enabled, d_running)
         if not d_enabled:
             warning_content += 'Daemon %s is DISABLED as of %s\n'%(dname,datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p"))
         if not d_running:
@@ -284,7 +297,8 @@ class GuiUtilsAPI():
   def getIsConnAlive(self):
     return self.is_conn_alive
 
-
+  def getLastUpdatedString(self):
+    return self.querythread.last_updated
 
 
 

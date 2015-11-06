@@ -84,7 +84,7 @@ class CustomProjectSubwindow(QtGui.QGraphicsView):
         history = self.piechartitem.getHistory()
         leg = pg.LegendItem()#(100,60)#,offset=(70,30)) #i can't get this fucking legend to plot in the right location
         # self.history_plot.addLegend()
-        
+
         # colorcounter = 0
         for status, values in history.iteritems():
             #ignore good statuses
