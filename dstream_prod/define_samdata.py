@@ -4,9 +4,10 @@
 #  @author kazuhiro
 
 # python include
-import time,sys,commands
+import time,sys,commands,os
 # pub_dbi package include
 from pub_dbi import DBException
+from pub_util import pub_smtp
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
@@ -59,6 +60,7 @@ class define_samdata(ds_project_base):
         self._declare_format = proj_info._resource['SAM_DECLARE_FORMAT']
         self._defname_format = proj_info._resource['SAM_DEFNAME_FORMAT']
         self._list_format = proj_info._resource['SAM_LIST_FORMAT']
+        self._experts = proj_info._resource['EXPERTS']
 
     ## @brief getter for a formatted string
     def sam_query_formatter(self,format,run,subrun=-1):
@@ -144,10 +146,23 @@ class define_samdata(ds_project_base):
             skip = False
             for x in xrange(subrun_end - subrun_start + 1):
                 subrun = x + subrun_start
-                #if not (run,subrun) in runsubrun_list:
-                #    self.warning('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
-                #    skip=True
-                #    break
+                if not (run,subrun) in runsubrun_list:
+                    self.error('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
+                    skip=True
+
+                    subject = '%s found missing sub-run in run table' % self._project
+                    text = subject
+                    text += '\n'
+                    text += 'Run=%d SubRun=%d not found in project status table!\n' % (run,subrun)
+                    text += 'Please update Offline MainRun table...\n'
+                    try:
+                        pub_smtp( receiver=self._experts, 
+                                  subject=subject, 
+                                  text=text )
+                    except Exception:
+                        self.error('Failed to send an email notice about the failure...')
+                    break
+
             if skip: continue
             
             #defname = self._defname_format % (run,seq)
