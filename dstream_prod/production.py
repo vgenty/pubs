@@ -75,15 +75,20 @@ class production(ds_project_base):
                                   self.kTOBERECOVERED : self.recover,
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None }
-        self._max_runid = None
-        self._min_runid = None
-        self._nruns     = None
-        self._nsubruns  = []
-        self._store     = []
-        self._storeana  = []
-        self._xml_file  = ''
+        self._max_runid   = None
+        self._min_runid   = None
+        self._nruns       = None
+        self._njobs       = 0
+        self._njobs_limit = None
+        self._njobs_tot   = 0
+        self._njobs_tot_limit = None
+        self._nsubruns    = []
+        self._store       = []
+        self._storeana    = []
+        self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
+        self._xml_rep_var  = {}
         self._stage_names   = []
         self._stage_digits  = []
         self._nresubmission = 3
@@ -102,7 +107,15 @@ class production(ds_project_base):
         if not self._xml_template: return self._xml_file
         
         out_xml_name = '%s/%s_run_%07d.xml' % (self._xml_outdir,self._project,int(run))
-        
+
+        if os.path.isfile(out_xml_name):
+            out_ctime = os.path.getctime(out_xml_name)
+            in_ctime  = os.path.getctime(self._xml_template)
+
+            if in_ctime > out_ctime:
+                self.warning('Re-creating XML file as input is newer (%s)' % out_xml_name)
+                remake = True
+
         if not remake and os.path.isfile(out_xml_name): return out_xml_name
 
         if not os.path.isfile(self._xml_template):
@@ -112,6 +125,8 @@ class production(ds_project_base):
         contents = open(self._xml_template,'r').read()
         contents = contents.replace('REP_RUN_NUMBER','%d' % int(run))
         contents = contents.replace('REP_ZEROPAD_RUN_NUMBER','%07d' % int(run))
+        for key,value in self._xml_rep_var.iteritems():
+            contents = contents.replace(key,value)
         fout.write(contents)
         fout.close()
 
@@ -149,6 +164,15 @@ class production(ds_project_base):
                 if not os.path.isfile(self._xml_file):
                     raise DSException('XML file not found: %s' % self._xml_file)
 
+            # Store XML replacement variables if appropriate
+            for key,value in proj_info._resource.iteritems():
+                if not key.startswith('PUBS_XMLVAR_'): continue
+                
+                if not self._xml_template:
+                    raise DSException('XML template file not set but replacement variable set! (%s)' % key)
+
+                self._xml_rep_var[key]=value
+
             self._nresubmission = int(proj_info._resource['NRESUBMISSION'])
             self._experts = proj_info._resource['EXPERTS']
             self._period = proj_info._period
@@ -179,14 +203,16 @@ class production(ds_project_base):
                 nsubruns = self._nsubruns[x]
                 self._digit_to_nsubruns[digit] = nsubruns
 
-            # Set store flag.
+            if 'NJOBS_LIMIT' in proj_info._resource:
+                self._njobs_limit = int(proj_info._resource['NJOBS_LIMIT'])
+            if 'NJOBS_TOTAL_LIMIT' in proj_info._resource:
+                self._njobs_tot_limit = int(proj_info._resource['NJOBS_TOTAL_LIMIT'])
 
+            # Set store flag.
             if proj_info._resource.has_key('STORE'):
                 self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
             else:
-
                 # Default is to store only final stage.
-
                 self._store = [0] * len(self._stage_names)
                 self._store[-1] = 1
 
@@ -221,6 +247,9 @@ class production(ds_project_base):
             raise DSException()
         
         self._jobstat = jobstat[1]
+        self._njobs_tot = len(self._jobstat.split('\n'))
+        if self._njobs_tot > 2:
+            self._njobs_tot -= 2
         self.info('Project loaded @ %s' % self.now_str())
         return True
 
@@ -239,12 +268,7 @@ class production(ds_project_base):
     def _jobstat_from_log(self, submit_time=None):
         result = (False,'')
         if not os.path.isfile(self.JOBSUB_LOG):
-            subject = 'Failed fetching job log'
-            text  = 'Batch job log file not available... (check daemon, should not happen)'
-            text += '\n\n'
-            pub_smtp(receiver = self._experts,
-                     subject = subject,
-                     text = text)
+            self.error('Batch job log file not available... (check daemon, should not happen)')
             return result
 
         # Make sure log has been updated more recently than most recent submit.
@@ -319,7 +343,6 @@ class production(ds_project_base):
             return True
 
         # Check if this (run, subrun) has pubs input available.
-
         result = False
         try:
             project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
@@ -371,7 +394,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+        self.debug( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Delete the job log, which is now obsolete.
 
@@ -398,6 +421,9 @@ class production(ds_project_base):
 
         statusCode = istage + self.kSUBMITTED
         self.info( "Submitted jobs, jobid: %s, status: %d" % ( single_data, statusCode ) )
+
+        self._njobs += len(subruns)
+        self._njobs_tot += len(subruns)
 
         # Here we need to convert the job data into a list with one entry for each subrun.
         # In case of input from sam, we keep the original job id and copy it for each job,
@@ -445,11 +471,13 @@ class production(ds_project_base):
             if self._runid_status.has_key(merge_runid):
                 merge_status = self._runid_status[merge_runid]
             else:
-                merge_ds_status = self._api.get_status(ds_status(self._project, run,
-                                                                 merge_subrun, 0))
+                merge_ds_status = self._api.get_status(ds_status(self._project, run, merge_subrun, 0))
                 merge_status = merge_ds_status._status
                 self._runid_status[merge_runid] = merge_status
-                
+
+            if merge_status in [istage + self.kSUBMITTED, istage + self.kRUNNING]:
+                self._njobs += 1
+
             if merge_status == istage + self.kREADYFORSAM or \
                     merge_status == istage + self.kDECLARED or \
                     merge_status == istage + 10:
@@ -466,10 +494,13 @@ class production(ds_project_base):
 
                 return istage + self.kTOBERECOVERED
 
+            elif self._runid_status[merge_runid] > 1000:
+
+                self.error('Merged job failed (run,subrun) = (%d,%d) for subrun %d' % (run,subrun,merge_subrun))
+                return current_status + 1000
+
             else:
-
                 # Any other status, leave the current status the same.
-
                 return current_status
 
         # Check the status of all job ids listed in job data.
@@ -510,6 +541,8 @@ class production(ds_project_base):
 
         if not is_running:
             statusCode = self.kFINISHED
+        else:
+            self._njobs += 1
         statusCode += istage
         return statusCode
 
@@ -598,7 +631,7 @@ class production(ds_project_base):
         elif nSubmit > self._nresubmission:
            # If the sample has been submitted more than a certain number
            # of times, email the expert, and move on to the next stage
-           subject = "MCC jobs fails after %d resubmissions" % nSubmit 
+           subject = "%s jobs fails after %d resubmissions" % (self._project,nSubmit)
            text = """
 Sample     : %s
 Stage      : %s
@@ -905,13 +938,7 @@ Job IDs    : %s
 
         # If all the stages complete, send an email to experts
         if not istage in self._stage_digits:
-            subject = "Completed: MCC sample %s" % self._project
-            text = """
-Sample     : %s
-Stage      : %s
-               """ % ( self._project, self._digit_to_name[istage-10] )
-
-            pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+            self.info("Completed: %s Run %d SubRun %d" % (self._project,run,subrun))
 
         statusCode += istage
         self.info("SAM store, status: %d" % statusCode)
@@ -941,8 +968,17 @@ Stage      : %s
             # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
                 fstatus = istage + istatus
-                self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
 
+                if istatus == self.kINITIATED:
+                    if self._njobs_limit and self._njobs > self._njobs_limit:
+                        self.info('Skipping job submission stage: # running/queued project jobs = %d > set limit (%d)' % (self._njobs,self._njobs_limit))
+                        continue
+                    if self._njobs_tot_limit and self._njobs_tot > self._njobs_tot_limit:
+                        self.info('Skipping job submission stage: # running/queued total jobs = %d > set limit (%d)' % (self._njobs_tot,self._njobs_tot_limit))
+                        continue
+
+                self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
+                
                 target_list = []
                 if fstatus == self.kINITIATED and self._parent:
                     target_list = self.get_xtable_runs([self._project,self._parent],[fstatus,self._parent_status])
@@ -951,20 +987,31 @@ Stage      : %s
 
                 run_subruns = {}
                 for x in target_list:
+
+                    if istatus == self.kINITIATED:
+                        if self._njobs_limit and self._njobs > self._njobs_limit:
+                            self.info('Breaking from job submission stage: # running/queued project jobs = %d > set limit (%d)' % (self._njobs,self._njobs_limit))
+                            break
+                        if self._njobs_tot_limit and self._njobs_tot > self._njobs_tot_limit:
+                            self.info('Breaking from job submission stage: # running/queued total jobs = %d > set limit (%d)' % (self._njobs_tot,self._njobs_tot_limit))
+                            break
                     
                     run    = int(x[0])
                     subrun = int(x[1])
                     runid = (run,subrun)
 
                     if self._max_runid and runid > self._max_runid:
+                        self.debug('Ignoring (run,subrun) = (%d,%d) above set run range max (%d,%d)' % (run,subrun,self._max_runid[0],self._max_runid[1]))
                         continue
                     if self._min_runid and runid < self._min_runid:
+                        self.debug('Ignoring (run,subrun) = (%d,%d) below set run range min (%d,%d)' % (run,subrun,self._min_runid[0],self._min_runid[1]))
                         continue
                     if runid in processed_run: continue
                     processed_run.append(runid)
 
                     if istatus == self.kINITIATED or istatus == self.kTOBERECOVERED:
                         if not self.check_subrun(self._digit_to_name[istage], run, subrun):
+                            self.debug('Skipping (run,subrun) = (%d,%d) ... not ready to be process next stage' % (run,subrun))
                             continue
 
                     self.debug('Found run/subrun: %s/%s' % (run,subrun))

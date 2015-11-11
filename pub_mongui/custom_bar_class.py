@@ -93,7 +93,6 @@ class ProgressBarItem(QtGui.QGraphicsObject):
         return self.name
 
     def appendHistory(self, statuses_and_values_toappend):
-
         ##CURRENT appendHistory should take in {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
 
         #If history has never been updated before, create history dict.
@@ -101,6 +100,7 @@ class ProgressBarItem(QtGui.QGraphicsObject):
             for istat_val in statuses_and_values_toappend:
                 status, value = istat_val[0], istat_val[1]
                 self.history[status] = [value]
+            self.n_history_updates += 1
             return
  
         #keys to include are all the statuses that have been added to history at any point in time

@@ -21,6 +21,7 @@ get_runtimes.VERBOSE = VERBOSE
 
 # start and end-time to consider
 end   = datetime.datetime.now()
+#end   = datetime.datetime.strptime('2015-10-21 23:59:59','%Y-%m-%d %H:%M:%S')
 start = end - datetime.timedelta(hours=24)
 outfile = 'ppp_vs_intensity.png'
 
@@ -239,14 +240,14 @@ def getRunsVsIntensity(outdir='',regenerate=True):
                 if pppavg > 1.6: ypos = 0.2
                 ax.text(xpos,
                         ypos,
-                        'run %i : ppp %.02f'%(runs[i],pppavg),
+                        'run %i : avg. ppp %.02f'%(runs[i],pppavg),
                         weight='bold',
                         fontsize=16, color='k',horizontalalignment='center',
                         verticalalignment='bottom',rotation='vertical')
-    plt.ylim([-0.1,4.0])
+    plt.ylim([-0.1,5.0])
     plt.xlabel('Date (US/Central)',fontsize=20)
-    plt.ylabel('Intensity [ppp E12]',fontsize=20)
-    plt.title('Run and Intensity Information',fontsize=20)
+    plt.ylabel('Intensity [ppp E12]',fontsize=20,color='b')
+    plt.title('Daily Run and Beam Intensity Summary',fontsize=20)
     plt.grid()
     plt.tick_params(labelsize=18)
     out_png_name = outfile

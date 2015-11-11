@@ -12,11 +12,15 @@ class CustomDaemonSubwindow():
     def __init__(self,textitem):
 
         self.textitem = textitem
+        if type(self.textitem) != QtGui.QGraphicsTextItem:
+            stored_string = textitem
+            self.textitem = QtGui.QGraphicsTextItem()
+            self.textitem.setPlainText(stored_string)
         # Open an external window
         self.win = pg.GraphicsWindow(size=(600,600))
         self.win.setBackground(QtGui.QColor('red'))
         # Window title
-        self.win.setWindowTitle('PUBS DAEMON WARNINGS!')
+        self.win.setWindowTitle('PUBS MONITORING WARNINGS!')
         # Portion of window that shows project description text
         self.AddTextViewbox(self.textitem)
         

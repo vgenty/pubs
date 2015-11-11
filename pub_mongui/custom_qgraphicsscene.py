@@ -72,4 +72,8 @@ class CustomQGraphicsScene(QtGui.QGraphicsScene):
             self.daemwin = CustomDaemonSubwindow(daemon_warning)
         #Otherwise just update the text on the previously created daemon window (which may have been closed by user)
         else:
-            self.daemwin.UpdateText(daemon_warning.toPlainText())
+            if type(daemon_warning) == QtGui.QGraphicsTextItem:
+                self.daemwin.UpdateText(daemon_warning.toPlainText())
+            else:
+                self.daemwin.UpdateText(daemon_warning)
+            
