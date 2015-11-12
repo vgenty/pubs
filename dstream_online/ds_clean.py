@@ -151,6 +151,9 @@ class ds_clean(ds_project_base):
             project_status = [ kSTATUS_INIT  ] + parent_status
 
             run_list.append(self._api.get_xtable_runs( project_list, project_status, False ))
+
+            for p in project_list:
+                self._api.commit('DROP TABLE IF EXISTS temp%s' % p)
         
         return run_list
 
@@ -178,6 +181,7 @@ class ds_clean(ds_project_base):
                                             status  = self._skip_status) )
 
                 ctr -= 1
+
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
 
