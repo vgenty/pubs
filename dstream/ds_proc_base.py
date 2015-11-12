@@ -12,6 +12,7 @@ from pub_util import pub_logger
 from pub_dbi  import pubdb_conn_info
 # dstream module import
 from ds_api   import ds_writer
+from pub_dbi import DBException
 
 ## @class ds_base
 #  @brief Base of ds_project_base (and some other dstream classes)
