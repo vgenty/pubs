@@ -1,0 +1,17 @@
+prod_binary_checksum_evb 0.50 0.05 300 
+prod_binary_metadata_near1 0.50 0.15 300 prod_binary_checksum_evb
+prod_register_binary_evb 0.50 0.25 300 prod_binary_metadata_near1
+prod_transfer_binary_evb2dropbox_evb 0.50 0.35 300 prod_register_binary_evb
+
+prod_verify_binary_evb2dropbox_near1 0.20 0.50 300 prod_transfer_binary_evb2dropbox_near1
+prod_transfer_binary_evb2near1_near1 0.60 0.50 300 prod_transfer_binary_evb2dropbox_near1
+
+prod_transfer_binary_near12dropbox_near1 0.70 0.60 300 prod_transfer_binary_evb2near1_near1
+prod_verify_binary_near12dropbox_near1 0.70 0.70 300 prod_transfer_binary_near12dropbox_near1
+prod_clean_near_binary_near1 0.70 0.80 300 prod_verify_binary_near12dropbox_near1
+
+
+
+prod_clean_evb_binary_evb 0.30 0.70 300 prod_verify_binary_evb2dropbox_near1::prod_transfer_binary_evb2near1_near1
+
+
