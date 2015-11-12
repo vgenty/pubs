@@ -178,6 +178,8 @@ class ds_clean(ds_project_base):
                                             status  = self._skip_status) )
 
                 ctr -= 1
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
+            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
 
         # Check available space
         disk_frac_used = int(commands.getoutput('df %s | tail -n1' % self._in_dir).split()[3].rstrip('%'))
