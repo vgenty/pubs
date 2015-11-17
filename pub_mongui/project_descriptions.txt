@@ -3,7 +3,7 @@
 prod_binary_checksum_evb Binary Checksum
 prod_binary_metadata_near1 Binary Metadata
 prod_register_binary_evb Metadata Registration
-prod_transfer_binary_evb2dropbox_near1 Binary Transfer [EVB]
+prod_transfer_binary_evb2dropbox_evb Binary Transfer [EVB]
 prod_verify_binary_evb2dropbox_near1 Binary Transfer Validation [EVB]
 prod_clean_evb_binary_evb Binary Data Deletion [EVB]
 prod_transfer_binary_evb2near1_near1 Binary File Drain [EVB-->Near1]

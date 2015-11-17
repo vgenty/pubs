@@ -32,7 +32,7 @@ import time
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
 my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
-my_params = 'pubs_diagram_100615_params.txt'
+my_params = 'pubs_diagram_111215_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 _max_errors_before_warning = 100 # number of error statuses for a project (when in relative mode) before a warning window pops up
