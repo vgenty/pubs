@@ -42,7 +42,7 @@
     <logdir>/pnfs/uboone/scratch/uboonepro/log/neutrino_id/&release;/&prod_mode;_&name;_&prod_version;/neutrino_id_&run_tag;</logdir>
     <workdir>/uboone/data/users/uboonepro/work/neutrino_id/&release;/&prod_mode;_&name;_&prod_version;/neutrino_id_&run_tag;</workdir>
     <numjobs>100</numjobs>
-    <datatier>reconstructed</datatier>
+    <datatier>reconstructed-2d</datatier>
     <defname>&prod_mode;_neutrino_id_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
 
