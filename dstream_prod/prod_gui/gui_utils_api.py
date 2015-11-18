@@ -176,22 +176,21 @@ class GuiUtilsAPI():
     if tot_n == 0:
       return [ (1., 'g' ) ]
 
-    # fraction_good = float(statuses[0])/tot_n
-    fraction_inter = float(statuses[1])/tot_n
-    fraction_err = float(statuses[2])/tot_n
+    fraction_init = float(statuses[1])/tot_n
+    fraction_inter = float(statuses[2])/tot_n
+    fraction_err = float(statuses[3])/tot_n
 
-    #If in relative mode, if any error states are present, make half of the bar red.
-    #(if all are error states, entire bar should be red)
-    if use_relative and fraction_err and fraction_inter:
-      fraction_err = 0.5
-      fraction_inter = 0.5
-    elif use_relative and fraction_err and not fraction_inter:
-      fraction_err = 1.0
-      fraction_inter = 0.0
-
-
+    # #If in relative mode, if any error states are present, make half of the bar red.
+    # #(if all are error states, entire bar should be red)
+    # if use_relative and fraction_err and fraction_inter:
+    #   fraction_err = 0.5
+    #   fraction_inter = 0.5
+    # elif use_relative and fraction_err and not fraction_inter:
+    #   fraction_err = 1.0
+    #   fraction_inter = 0.0
 
     # slices.append( (fraction_good,'g') )
+    slices.append( (fraction_init, 'g') )
     slices.append( (fraction_inter,[255,140,0]) )
     slices.append( (fraction_err,'r') )
 
@@ -345,14 +344,17 @@ class GuiUtils():
   def getRelevantDaemons(self):
     return self.relevant_daemons
 
-  def isGoodStatus(self, status):
+  def isInitialStatus(self, status):
     return True if status in [0, 1, 2] else False
+
+  def isGoodStatus(self, status):
+    return True if status in [5, 6, 7, 8, 9, 10, 100] else False
 
   def isIntermediateStatus(self, status):
     return True if status in [3, 4] else False
 
   def isErrorStatus(self,status):
-    return True if status >= 5 else False
+    return True if status >= 1000 else False
 
   def getNGoodInterError_fullhistory(self,projname,history):
     latest_data = []
@@ -364,15 +366,16 @@ class GuiUtils():
   def getNGoodInterError(self,projname,latest_data):
     # print projname
     # print latest_data
-    n_good, n_inter, n_error = 0, 0, 0
+    n_good, n_init, n_inter, n_error = 0, 0, 0, 0
     for status, current_value in latest_data:
       if self.isGoodStatus(status): n_good += current_value
       elif self.isErrorStatus(status): n_error += current_value
       elif self.isIntermediateStatus(status): n_inter += current_value
+      elif self.isInitialStatus(status): n_init += current_value
       else:
         print "something has gone horribly wrong. status %d for project %s"%(status,projname)
    
-    return (n_good, n_inter, n_error)
+    return (n_good, n_init, n_inter, n_error)
 
   def getArrowObject(self,startpoint,endpoint):
     headlength = 35

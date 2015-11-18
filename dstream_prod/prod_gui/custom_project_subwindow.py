@@ -89,6 +89,7 @@ class CustomProjectSubwindow(QtGui.QGraphicsView):
         for status, values in history.iteritems():
             #ignore good statuses
             if self.myguiutil.isGoodStatus(status): continue
+            elif self.myguiutil.isInitialStatus(status): mycolor = 'g'
             elif self.myguiutil.isErrorStatus(status): mycolor = 'r'
             elif self.myguiutil.isIntermediateStatus(status): mycolor = [255, 140, 0] #dark orange
             data = np.array(values)
