@@ -25,7 +25,10 @@ class PieChartItem(QtGui.QGraphicsObject):
         self.slices = data[5]
 
         self.n_history_updates = 0
-        self.history = {}
+        #History (for this given project) looks like:
+        #{stagename : [ (1,5,9), (2,3,9), (4,4,4) ]}
+        # the list is tuples of nfiles for each substatus 1, 2, 3 
+        self.history = { }
         #Descripton is set separately
         self.descript = ''
         self.was_updated = False
@@ -87,48 +90,54 @@ class PieChartItem(QtGui.QGraphicsObject):
     def getName(self):
         return self.name
 
-    def appendHistory(self, statuses_and_values_toappend):
+    def appendHistory(self, in_dict):
+
+        ##CURRENT appendHistory should take in {'reco_2d.fcl': (10, 5, 15), 'reco_3d.fcl': (1, 29, 100)}
 
         #Increment counter of number of history updates
         self.n_history_updates = self.n_history_updates + 1
 
         #If history has never been updated before, create history dict.
         if self.n_history_updates == 1:
-            for istat_val in statuses_and_values_toappend:
-                status, value = istat_val[0], istat_val[1]
-                self.history[status] = [value]
+            for stagename, mytuple in in_dict.iteritems():
+                self.history[stagename] = [ mytuple ]
             return
+ 
+        #History (for this given project) looks like:
+        #{stagename : [ (1,5,9), (2,3,9), (4,4,4) ]}
+        # the list is tuples of nfiles for each substatus 1, 2, 3 
 
-        #statuses_and_values_toappend looks like
+
+        #old comments:
+        #in_dict looks like
         #[ (1, 1234), (3, 999), (100, 14) ]
         #i think if there is initially status=1 with 1 entry, and that entry switches to status 0,
         #then the status=1 pair gets dropped out of statuses_and_values... so, will need to pad
         #an entry in its place with value = 0
 
         #keys to include are all the statuses that have been added to history at any point in time
-        keys_to_include = self.history.keys()
+        stages_to_include = self.history.keys()
 
         #loop over statuses that you currently want to add to history
-        for istat_val in statuses_and_values_toappend:
-            status, value = istat_val[0], istat_val[1]
+        for stagename, mytuple in in_dict.iteritems():
 
-            #if this status has never been added to history, back-fill it with zeros
-            if status not in self.history.keys():
-                self.history[status] = [0] * int(self.n_history_updates-1)
+            #if this stage has never been added to history, back-fill it with zeros
+            if stagename not in self.history.keys():
+                self.history[stagename] = [0] * int(self.n_history_updates-1)
 
             #add this status and value to the history
-            self.history[status].append(value)
+            self.history[stagename].append(mytuple)
 
-        #there may be statuses that are in history, that are not being requested to be updated right now
-        statuses_to_manually_include = list(set(self.history.keys())-set([x[0] for x in statuses_and_values_toappend]))
-        #Keep these around, and add zeros for this update
-        for istat in statuses_to_manually_include:
-            self.history[istat].append(0)
+        # #there may be statuses that are in history, that are not being requested to be updated right now
+        # stages_to_manually_include = list(set(self.history.keys())-set([x[0] for x in in_dict]))
+        # #Keep these around, and add zeros for this update
+        # for istat in stages_to_manually_include:
+        #     self.history[stagename].append(0)
 
         #If too many pending run/subruns are stored, trim the list
-        if self.n_history_updates > 500:
-            for mykey in self.history.keys():
-                self.history[mykey].pop(0)
+        if self.n_history_updates > 50:
+            for mystage in self.history.keys():
+                self.history[mystage].pop(0)
 
 
     def getHistory(self):
