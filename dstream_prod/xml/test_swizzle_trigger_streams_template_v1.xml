@@ -52,15 +52,15 @@
     <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
   </stage>
 
-  <stage name="mergefilter">
+  <stage name="mergebnb">
     <inputstream>outbnb</inputstream>
-    <fcl>copy_recofilter.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergefilter_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/log/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergefilter_&run_tag;</logdir>
-    <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergefilter_&run_tag;</workdir>
+    <fcl>copy_recobnb.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/log/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</logdir>
+    <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_rawfilter_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_bnb_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
@@ -73,7 +73,7 @@
     <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergefilter_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_rawfilter_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_numi_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
@@ -86,7 +86,7 @@
     <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergefilter_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_rawfilter_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_ext_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
@@ -99,7 +99,7 @@
     <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>raw</datatier>
-    <defname>&prod_mode;_swizzled_rawprescale_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_mucs_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
@@ -112,7 +112,7 @@
     <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_rawprescale_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_prescale_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
@@ -125,7 +125,7 @@
     <workdir>/uboone/data/users/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_rawnotpc_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_swizzled_notpc_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
