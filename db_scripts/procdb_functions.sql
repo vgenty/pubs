@@ -1,5 +1,5 @@
-SET ROLE uboonedaq_admin;
---SET ROLE uboone_admin;
+--SET ROLE uboonedaq_admin;
+SET ROLE uboone_admin;
 --Overwrite functions if they already exist
 
 ---------------------------------------------------------------------

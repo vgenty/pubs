@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_03_01">
+<!ENTITY release "v04_26_03_02">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_three_filters">
@@ -30,6 +30,12 @@
     <tag>&release;</tag>
     <qual>e7:prof</qual>
   </larsoft>
+
+  <!-- Project Version -->
+  <version>v04_26_03_01</version>
+
+  <!-- Run Number -->
+  <runnumber>REP_RUN_NUMBER</runnumber>
 
   <!-- Project stages -->
 

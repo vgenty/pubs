@@ -624,8 +624,11 @@ Sample     : %s
 Stage      : %s
 Job IDs    : %s
            """ % ( self._project, self._digit_to_name[istage], self._data.split(':')[2:] )
-
-           pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+           try:
+               pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+           except Exception:
+               self.error('Failed to send emails...')
+               self.error(text)
 
            #statusCode = self.kDONE
            #istage += 10
