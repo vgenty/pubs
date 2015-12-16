@@ -83,6 +83,8 @@ class production(ds_project_base):
         self._njobs_tot   = 0
         self._njobs_tot_limit = None
         self._nsubruns    = []
+        self._store       = []
+        self._storeana    = []
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -213,6 +215,17 @@ class production(ds_project_base):
                 # Default is to store only final stage.
                 self._store = [0] * len(self._stage_names)
                 self._store[-1] = 1
+
+            # Set storeana flag.
+
+            if proj_info._resource.has_key('STOREANA'):
+                self._storeana = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
+            else:
+
+                # Default is to store only final stage.
+
+                self._storeana = [0] * len(self._stage_names)
+                self._storeana[-1] = 1
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -850,7 +863,7 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage]:
+        if not self._store[istage] and not self._storeana[istage]:
             self.info('Skipping store.')
             statusCode = self.kDONE
             istage += 10
@@ -872,7 +885,6 @@ Job IDs    : %s
             return statusCode + istage 
 
         # Do store.
-        self.info('Doing store.')
         try:
             real_stdout = sys.stdout
             real_stderr = sys.stderr
@@ -881,14 +893,18 @@ Job IDs    : %s
 
             # Store files.
 
-            dim = project_utilities.dimensions(probj, stobj, ana=False)
-            store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                     add=False,
-                                                     clean=False,
-                                                     remove=False,
-                                                     upload=True)
+            store_status = 0
+            if self._store[istage]:
+                self.info('Storing artroot files.')
+                dim = project_utilities.dimensions(probj, stobj, ana=False)
+                store_status = project.docheck_locations(dim, stobj.outdir, 
+                                                         add=False,
+                                                         clean=False,
+                                                         remove=False,
+                                                         upload=True)
 
-            if store_status == 0 and stobj.ana_data_tier != '':
+            if self._storeana[istage] and store_status == 0 and stobj.ana_data_tier != '':
+                self.info('Storing analysis root files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
                                                          add=False,

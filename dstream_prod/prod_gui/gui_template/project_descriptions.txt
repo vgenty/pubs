@@ -1,0 +1,8 @@
+#The format of this file is : project_name, followed by a space, followed by the description with NO line breaks in it. You're allowed to have empty lines.
+
+prod_define_swizzler_dataset Define Swizzler Dataset
+prod_swizzle_filter_v1 Swizzle Filter
+prod_swizzle_merge_prescale_v1 Swizzle Merge Prescale
+prod_swizzle_merge_filter_v1 Swizzle Merge Filter
+prod_swizzle_merge_notpc_v1 Swizzle Merge NoTPC
+prod_neutrino_id_reco_v1 Neutrino ID Reco

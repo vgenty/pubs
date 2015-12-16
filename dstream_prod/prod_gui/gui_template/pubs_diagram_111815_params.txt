@@ -1,0 +1,7 @@
+prod_define_swizzler_dataset 0.50 0.05 300 
+prod_swizzle_filter_v1 0.50 0.25 300 prod_define_swizzler_dataset
+prod_swizzle_merge_prescale_v1 0.15 0.50 300 prod_swizzle_filter_v1
+prod_swizzle_merge_filter_v1 0.50 0.50 300 prod_swizzle_filter_v1
+prod_swizzle_merge_notpc_v1 0.85 0.50 300 prod_swizzle_filter_v1
+
+prod_neutrino_id_reco_v1 0.50 0.75 300 prod_swizzle_merge_filter_v1

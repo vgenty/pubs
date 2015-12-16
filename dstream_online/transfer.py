@@ -54,6 +54,7 @@ class transfer( ds_project_base ):
         self._parallelize = 0
         self._max_proc_time = 120
         self._min_run = 0
+        self._max_run = 1e12
 
         self._ntrials = 0
         
@@ -88,6 +89,8 @@ class transfer( ds_project_base ):
         
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
+        if 'MAX_RUN' in resource:
+            self._max_run = int(resource['MAX_RUN'])
 
         if 'NUM_RETRIAL' in resource:
             self._ntrials = int(resource['NUM_RETRIAL'])
@@ -164,6 +167,7 @@ class transfer( ds_project_base ):
 
             (run, subrun) = (int(x[0]), int(x[1]))
             if run < self._min_run: break
+            if run > self._max_run: continue
 
             # Counter decreases by 1
             ctr -= 1
