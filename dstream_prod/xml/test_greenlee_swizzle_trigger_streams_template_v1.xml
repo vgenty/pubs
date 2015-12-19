@@ -42,9 +42,9 @@
   <stage name="swizzle">
     <inputdef>prod_assembler_binary_&run_tag;</inputdef>
     <fcl>swizzle_trigger_streams.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_unmerged_&prod_version;_&run_tag;</defname>
@@ -55,9 +55,9 @@
   <stage name="mergebnb">
     <inputstream>outbnb</inputstream>
     <fcl>copy_recobnb.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_bnb_&prod_version;_&run_tag;</defname>
@@ -68,9 +68,9 @@
     <inputstream>outnumi</inputstream>
     <previousstage>swizzle</previousstage>
     <fcl>copy_reconumi.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_numi_&prod_version;_&run_tag;</defname>
@@ -81,9 +81,9 @@
     <inputstream>outext</inputstream>
     <previousstage>swizzle</previousstage>
     <fcl>copy_recoext.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_ext_&prod_version;_&run_tag;</defname>
@@ -94,9 +94,9 @@
     <inputstream>outmucs</inputstream>
     <previousstage>swizzle</previousstage>
     <fcl>copy_rawmucs.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>raw</datatier>
     <defname>&prod_mode;_swizzled_mucs_&prod_version;_&run_tag;</defname>
@@ -107,9 +107,9 @@
     <inputstream>outprescale</inputstream>
     <previousstage>swizzle</previousstage>
     <fcl>copy_recoprescale.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_prescale_&prod_version;_&run_tag;</defname>
@@ -120,9 +120,9 @@
     <inputstream>outnotpc</inputstream>
     <previousstage>swizzle</previousstage>
     <fcl>copy_reconotpc.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_swizzled_notpc_&prod_version;_&run_tag;</defname>
