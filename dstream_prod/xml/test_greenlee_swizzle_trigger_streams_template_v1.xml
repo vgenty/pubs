@@ -47,7 +47,6 @@
     <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_swizzled_unmerged_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
     <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
   </stage>
