@@ -9,6 +9,7 @@ from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
 from custom_bar_class import ProgressBarItem
 from gui_utils_api import GuiUtilsAPI, GuiUtils
+import datetime
 
 # catch ctrl+C to terminate the program
 import signal
@@ -36,6 +37,8 @@ my_params = 'pubs_diagram_111215_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 _max_errors_before_warning = 100 # number of error statuses for a project (when in relative mode) before a warning window pops up
+_mongui_log_file = os.environ['PUB_TOP_DIR']+'/pub_mongui/mongui_log_file.log'
+
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
@@ -343,6 +346,11 @@ def update_gui():
     #If there were any warnings, open a window shouting at shifters
     if daemon_warning_content:      
         dwarnings = scene.openDaemonWindow(daemon_warning,force_recreate = force_recreate_daemonwindow)
+        #Also make a log file showing when the red window popped up, to help point fingers when things break
+        logfile = open(_mongui_log_file,'a')
+        logfile.write("RED WINDOW OPENED! Warning = %s. Time= %s\n"%(daemon_warning_content,datetime.datetime.today().strftime("%A %B %d, %Y %I:%M%p")))
+        logfile.close()
+
     
     #Check if gui query thread is successfully connected to the DB
     if not gdbi.getIsConnAlive():
