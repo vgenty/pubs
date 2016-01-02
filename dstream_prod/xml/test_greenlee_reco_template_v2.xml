@@ -42,9 +42,9 @@
   <stage name="reco">
     <inputdef>greenlee_&prod_mode;_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
     <fcl>reco_uboone_data_minimal_driver.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/reco_&run_tag;</workdir>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed-2d</datatier>
     <defname>greenlee_&prod_mode;_reco_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
