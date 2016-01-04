@@ -28,7 +28,7 @@ def getParams(template_name):
         if not param: continue
         nparams = len(param.split())
         if nparams < 4: print "wtf error"
-        elif nparams == 4: proj_name, xloc, yloc, pieradius = param.split(' ')
+        elif nparams == 4: proj_name, xloc, yloc, pieradius = param.split()
         elif nparams == 5: 
             proj_name, xloc, yloc, pieradius, parents = param.split()
             parents = parents.split('::')

@@ -278,10 +278,10 @@ for iprojname in projectnames:
         startpoint = proj_dict[parent].getCenterPoint()
         spx, spy = startpoint[0], startpoint[1]
         epx, epy = endpoint[0], endpoint[1]
-        spx += proj_dict[iprojname].getRadius()*0.5
-        spy += proj_dict[iprojname].getHeight()*0.5
-        epx += proj_dict[parent].getRadius()*0.5
-        epy += proj_dict[parent].getHeight()*0.5
+        spx += proj_dict[parent].getRadius()*0.5
+        spy += proj_dict[parent].getHeight()*0.5
+        epx += proj_dict[iprojname].getRadius()*0.5
+        epy += proj_dict[iprojname].getHeight()*0.5
 
         #Let's try lines instead of arrows
         myline = scene.addLine(spx,spy,epx,epy,pen=line_pen)
