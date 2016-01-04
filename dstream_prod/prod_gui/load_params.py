@@ -26,11 +26,11 @@ def getParams(template_name):
     for param in contents:
         proj_name, xloc, yloc, pieradius, parents = '', '', '', '', ''
         if not param: continue
-        nparams = len(param.split(' '))
+        nparams = len(param.split())
         if nparams < 4: print "wtf error"
         elif nparams == 4: proj_name, xloc, yloc, pieradius = param.split(' ')
         elif nparams == 5: 
-            proj_name, xloc, yloc, pieradius, parents = param.split(' ')
+            proj_name, xloc, yloc, pieradius, parents = param.split()
             parents = parents.split('::')
         params_dict[proj_name] = (xloc, yloc, pieradius, parents)
 
