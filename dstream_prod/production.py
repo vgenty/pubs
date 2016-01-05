@@ -989,6 +989,7 @@ Job IDs    : %s
                     target_list = self.get_runs( self._project, fstatus )
 
                 run_subruns = {}
+                nsubruns = 0
                 for x in target_list:
 
                     if istatus == self.kINITIATED:
@@ -1023,6 +1024,10 @@ Job IDs    : %s
                         run_subruns[run] = set()
                     if not subrun in run_subruns[run]:
                         run_subruns[run].add(subrun)
+                        nsubruns += 1
+
+                    if nsubruns >= self._nruns:
+                        break
 
                 # Loop over runs.
                 for run in run_subruns.keys():
