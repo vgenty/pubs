@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v04_26_04_02">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "reco_PUBS_XMLVAR_INPUT_STREAM">
+<!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
+<!ENTITY prod_version "v2">
+<!ENTITY prod_mode "prod">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Project Version -->
+  <version>&prod_mode;_v04_26_04</version>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e7:prof</qual>
+  </larsoft>
+
+  <!-- Run Number -->
+  <runnumber>REP_RUN_NUMBER</runnumber>
+
+  <!-- Project stages -->
+
+  <stage name="reco">
+    <inputdef>prod_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
+    <fcl>reco_uboone_data_minimal_driver.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
+    <numjobs>100</numjobs>
+    <datatier>reconstructed-2d</datatier>
+    <defname>&prod_mode;_reco_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>
