@@ -35,7 +35,8 @@ class production(ds_project_base):
                     kFINISHED,
                     kTOBERECOVERED,
                     kREADYFORSAM,
-                    kDECLARED ) = xrange(9)
+                    kDECLARED,
+                    kSTORED ) = xrange(10)
 
     JOBSUB_LOG = '%s/joblist.txt' % os.environ['PUB_LOGGER_FILE_LOCATION']
 
@@ -65,7 +66,8 @@ class production(ds_project_base):
                              self.kFINISHED      : self.check,
                              self.kTOBERECOVERED : None,
                              self.kREADYFORSAM   : self.declare,
-                             self.kDECLARED      : self.store }
+                             self.kDECLARED      : self.store,
+                             self.kSTORED        : self.check_location }
         self.PROD_MULTIACTION = { self.kDONE          : None,
                                   self.kINITIATED     : self.submit,
                                   self.kTOBEVALIDATED : None,
@@ -74,7 +76,8 @@ class production(ds_project_base):
                                   self.kFINISHED      : None,
                                   self.kTOBERECOVERED : self.recover,
                                   self.kREADYFORSAM   : None,
-                                  self.kDECLARED      : None }
+                                  self.kDECLARED      : None,
+                                  self.kSTORED        : None }
         self._max_runid   = None
         self._min_runid   = None
         self._nruns       = None
@@ -865,8 +868,9 @@ Job IDs    : %s
 
         if not self._store[istage] and not self._storeana[istage]:
             self.info('Skipping store.')
-            statusCode = self.kDONE
-            istage += 10
+            #statusCode = self.kDONE
+            #istage += 10
+            statusCode = self.kSTORED
             return statusCode + istage
 
         # Get stage name.
@@ -933,6 +937,56 @@ Job IDs    : %s
 
         # Update pubs status.
         if store_status == 0:
+           statusCode = self.kSTORED
+
+        # Pretend I'm doing something
+        #time.sleep(5)
+
+        statusCode += istage
+        self.info("SAM store, status: %d" % statusCode)
+
+        # Pretend I'm doing something
+        #time.sleep(5)
+
+        # Here we may need some checks
+
+        return statusCode
+    # def store( self, statusCode, istage, run, subrun ):
+
+
+    def check_location( self, statusCode, istage, run, subrun ):
+
+        # Check store flag.
+
+        if not self._store[istage] and not self._storeana[istage]:
+            self.info('Skipping check location.')
+            statusCode = self.kDONE
+            istage += 10
+            return statusCode + istage
+
+        # Get stage name.
+        stage = self._digit_to_name[istage]
+
+        # Get project and stage object.
+        try:
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
+        except:
+            self.error('Exception raised by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage 
+
+        # Here is where we could check for a sam location.
+        # For now we don't do anything, but just hope the delay of an extra step
+        # is enought to let files get a sam location.
+
+        loc_status = 0
+
+        # Update pubs status.
+        if loc_status == 0:
            statusCode = self.kDONE
            istage += 10
 
@@ -952,7 +1006,7 @@ Job IDs    : %s
         # Here we may need some checks
 
         return statusCode
-    # def store( self, statusCode, istage, run, subrun ):
+    # def check_location( self, statusCode, istage, run, subrun ):
 
 
     ## @brief access DB and retrieves new runs
