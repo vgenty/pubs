@@ -1084,7 +1084,7 @@ Job IDs    : %s
                         break
 
                 # Loop over runs.
-                for run in run_subruns.keys():
+                for run in sorted(run_subruns.keys(), reverse=True):
                     all_subruns = run_subruns[run].copy()
 
                     # Process subruns in groups.
