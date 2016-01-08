@@ -81,7 +81,6 @@ class production(ds_project_base):
         self._max_runid   = None
         self._min_runid   = None
         self._max_status  = len(self.PROD_STATUS)
-        self._min_status  = 0
         self._nruns       = None
         self._njobs       = 0
         self._njobs_limit = None
@@ -197,8 +196,6 @@ class production(ds_project_base):
 
             if proj_info._resource.has_key('MAX_STATUS'):
                 self._max_status = int(proj_info._resource['MAX_STATUS'])
-            if proj_info._resource.has_key('MIN_STATUS'):
-                self._min_status = int(proj_info._resource['MIN_STATUS'])
 
             # Set subrun multiplicity.
 
@@ -1031,7 +1028,7 @@ Job IDs    : %s
         for istage in stage_v:
             # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
-                if istatus < self._min_status or istatus > self._max_status:
+                if istatus > self._max_status:
                     continue
                 fstatus = istage + istatus
 
