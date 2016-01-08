@@ -780,8 +780,6 @@ Job IDs    : %s
         except ValueError:
             raise
         arg = arg%10
-        if arg == self.kINITIATED and arg<self._min_status:
-            arg = self._min_status
         if not arg in self.__class__.PROD_STATUS:
             self.error( 'HEY this is not a valid status code!: %d' % arg )
         return arg
@@ -1035,11 +1033,7 @@ Job IDs    : %s
             for istatus in status_v:
                 if istatus < self._min_status or istatus > self._max_status:
                     continue
-                if istatus == self._min_status:
-                    fstatus = istage + self.kINITIATED
-                else:
-                    fstatus = istage + istatus
-                
+                fstatus = istage + istatus
 
                 if istatus == self.kINITIATED:
                     if self._njobs_limit and self._njobs > self._njobs_limit:
