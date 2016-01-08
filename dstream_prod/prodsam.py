@@ -24,11 +24,10 @@ import project_utilities
 #  @details
 class prodsam(ds_project_base):
 
-    PROD_STATUS = ( kNULL,
+    PROD_STATUS = ( kDONE,
                     kINITIATED,
                     kDECLARED,
-                    kSTORED,
-                    kDONE) = xrange(5)
+                    kSTORED) = xrange(4)
 
     # Define project name as class attribute
     _project = 'prodsam'
@@ -237,7 +236,10 @@ class prodsam(ds_project_base):
 
         # Update pubs status.
         if declare_status == 0:
-           statusCode = self.kDECLARED
+            if not self._store and not self._storeana:
+                statusCode = 10
+            else:
+                statusCode = self.kDECLARED
 
         self.info("SAM declarations, status: %d" % statusCode)
 
@@ -251,7 +253,7 @@ class prodsam(ds_project_base):
 
         if not self._store and not self._storeana:
             self.info('Skipping store.')
-            return self.kSTORED
+            return 10
 
         # Get project and stage object.
         try:
@@ -328,7 +330,7 @@ class prodsam(ds_project_base):
 
         if not self._store and not self._storeana:
             self.info('Skipping check location.')
-            return self.kDONE
+            return 10
 
         # Get project and stage object.
         try:
@@ -350,7 +352,7 @@ class prodsam(ds_project_base):
 
         # Update pubs status.
         if loc_status == 0:
-           statusCode = self.kDONE
+           statusCode = 10
 
         self.info("SAM store, status: %d" % statusCode)
 
