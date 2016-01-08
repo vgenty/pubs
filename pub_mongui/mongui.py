@@ -58,6 +58,10 @@ QtGui.QApplication.setGraphicsSystem('raster')
 app = QtGui.QApplication([])
 # ==> timeprofiling: creating QApplication() instance takes 1.3 seconds
 
+#This line suppresses "assertion GTK_IS_WIDGET" weird errors that occur only on
+#evb as uboonedaq user (which shifters currently use)
+app.setStyle('cleanlooks')
+
 #Load in the background image via pixmap
 pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+my_template)
 
