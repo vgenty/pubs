@@ -76,6 +76,7 @@ case `uname -n` in
 	#setup postgresql v9_3_6 -q p279
 	setup larbatch v01_20_02
 	#setup sam_web_client v2_0
+	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
 
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
