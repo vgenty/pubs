@@ -32,7 +32,7 @@ def near1_logger():
     # check disk usage:
     
     homedir = '/home'
-    datadir = '/data'
+    #datadir = '/data'
     datalocal = '/datalocal'
 
     if (os.path.isdir(homedir)):
@@ -49,6 +49,8 @@ def near1_logger():
         #print "/home not recognized as directory..."
         status = -1
 
+    '''
+    NO LONGER LOGGING /data/ INFO FOR near1 - Caratelli Jan 11th 2016
     if (os.path.isdir(datadir)):
         diskUsage = getDISKusage(datadir)
         result['DISK_USAGE_DATA'] = diskUsage
@@ -62,6 +64,7 @@ def near1_logger():
         # log the fact that /data is not recognized as dir
         #print "/data not recognized as directory..."
         status = -1
+    '''
 
 
     if (os.path.isdir(datalocal)):
