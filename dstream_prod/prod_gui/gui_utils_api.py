@@ -372,8 +372,8 @@ class GuiUtils():
       elif self.isErrorStatus(status): n_error += current_value
       elif self.isIntermediateStatus(status): n_inter += current_value
       elif self.isInitialStatus(status): n_init += current_value
-      else:
-        print "something has gone horribly wrong. status %d for project %s"%(status,projname)
+      #else:
+      #  print "something has gone horribly wrong. status %d for project %s"%(status,projname)
    
     return (n_good, n_init, n_inter, n_error)
 
