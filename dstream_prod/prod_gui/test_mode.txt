@@ -1,7 +1,0 @@
-PROJECT_NAME: reco
-SAMPLE_DATA: { 'reco_2d.fcl':( 10, 50, 5 ), 'reco_3d.fcl':( 1, 29, 50 ) }
-END_PROJECT
-
-PROJECT_NAME: swizzle
-SAMPLE_DATA: { 'start_swizzle.fcl':( 30, 19, 14 ), 'continue_swizzle.fcl':( 5, 20, 20 ), 'third_swizzle.fcl': ( 10, 10, 10 ) }
-END_PROJECT

@@ -70,10 +70,13 @@ case `uname -n` in
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
-	setup uboonecode v04_26_03_01 -q e7:prof
+	#setup uboonecode v04_26_03_01 -q e7:prof # Used till Nov. 30th. 2015
+	#setup uboonecode v04_26_03_02 -q e7:prof
+	setup uboonecode v04_26_04_02 -q e7:prof
 	#setup postgresql v9_3_6 -q p279
-	#setup larbatch v01_18_00
-	setup -t sam_web_client
+	setup larbatch v01_20_02
+	#setup sam_web_client v2_0
+	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
 
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;

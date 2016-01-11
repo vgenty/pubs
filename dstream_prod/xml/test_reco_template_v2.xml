@@ -3,13 +3,13 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_03_02">
+<!ENTITY release "v04_26_04_02">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
-<!ENTITY name "neutrino_id_reco">
+<!ENTITY name "reco_trigger_streams">
 <!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
-<!ENTITY prod_version "v1">
-<!ENTITY prod_mode "prod">
+<!ENTITY prod_version "v2">
+<!ENTITY prod_mode "test">
 ]>
 
 <job>
@@ -25,15 +25,14 @@
   <!-- Batch resources -->
   <resource>DEDICATED,OPPORTUNISTIC</resource>
 
+  <!-- Project Version -->
+  <version>&prod_mode;_v04_26_04</version>
+
   <!-- Larsoft information -->
   <larsoft>
     <tag>&release;</tag>
     <qual>e7:prof</qual>
-    <!--local>/uboone/app/users/greenlee/toolsrel/local.tar</local-->
   </larsoft>
-
-  <!-- Project Version -->
-  <version>v04_26_03_01</version>
 
   <!-- Run Number -->
   <runnumber>REP_RUN_NUMBER</runnumber>
@@ -41,17 +40,15 @@
   <!-- Project stages -->
 
   <stage name="reco">
-    <inputdef>&prod_mode;_swizzled_rawfilter_&prod_version;_&run_tag;</inputdef>
-    <fcl>reco_uboone_data_wflash_neutrinoID.fcl</fcl>
-
-    <outdir>/pnfs/uboone/scratch/uboonepro/neutrino_id/&release;/&prod_mode;_&name;_&prod_version;/neutrino_id_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/uboonepro/log/neutrino_id/&release;/&prod_mode;_&name;_&prod_version;/neutrino_id_&run_tag;</logdir>
-    <workdir>/uboone/data/users/uboonepro/work/neutrino_id/&release;/&prod_mode;_&name;_&prod_version;/neutrino_id_&run_tag;</workdir>
+    <inputdef>prod_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
+    <fcl>reco_uboone_data_minimal_driver.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed-2d</datatier>
-    <defname>&prod_mode;_neutrino_id_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_reco_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
-
   </stage>
 
   <!-- file type -->

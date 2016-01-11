@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v04_26_04_02">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "swizzle_trigger_streams">
+<!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
+<!ENTITY prod_version "v1">
+<!ENTITY prod_mode "test">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Project Version -->
+  <version>&prod_mode;_v04_26_04</version>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e7:prof</qual>
+  </larsoft>
+
+  <!-- Run Number -->
+  <runnumber>REP_RUN_NUMBER</runnumber>
+
+  <!-- Project stages -->
+
+  <stage name="swizzle">
+    <inputdef>prod_assembler_binary_&run_tag;</inputdef>
+    <fcl>swizzle_trigger_streams.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
+    <numjobs>100</numjobs>
+    <datatier>reconstructed</datatier>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
+  </stage>
+
+  <stage name="mergebnb">
+    <inputstream>outbnb</inputstream>
+    <fcl>copy_recobnb.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergebnb_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>&prod_mode;_swizzled_bnb_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <stage name="mergenumi">
+    <inputstream>outnumi</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_reconumi.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenumi_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>&prod_mode;_swizzled_numi_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <stage name="mergeext">
+    <inputstream>outext</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_recoext.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeext_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>&prod_mode;_swizzled_ext_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <stage name="mergemucs">
+    <inputstream>outmucs</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_rawmucs.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergemucs_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>raw</datatier>
+    <defname>&prod_mode;_swizzled_mucs_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <stage name="mergeprescale">
+    <inputstream>outprescale</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_recoprescale.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergeprescale_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>&prod_mode;_swizzled_prescale_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <stage name="mergenotpc">
+    <inputstream>outnotpc</inputstream>
+    <previousstage>swizzle</previousstage>
+    <fcl>copy_reconotpc.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_mergenotpc_&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>reconstructed</datatier>
+    <defname>&prod_mode;_swizzled_notpc_&prod_version;_&run_tag;</defname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>

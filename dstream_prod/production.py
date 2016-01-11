@@ -35,7 +35,8 @@ class production(ds_project_base):
                     kFINISHED,
                     kTOBERECOVERED,
                     kREADYFORSAM,
-                    kDECLARED ) = xrange(9)
+                    kDECLARED,
+                    kSTORED ) = xrange(10)
 
     JOBSUB_LOG = '%s/joblist.txt' % os.environ['PUB_LOGGER_FILE_LOCATION']
 
@@ -65,7 +66,8 @@ class production(ds_project_base):
                              self.kFINISHED      : self.check,
                              self.kTOBERECOVERED : None,
                              self.kREADYFORSAM   : self.declare,
-                             self.kDECLARED      : self.store }
+                             self.kDECLARED      : self.store,
+                             self.kSTORED        : self.check_location }
         self.PROD_MULTIACTION = { self.kDONE          : None,
                                   self.kINITIATED     : self.submit,
                                   self.kTOBEVALIDATED : None,
@@ -74,15 +76,19 @@ class production(ds_project_base):
                                   self.kFINISHED      : None,
                                   self.kTOBERECOVERED : self.recover,
                                   self.kREADYFORSAM   : None,
-                                  self.kDECLARED      : None }
+                                  self.kDECLARED      : None,
+                                  self.kSTORED        : None }
         self._max_runid   = None
         self._min_runid   = None
+        self._max_status  = len(self.PROD_STATUS)
         self._nruns       = None
         self._njobs       = 0
         self._njobs_limit = None
         self._njobs_tot   = 0
         self._njobs_tot_limit = None
         self._nsubruns    = []
+        self._store       = []
+        self._storeana    = []
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -188,6 +194,9 @@ class production(ds_project_base):
             if proj_info._resource.has_key('MIN_RUN') and proj_info._resource.has_key('MIN_SUBRUN'):
                 self._min_runid = (int(proj_info._resource['MIN_RUN']),int(proj_info._resource['MIN_SUBRUN']))
 
+            if proj_info._resource.has_key('MAX_STATUS'):
+                self._max_status = int(proj_info._resource['MAX_STATUS'])
+
             # Set subrun multiplicity.
 
             if proj_info._resource.has_key('NSUBRUNS'):
@@ -213,6 +222,17 @@ class production(ds_project_base):
                 # Default is to store only final stage.
                 self._store = [0] * len(self._stage_names)
                 self._store[-1] = 1
+
+            # Set storeana flag.
+
+            if proj_info._resource.has_key('STOREANA'):
+                self._storeana = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
+            else:
+
+                # Default is to store only final stage.
+
+                self._storeana = [0] * len(self._stage_names)
+                self._storeana[-1] = 1
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -624,8 +644,11 @@ Sample     : %s
 Stage      : %s
 Job IDs    : %s
            """ % ( self._project, self._digit_to_name[istage], self._data.split(':')[2:] )
-
-           pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+           try:
+               pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
+           except Exception:
+               self.error('Failed to send emails...')
+               self.error(text)
 
            #statusCode = self.kDONE
            #istage += 10
@@ -847,10 +870,11 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage]:
+        if not self._store[istage] and not self._storeana[istage]:
             self.info('Skipping store.')
-            statusCode = self.kDONE
-            istage += 10
+            #statusCode = self.kDONE
+            #istage += 10
+            statusCode = self.kSTORED
             return statusCode + istage
 
         # Get stage name.
@@ -869,7 +893,6 @@ Job IDs    : %s
             return statusCode + istage 
 
         # Do store.
-        self.info('Doing store.')
         try:
             real_stdout = sys.stdout
             real_stderr = sys.stderr
@@ -878,14 +901,18 @@ Job IDs    : %s
 
             # Store files.
 
-            dim = project_utilities.dimensions(probj, stobj, ana=False)
-            store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                     add=False,
-                                                     clean=False,
-                                                     remove=False,
-                                                     upload=True)
+            store_status = 0
+            if self._store[istage]:
+                self.info('Storing artroot files.')
+                dim = project_utilities.dimensions(probj, stobj, ana=False)
+                store_status = project.docheck_locations(dim, stobj.outdir, 
+                                                         add=False,
+                                                         clean=False,
+                                                         remove=False,
+                                                         upload=True)
 
-            if store_status == 0 and stobj.ana_data_tier != '':
+            if self._storeana[istage] and store_status == 0 and stobj.ana_data_tier != '':
+                self.info('Storing analysis root files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
                                                          add=False,
@@ -914,6 +941,56 @@ Job IDs    : %s
 
         # Update pubs status.
         if store_status == 0:
+           statusCode = self.kSTORED
+
+        # Pretend I'm doing something
+        #time.sleep(5)
+
+        statusCode += istage
+        self.info("SAM store, status: %d" % statusCode)
+
+        # Pretend I'm doing something
+        #time.sleep(5)
+
+        # Here we may need some checks
+
+        return statusCode
+    # def store( self, statusCode, istage, run, subrun ):
+
+
+    def check_location( self, statusCode, istage, run, subrun ):
+
+        # Check store flag.
+
+        if not self._store[istage] and not self._storeana[istage]:
+            self.info('Skipping check location.')
+            statusCode = self.kDONE
+            istage += 10
+            return statusCode + istage
+
+        # Get stage name.
+        stage = self._digit_to_name[istage]
+
+        # Get project and stage object.
+        try:
+            probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
+        except:
+            self.error('Exception raised by project.get_pubs_stage:')
+            e = sys.exc_info()
+            for item in e:
+                self.error(item)
+            for line in traceback.format_tb(e[2]):
+                self.error(line)
+            return statusCode + istage 
+
+        # Here is where we could check for a sam location.
+        # For now we don't do anything, but just hope the delay of an extra step
+        # is enought to let files get a sam location.
+
+        loc_status = 0
+
+        # Update pubs status.
+        if loc_status == 0:
            statusCode = self.kDONE
            istage += 10
 
@@ -933,7 +1010,7 @@ Job IDs    : %s
         # Here we may need some checks
 
         return statusCode
-    # def store( self, statusCode, istage, run, subrun ):
+    # def check_location( self, statusCode, istage, run, subrun ):
 
 
     ## @brief access DB and retrieves new runs
@@ -951,6 +1028,8 @@ Job IDs    : %s
         for istage in stage_v:
             # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
+                if istatus > self._max_status:
+                    continue
                 fstatus = istage + istatus
 
                 if istatus == self.kINITIATED:
@@ -970,6 +1049,7 @@ Job IDs    : %s
                     target_list = self.get_runs( self._project, fstatus )
 
                 run_subruns = {}
+                nsubruns = 0
                 for x in target_list:
 
                     if istatus == self.kINITIATED:
@@ -1004,9 +1084,13 @@ Job IDs    : %s
                         run_subruns[run] = set()
                     if not subrun in run_subruns[run]:
                         run_subruns[run].add(subrun)
+                        nsubruns += 1
+
+                    if nsubruns >= self._nruns:
+                        break
 
                 # Loop over runs.
-                for run in run_subruns.keys():
+                for run in sorted(run_subruns.keys(), reverse=True):
                     all_subruns = run_subruns[run].copy()
 
                     # Process subruns in groups.

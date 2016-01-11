@@ -18,7 +18,7 @@ Action = setup
   envSet(PUB_BIN_DIR, ${PUB_TOP_DIR})
   pathPrepend(PATH, ${PUB_TOP_DIR}/bin)
   pathPrepend(PYTHONPATH, ${PUB_TOP_DIR})
-  envSet(PUB_LOGGER_LEVEL, kLOGGER_ERROR)
+  envSet(PUB_LOGGER_LEVEL, kLOGGER_DEBUG)
   envSet(PUB_LOGGER_DRAIN, kLOGGER_COUT)
   envSet(PUB_LOGGER_FILE_LOCATION, "")
   envSet(PUB_DAEMON_LOG_MODULE, "")

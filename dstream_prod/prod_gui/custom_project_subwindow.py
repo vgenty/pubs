@@ -1,116 +1,110 @@
 import pyqtgraph as pg
 from pyqtgraph import QtCore, QtGui
+from gui_utils_api import GuiUtils
 
 #These are temporary imports to demonstrate a random plot
 import numpy as np
 
-class CustomProjectSubwindow():
+class CustomProjectSubwindow(QtGui.QGraphicsView):
 
     def __init__(self, piechartitem):
-
+        self.scene = QtGui.QGraphicsScene()
+        self.scene.setSceneRect( 0., 0., 1000., 600. )
+        QtGui.QGraphicsView.__init__(self,self.scene)
+        self.graphics = pg.GraphicsLayoutWidget()
         self.piechartitem = piechartitem
         self.pname = piechartitem.getName()
-        self.colors = ('r','b','g','o','m','y')
-        self.update_period = 1
+        self.pdesc = piechartitem.getDescript()
+        self.myguiutil = GuiUtils()
+        self.colors = self.myguiutil.getColors()
+        self.update_period = self.myguiutil.getUpdatePeriod()
         self.history_plot = None
+        self.layout = QtGui.QGridLayout()
+        self.setLayout(self.layout)
+        self.layout.addWidget( self.graphics, 0, 0 )
+
+        self.pause_updating = False
+
         # Open an external window
-        self.win = pg.GraphicsWindow(size=(800,500))
+        # self.win = pg.GraphicsWindow(size=(800,500))
         # Window title
-        self.win.setWindowTitle(self.pname+': Additional Information')
-        # self.AddRandomPlot()
-        # check1 = QtGui.QCheckBox(self.win)
-        # check1.setText("checkbox 1")
-        # self.win.addItem(check1)
-        # blah.addItem(check1)
-        #blah = self.win.addViewBox(invertY=True,row=0,col=0)
-        #blah.addItem(self.piechartitem)
-        #self.AddHistoryPlot()
+        # self.win.setWindowTitle(self.pname+': Additional Information')
+
+        # Portion of window that shows project description text
+        # self.AddTextViewbox(self.pdesc)
+        # Portion of the window that draws a random plot
+        # self.win.nextRow()
+        #self.AddRandomPlot()
+        self.AddHistoryPlot()
+
+        self.pause_button = QtGui.QPushButton()
+        self.pause_button.setText("Pause Live Updating")
+        self.pause_button.setGeometry(10,10,200,50)
+        self.pause_button_widget = self.layout.addWidget(self.pause_button)
+        self.pause_button.clicked.connect(self.pauseUpdating)
 
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.AddHistoryPlot)
-        self.timer.start(1*1000)
-        
-    def AddTextViewbox(self, intext):
-        #Make a text item that is the project description
-        mytext = pg.TextItem(text=intext)
-        mytext.setTextWidth(450)
-        #Make a viewbox in the window to hold the text
-        #For some reason, if invertY is false, the text appears below
-        #the bottom of the graphics window. Set it to true and text will
-        #appear in the upper-left corner.
-        textvb = self.win.addViewBox(invertY=True,row=0,col=0)
-        #Add the text to the viewbox
-        textvb.addItem(mytext)
+        self.timer.start(self.update_period*1000)
 
-    def AddRandomPlot(self):
-        #Draw a random plot to demonstrate possibilities
-        p1 = self.win.addPlot(row=1,col=0)
-        p1.setLabel('top','Sample plot (TBD): Project %s'%self.pname)
-        data = np.random.normal(size=300)
-        curve = p1.plot(data)
+        self.show()
+
+    def pauseUpdating(self):
+        new_button_text = "Pause Live Updating" if self.pause_updating else "Resume Live Updating"
+        self.pause_button.setText(new_button_text)
+        self.pause_updating = not self.pause_updating
+
+    # def AddTextViewbox(self, intext):
+    #     #Make a text item that is the project description
+    #     mytext = pg.TextItem(text=intext)
+    #     mytext.setTextWidth(450)
+    #     #Make a viewbox in the window to hold the text
+    #     #For some reason, if invertY is false, the text appears below
+    #     #the bottom of the graphics window. Set it to true and text will
+    #     #appear in the upper-left corner.
+    #     textvb = self.win.addViewBox(invertY=True,row=0,col=0)
+    #     #Add the text to the viewbox
+    #     textvb.addItem(mytext)
+
+    # def AddRandomPlot(self):
+    #     #Draw a random plot to demonstrate possibilities
+    #     p1 = self.win.addPlot(row=1,col=0)
+    #     p1.setLabel('top','Sample plot (TBD): Project %s'%self.pname)
+    #     data = np.random.normal(size=300)
+    #     curve = p1.plot(data)
 
     def AddHistoryPlot(self):
-      
-        if self.history_plot: self.win.removeItem(self.history_plot)
+        if self.pause_updating: return
 
-        #History (for this given project) looks like:
-        #{stagename : [ (1,5,9), (2,3,9), (4,4,4) ]}
-        # the list is tuples of nfiles for each substatus 1, 2, 3 
-
-        self.history_plot = self.win.addPlot(row=1,col=0)
-        self.history_plot.setLabel('top','# Run/Subruns for Project %s, for each stage'%self.pname)
+        if self.history_plot: self.graphics.removeItem(self.history_plot)
+        self.history_plot = pg.PlotItem()#self.win.addPlot(row=1,col=0)
+        self.history_plot.setLabel('top','TOTAL # Run/Subruns for Project %s'%self.pname)
         self.history_plot.setLabel('bottom','Time Since Starting GUI [Seconds]')
         self.history_plot.showGrid(x=True,y=True)
         history = self.piechartitem.getHistory()
-        leg = pg.LegendItem()#(100,60),offset=(70,30)) #i can't get this fucking legend to plot in the right location
-        colorcounter = 0
-        for stagename, mytuples in history.iteritems():
-            #ignore stagename 0 and 1000 (0 shouldn't be in here anyway)
-            if stagename in [ 0, 1000 ]: continue
-            data = np.array([sum(mytuple) for mytuple in mytuples])
+        leg = pg.LegendItem()#(100,60)#,offset=(70,30)) #i can't get this fucking legend to plot in the right location
+        # self.history_plot.addLegend()
+
+        # colorcounter = 0
+        for status, values in history.iteritems():
+            #ignore good statuses
+            if self.myguiutil.isGoodStatus(status): continue
+            elif self.myguiutil.isInitialStatus(status): mycolor = 'g'
+            elif self.myguiutil.isErrorStatus(status): mycolor = 'r'
+            elif self.myguiutil.isIntermediateStatus(status): mycolor = [255, 140, 0] #dark orange
+            data = np.array(values)
             xvals = np.array(range(0,len(data)*self.update_period, self.update_period))
             #add multiple plots by just calling self.history_plot.plot() a bunch of times
-            #mycolor = self.colors[stagename] if stagename in self.colors.keys() else 'r'
-            curve = self.history_plot.plot(xvals,data,name='stagename %s'%stagename,pen=self.colors[colorcounter])#(colorcounter,20))#,pen=mycolor)
-            leg.addItem(curve,'stagename %s'%stagename)
-            colorcounter += 1
+            # if status in self.colors.keys(): mycolor = self.colors[status]
+            # elif status > 100: mycolor = 'r'
+            # else: mycolor = [255, 140, 0] #dark orange
+            curve = self.history_plot.plot(xvals,data,name='Status %d (%d)'%(status,data[-1]),pen=mycolor)#(colorcounter,20))
+            leg.addItem(curve,'Status %d (%d Files)'%(status,data[-1]))
+            # colorcounter += 1
         leg.setParentItem(self.history_plot)
+        self.graphics.addItem(self.history_plot)
+        # leg.anchor(itemPos=(1,0), parentPos=(1,0), offset=(-10,10))
             
-
-    def __del__(self):
-        pass
-
-
-class CustomStageSubwindow():
-
-    def __init__(self, stagename='',data=0):
-        self.myplot = None
-        self.stagename = stagename
-        self.data = list(data)
-        self.win = pg.GraphicsWindow(size=(800,500))
-        # Window title
-        self.win.setWindowTitle(stagename+': Additional Information')
-
-        self.AddStagePlot()
-        # self.AddRandomPlot()
-        # self.timer = pg.QtCore.QTimer()
-        # self.timer.timeout.connect(self.AddRandomPlot)
-        # self.timer.start(1*1000)
-
-    def AddRandomPlot(self):
-        if self.myplot: self.win.removeItem(self.myplot)
-        #Draw a random plot to demonstrate possibilities
-        self.myplot = self.win.addPlot(row=1,col=0)
-        # data = np.random.normal(size=300)
-        curve = self.myplot.plot(data)
-
-    def AddStagePlot(self):
-        #Data is [ 5, 2, 3, 19 ] (length is # of substatuses for this stage)
-        self.myplot = self.win.addPlot(row=1,col=0)
-        self.myplot.setLabel('top','Sub Statuses for Stage %s'%self.stagename)
-        self.myplot.setLabel('bottom','Sub Statuses (last digit of status)')
-        self.myplot.setLabel('left','Counts')
-        curve = self.myplot.plot(x=np.arange(-0.5,len(self.data)+0.5,1),y=self.data,stepMode=True)
 
     def __del__(self):
         pass

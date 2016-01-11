@@ -9,7 +9,6 @@ from custom_qgraphicsscene import CustomQGraphicsScene
 from custom_qgraphicsview  import CustomQGraphicsView
 from custom_bar_class import ProgressBarItem
 from gui_utils_api import GuiUtilsAPI, GuiUtils
-import datetime
 
 # catch ctrl+C to terminate the program
 import signal
@@ -32,13 +31,13 @@ import time
 ##############################################################
 # ==> timeprofiling: comments like these show lines of code that take more than ~0.1 seconds to run.
 ##############################################################
-my_template = 'pubs_diagram_BLANK.png'#'pubs_diagram_092515.png'
-my_params = 'pubs_diagram_111215_params.txt'
+my_template = 'pubs_diagram_BLANKv2.png'#'pubs_diagram_092515.png'
+#my_params = 'pubs_diagram_111815_params.txt'
+#my_params = 'pubs_diagram_010416_params.txt'
+my_params = 'pubs_diagram_010516_params.txt'
 _update_period = GuiUtils().getUpdatePeriod()#in seconds
 global_update_counter = 0
 _max_errors_before_warning = 100 # number of error statuses for a project (when in relative mode) before a warning window pops up
-_mongui_log_file = os.environ['PUB_TOP_DIR']+'/pub_mongui/mongui_log_file.log'
-
 
 # GUI DB interface:
 gdbi = GuiUtilsAPI()
@@ -58,12 +57,8 @@ QtGui.QApplication.setGraphicsSystem('raster')
 app = QtGui.QApplication([])
 # ==> timeprofiling: creating QApplication() instance takes 1.3 seconds
 
-#This line suppresses "assertion GTK_IS_WIDGET" weird errors that occur only on
-#evb as uboonedaq user (which shifters currently use)
-app.setStyle('cleanlooks')
-
 #Load in the background image via pixmap
-pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/pub_mongui/gui_template/'+my_template)
+pm = QtGui.QPixmap(os.environ['PUB_TOP_DIR']+'/dstream_prod/prod_gui/gui_template/'+my_template)
 
 # ==> timeprofiling: loading in this pixmap takes 0.1 seconds
 
@@ -161,16 +156,16 @@ relative_counter_checkbox.setText("Use Relative Counters")
 relative_counter_checkbox.setGeometry(scene_xmin+0.10*scene_width, 0.05*scene_height,200,25)
 relative_counter_checkbox.setStyleSheet("color: white; background-color: transparent; font: bold 15px; min-width: 15em")
 relative_counter_checkbox.setAutoFillBackground(True)
-relative_counter_checkbox.setChecked(True)
+relative_counter_checkbox.setChecked(False)
 relative_counter_checkbox_widget = scene.addWidget(relative_counter_checkbox)
 relative_counter_checkbox_widget.setZValue(3.0)
 
 
 for iprojname in projectnames:
-
+    print iprojname
     if iprojname not in template_params:
         #Commenting this so it doesn't scare shifters
-        #print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
+        print "Uh oh. Project %s doesn't have parameters to load it to the template. I will not draw this project." % iprojname
         continue    
     
     #Initialize all piecharts as filled-in yellow circles, with radius = max radius for that project
@@ -245,8 +240,8 @@ for iprojname in projectnames:
     mysubtext.setPen(outline_pen)
     mysubtext.setZValue(2.0)
     mysubtext.setPos(ix,iy+proj_dict[iprojname].getHeight())
-    ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
-    mysubtext.setText('%d Complete : %d Queued : %d Error'%(ngood, ninter, nerr))
+    ngood, ninit, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())
+    mysubtext.setText('%d Complete\n%d Queued\n%d Intermediate\n%d Error'%(ngood, ninit, ninter, nerr))
     # mysubtext.setDefaultTextColor(QtGui.QColor('white'))
     myfont = QtGui.QFont()
     myfont.setBold(True)
@@ -285,10 +280,10 @@ for iprojname in projectnames:
         startpoint = proj_dict[parent].getCenterPoint()
         spx, spy = startpoint[0], startpoint[1]
         epx, epy = endpoint[0], endpoint[1]
-        spx += proj_dict[iprojname].getRadius()*0.5
-        spy += proj_dict[iprojname].getHeight()*0.5
-        epx += proj_dict[parent].getRadius()*0.5
-        epy += proj_dict[parent].getHeight()*0.5
+        spx += proj_dict[parent].getRadius()*0.5
+        spy += proj_dict[parent].getHeight()*0.5
+        epx += proj_dict[iprojname].getRadius()*0.5
+        epy += proj_dict[iprojname].getHeight()*0.5
 
         #Let's try lines instead of arrows
         myline = scene.addLine(spx,spy,epx,epy,pen=line_pen)
@@ -315,8 +310,8 @@ for iprojname in projectnames:
 mytext = QtGui.QGraphicsSimpleTextItem()
 mytext.setBrush(text_brush)
 mytext.setPen(outline_pen)
-mytext.setPos(scene_xmin+0.75*scene_width,scene_height*0.88)
-mytext.setText('Legend:\nGreen: Fully completed\nOrange: Queued status.\nRed: Error status.\nGray: Project Disabled')
+mytext.setPos(scene_xmin+0.7*scene_width,scene_height*0.88)
+mytext.setText('Legend:\nGreen (Queue): 0, 1, 2\nOrange (Running): 3, 4\nRed (Error): >=1000\nGray: Project Disabled')
 # mytext.setDefaultTextColor(QtGui.QColor('white'))
 myfont = QtGui.QFont()
 myfont.setPointSize(12)
@@ -350,11 +345,6 @@ def update_gui():
     #If there were any warnings, open a window shouting at shifters
     if daemon_warning_content:      
         dwarnings = scene.openDaemonWindow(daemon_warning,force_recreate = force_recreate_daemonwindow)
-        #Also make a log file showing when the red window popped up, to help point fingers when things break
-        logfile = open(_mongui_log_file,'a')
-        logfile.write("RED WINDOW OPENED! Warning = %s. Time= %s\n"%(daemon_warning_content,datetime.datetime.today().strftime("%A %B %d, %Y %I:%M%p")))
-        logfile.close()
-
     
     #Check if gui query thread is successfully connected to the DB
     if not gdbi.getIsConnAlive():
@@ -410,8 +400,8 @@ def update_gui():
         proj_dict[iprojname].appendHistory(gdbi.getNRunSubruns(iprojname))
 
         #Below the pie chart, update the written number of run/subruns
-        ngood, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
-        projsubtext_dict[iprojname].setText('%d Complete : %d Queued : %d Error'%(ngood, ninter, nerr))
+        ngood, ninit, ninter, nerr = gdbi.getScaledNGoodInterError(iprojname,use_relative=relative_counter_checkbox.isChecked())#proj_dict[iprojname].getHistory())    
+        projsubtext_dict[iprojname].setText('%d Complete\n%d Queued\n%d Intermediate\n%d Error'%(ngood, ninit, ninter, nerr))
         #If in relative mode and more than 100 statuses for a project are error, throw a warning
         if relative_counter_checkbox.isChecked() and nerr > _max_errors_before_warning:
             warning_message_str = "Project %s has too many errors! It has %d errors (in relative mode). Tell a PUBS expert!" % (iprojname,nerr)
