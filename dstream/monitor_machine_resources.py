@@ -96,7 +96,7 @@ def disk_usage_alert(proj,max_disk,emails):
         if (str(key) == 'DISK_USAGE_DATA'):
             lastDISK   = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
-
+            
     # check:
     #     above disk-limit     and    positive slope!!
     if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
@@ -195,8 +195,10 @@ def plot_resource_usage(proj,outpath):
         log_dict = x.get_log_dict()
 
         if ( (log_time != '') and (log_dict) ):
+
             # get time in python datetime format
-            time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+            print log_time
+            time = datetime.datetime.strptime(log_time[:19],'%Y-%m-%d %H:%M:%S')
 
             if ( (currentTime-time) > maxTime): continue
 
@@ -421,6 +423,13 @@ def plot_resource_usage(proj,outpath):
     plt.grid()
     plt.title('Disk draining rate on %s'%(servername), fontsize=20)
     plt.legend(loc=3,fontsize=20,framealpha=0.9)
+    # get y-limits for arrow boundaries
+    #plt.annotate("Filling",xy=(1.05, 0.55), xycoords='axes fraction',
+    #             xytext=(1.02, 0.9),arrowprops=dict(arrowstyle="<-", color="r"))
+    #plt.annotate("Draining",xy=(1.05, 0.45), xycoords='axes fraction',
+    #             xytext=(1.01, 0.1),arrowprops=dict(arrowstyle="<-", color="g"))
+
+
 
     outpathResource = outpath+"disk_rate_monitoring_%s.png"%(servername)
     plt.savefig(outpathResource)
