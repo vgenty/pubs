@@ -41,7 +41,7 @@ def smooth_rate(dsize,times,occupancy,n):
         rate += dMB/dt
     rate /= n
 
-    print 'filling time : %03i w/ rate : %i'%(n,int(rate))
+    #print 'filling time : %03i w/ rate : %i'%(n,int(rate))
     r_times.append(times[n])
     rates.append(rate)
 
@@ -60,9 +60,9 @@ def smooth_rate(dsize,times,occupancy,n):
         dMB_end = dsize*(occupancy[i]-occupancy[i-1])/100.
         r_end   = dMB_end/dt_end
         rate += r_end
-        print 'adding rate: %i'%(int(r_end))
+        #print 'adding rate: %i'%(int(r_end))
         rate /= n
-        print 'filling time : %03i w/ rate : %i'%(i,int(rate))
+        #print 'filling time : %03i w/ rate : %i'%(i,int(rate))
         r_times.append(times[i])
         rates.append(rate)
 
@@ -197,7 +197,6 @@ def plot_resource_usage(proj,outpath):
         if ( (log_time != '') and (log_dict) ):
 
             # get time in python datetime format
-            print log_time
             time = datetime.datetime.strptime(log_time[:19],'%Y-%m-%d %H:%M:%S')
 
             if ( (currentTime-time) > maxTime): continue
@@ -528,14 +527,16 @@ class monitor_machine_resources(ds_project_base):
         pubstop = str(os.environ.get('PUB_TOP_DIR'))
 
         plotpath = pubstop+'/'+self._data_dir+'/'
-        self.info('saving plot to path: %s @ %s'%(plotpath,time.strftime("%Y-%m-%d %H:%M:%S")))
+        self.info('saving plot to path: %s @ %s ...'%(plotpath,time.strftime("%Y-%m-%d %H:%M:%S")))
         outpath = plot_resource_usage(project,plotpath)
+        self.info('...done')
         if (outpath == 'failed import'):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):
             self.error('No plot produced...')
 
         disk_usage_alert(project,self._email_disk_percent,self._email_disk_users)
+        self.info('done calling alert function')
 
         
 
