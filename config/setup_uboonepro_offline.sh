@@ -81,6 +81,7 @@ case `uname -n` in
 	export PUB_LOGGER_FILE_LOCATION=$PUB_TOP_DIR/log/`uname -n`
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
+	export PATH=$HOME/bin:$PATH
 	;;
     (*)
         echo This should only be used for uboonegpvm account!!!
