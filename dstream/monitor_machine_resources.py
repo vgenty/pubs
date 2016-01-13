@@ -41,7 +41,7 @@ def smooth_rate(dsize,times,occupancy,n):
         rate += dMB/dt
     rate /= n
 
-    print 'filling time : %03i w/ rate : %i'%(n,int(rate))
+    #print 'filling time : %03i w/ rate : %i'%(n,int(rate))
     r_times.append(times[n])
     rates.append(rate)
 
@@ -60,9 +60,9 @@ def smooth_rate(dsize,times,occupancy,n):
         dMB_end = dsize*(occupancy[i]-occupancy[i-1])/100.
         r_end   = dMB_end/dt_end
         rate += r_end
-        print 'adding rate: %i'%(int(r_end))
+        #print 'adding rate: %i'%(int(r_end))
         rate /= n
-        print 'filling time : %03i w/ rate : %i'%(i,int(rate))
+        #print 'filling time : %03i w/ rate : %i'%(i,int(rate))
         r_times.append(times[i])
         rates.append(rate)
 
@@ -96,7 +96,7 @@ def disk_usage_alert(proj,max_disk,emails):
         if (str(key) == 'DISK_USAGE_DATA'):
             lastDISK   = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
-
+            
     # check:
     #     above disk-limit     and    positive slope!!
     if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
@@ -195,8 +195,9 @@ def plot_resource_usage(proj,outpath):
         log_dict = x.get_log_dict()
 
         if ( (log_time != '') and (log_dict) ):
+
             # get time in python datetime format
-            time = datetime.datetime.strptime(log_time,'%Y-%m-%d %H:%M:%S.%f')
+            time = datetime.datetime.strptime(log_time[:19],'%Y-%m-%d %H:%M:%S')
 
             if ( (currentTime-time) > maxTime): continue
 
@@ -421,6 +422,13 @@ def plot_resource_usage(proj,outpath):
     plt.grid()
     plt.title('Disk draining rate on %s'%(servername), fontsize=20)
     plt.legend(loc=3,fontsize=20,framealpha=0.9)
+    # get y-limits for arrow boundaries
+    #plt.annotate("Filling",xy=(1.05, 0.55), xycoords='axes fraction',
+    #             xytext=(1.02, 0.9),arrowprops=dict(arrowstyle="<-", color="r"))
+    #plt.annotate("Draining",xy=(1.05, 0.45), xycoords='axes fraction',
+    #             xytext=(1.01, 0.1),arrowprops=dict(arrowstyle="<-", color="g"))
+
+
 
     outpathResource = outpath+"disk_rate_monitoring_%s.png"%(servername)
     plt.savefig(outpathResource)
@@ -519,14 +527,16 @@ class monitor_machine_resources(ds_project_base):
         pubstop = str(os.environ.get('PUB_TOP_DIR'))
 
         plotpath = pubstop+'/'+self._data_dir+'/'
-        self.info('saving plot to path: %s @ %s'%(plotpath,time.strftime("%Y-%m-%d %H:%M:%S")))
+        self.info('saving plot to path: %s @ %s ...'%(plotpath,time.strftime("%Y-%m-%d %H:%M:%S")))
         outpath = plot_resource_usage(project,plotpath)
+        self.info('...done')
         if (outpath == 'failed import'):
             self.error('could not complete import...plot not produced...')
         if (outpath == None):
             self.error('No plot produced...')
 
         disk_usage_alert(project,self._email_disk_percent,self._email_disk_users)
+        self.info('done calling alert function')
 
         
 
