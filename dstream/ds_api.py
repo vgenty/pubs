@@ -532,6 +532,45 @@ class ds_reader(pubdb_reader):
 
         return result
 
+    ## @brief Check if run number exists
+    def run_exist(self,run_table,run):
+        try:
+            run    = int(run)
+            if run< 0 :
+                raise ValueError
+        except ValueError:
+            self._logger.error('Run must be positive integers!')
+            return (None,None)
+        
+        query = 'SELECT RunNumber FROM %s WHERE RunNumber=%d;' % (run_table,run)
+
+        if not self.execute(query): return False
+        
+        if self.nrows() and self.nrows()>0: 
+            self.fetchone()
+            return True
+        return False
+
+    ## @brief Check if subrun number exists
+    def subrun_exist(self,run_table,run,subrun):
+        try:
+            run    = int(run)
+            subrun = int(subrun)
+            if run< 0 or subrun < 0:
+                raise ValueError
+        except ValueError:
+            self._logger.error('Run/SubRun must be positive integers!')
+            return (None,None)
+        
+        query = 'SELECT RunNumber FROM %s WHERE RunNumber=%d AND SubRunNumber=%d;' % (run_table,run,subrun)
+
+        if not self.execute(query): return False
+        
+        if self.nrows() and self.nrows()>0: 
+            self.fetchone()
+            return True
+        return False
+
     ## @brief Fetch DAQ run start/end time stamp
     def run_timestamp(self,run_table,run,subrun):
 
