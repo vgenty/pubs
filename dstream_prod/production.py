@@ -242,28 +242,28 @@ class production(ds_project_base):
                 self._add_location = [int(x) for x in proj_info._resource['ADD_LOCATION'].split(':')]
             else:
                 # Default is to not add locations.
-                self._store = [0] * len(self._stage_names)
+                self._add_location = [0] * len(self._stage_names)
 
             # Set add analysis location flag.
             if proj_info._resource.has_key('ADD_LOCATION_ANA'):
                 self._add_location_ana = [int(x) for x in proj_info._resource['ADD_LOCATION_ANA'].split(':')]
             else:
                 # Default is to not add analysis locations.
-                self._store = [0] * len(self._stage_names)
+                self._add_location_ana = [0] * len(self._stage_names)
 
             # Set check flag.
             if proj_info._resource.has_key('CHECK'):
                 self._check = [int(x) for x in proj_info._resource['CHECK'].split(':')]
             else:
                 # Default is to check all stages.
-                self._store = [1] * len(self._stage_names)
+                self._check = [1] * len(self._stage_names)
 
             # Set checkana flag.
             if proj_info._resource.has_key('CHECKANA'):
                 self._checkana = [int(x) for x in proj_info._resource['CHECKANA'].split(':')]
             else:
                 # Default is to not do analysis check on any stages.
-                self._store = [0] * len(self._stage_names)
+                self._checkana = [0] * len(self._stage_names)
 
         except Exception as e:
             self.error('Failed to load project parameters...')
