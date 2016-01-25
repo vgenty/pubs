@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_02">
+<!ENTITY release "v04_26_04_03">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
@@ -32,6 +32,7 @@
   <larsoft>
     <tag>&release;</tag>
     <qual>e7:prof</qual>
+    <local>/uboone/app/users/greenlee/swizzlerel/local.tar</local>
   </larsoft>
 
   <!-- Run Number -->
@@ -47,6 +48,7 @@
     <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed</datatier>
+    <anadatatier>root-tuple</anadatatier>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
     <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
   </stage>
@@ -59,6 +61,7 @@
     <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>10</numjobs>
     <datatier>PUBS_XMLVAR_DATA_TIER</datatier>
+    <anadatatier>root-tuple</anadatatier>
     <defname>greenlee_&prod_mode;_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
