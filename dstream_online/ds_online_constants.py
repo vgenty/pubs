@@ -42,9 +42,8 @@ kSTATUS_ERROR_CANNOT_REMOVE_FILE = 140
 # Failure in swizzling ... 150s
 #
 kSTATUS_ERROR_CANNOT_SWIZZLE = 150
-
 #
-# Failur for file tansfer protocole ... 160s
+# Failure for file tansfer protocole ... 160s
 #
 kSTATUS_ERROR_TRANSFER_FAILED = 160
 

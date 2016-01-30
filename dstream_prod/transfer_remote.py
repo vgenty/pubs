@@ -11,10 +11,12 @@ from pub_dbi import DBException
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
-from ds_online_util import *
+from pub_util import pub_smtp
 import subprocess as sub
+from collections import defaultdict
 import samweb_cli, extractor_dict
 import pdb, json
+
 
 ## @class transfer_remote
 #  @brief Transferring files
@@ -22,6 +24,9 @@ import pdb, json
 #  This process mv's a file to a dropbox directory for SAM to whisk it away...
 #  Status codes:
 #    2: Copied the file to dropbox
+
+kSTATUS_NO_KNOWN_SITE = 100
+kSTATUS_FAILED_FILE_XFER = 101
 
 class transfer_remote( ds_project_base ):
 
@@ -39,15 +44,12 @@ class transfer_remote( ds_project_base ):
             raise Exception
 
         self._project = arg
-
         self._nruns = None
         self._out_dir = ''
-        self._outfile_format = ''
-        self._in_dir = ''
-        self._meta_dir = ''
         self._infile_format = ''
         self._parent_project = ''
-        self._nruns_to_postpone = 0
+        self._stream = ''
+        self._samweb = None
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -56,21 +58,13 @@ class transfer_remote( ds_project_base ):
 
         self._nruns = int(resource['NRUNS'])
         self._ndelays = int(resource['NDELAYS'])
-        self._out_dir = '%s' % (resource['OUTDIR'])
-        self._outfile_format = resource['OUTFILE_FORMAT']
-        self._in_dir = '%s' % (resource['INDIR'])
-        self._meta_dir = '%s' % (resource['METADIR'])
-        self._infile_format = resource['INFILE_FORMAT']
+#        self._out_dir = '%s' % (resource['OUTDIR'])
+#        self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
+        self._stream = resource['STREAM']
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
 
-        try:
-            self._nruns_to_postpone = int(resource['NRUNS_POSTPONE'])
-            self.info('Will process %d runs to be postponed (status=%d)' % (self._nruns_to_postpone,kSTATUS_POSTPONE))
-        except KeyError,ValueError:
-            pass
 
-    ## @brief Transfer files to dropbox
     def transfer_file( self ):
 
         # Attempt to connect DB. If failure, abort
@@ -82,96 +76,92 @@ class transfer_remote( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        # self.info('Here, self._nruns=%d ... ' % (self._nruns) )
+        pdb.set_trace()
+        if not self.voms_proxy_check ():
+            self.voms_proxy_get()
+            if not self.voms_proxy_check ():
+                self.error ('Could not get a proxy')
+                raise Exception
 
-        #
-        # Process Postpone first
-        #
-        ctr_postpone = 0
-        for parent in [self._parent_project]:
-            if ctr_postpone >= self._nruns_to_postpone: break
-            if parent == self._project: continue
-            
-            postpone_name_list = [self._project, parent]
-            postpone_status_list = [kSTATUS_INIT, kSTATUS_POSTPONE]
-            target_runs = self.get_xtable_runs(postpone_name_list,postpone_status_list)
-            self.info('Found %d runs to be postponed due to parent %s...' % (len(target_runs),parent))
-            for x in target_runs:
-                status = ds_status( project = self._project,
-                                    run     = int(x[0]),
-                                    subrun  = int(x[1]),
-                                    seq     = 0,
-                                    status  = kSTATUS_POSTPONE )
-                self.log_status(status)
-                ctr_postpone += 1
-                if ctr_postpone > self._nruns_to_postpone: break
+
+        # self.info('Here, self._nruns=%d ... ' % (self._nruns) )
+        self._samweb = samweb_cli.SAMWebClient(experiment="uboone")
 
         # Fetch runs from DB and process for # runs specified for this instance.
+        # Remember that we're looking for files with many subruns collapsed. So, most files will not exist.
+        l = list()
         ctr = self._nruns
-        for x in self.get_xtable_runs([self._project, self._parent_project],
-                                      [1, 0],self._sort_new_to_old):
 
+
+        run = subrun = None
+        for x in self.get_xtable_runs([self._project, self._parent_project],
+                                      [1, 10] ):  # ,self._sort_new_to_old):
             # Counter decreases by 1
             ctr -= 1
-
             (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('Transferring a file: run=%d, subrun=%d ...' % (run,subrun) )
-
-            status = 1
-
-            # Check input file exists. Otherwise report error
-            in_file = '%s/%s' % ( self._in_dir, self._infile_format % ( run, subrun ) )
-            in_json = '%s/%s.json' %( self._meta_dir, self._infile_format % ( run, subrun ) )
-            out_file = '%s/%s' % ( self._out_dir, self._outfile_format % (run,subrun) )
-            out_json = '%s/%s.json' %( self._out_dir, self._outfile_format % (run,subrun) )
-
-
-
-            if "pnnl" in self._project:
-                self.info('Will  look for  %s' % os.path.basename(in_file) )
-
-
-                try:
-                    if "pnnl" in self._project:
-
-                        (resi, resj) = self.pnnl_transfer(in_file)
-
-                    if resi == 0 and resj == 0:
-                        status = 0
-                    else:
-                        status = 1
-                except:
-                    status = 1
-
-            else:
-                status = 100
-                self.error("Big problem: This project not doing a transfer to PNNL.")
-
-            # Pretend I'm doing something
-            time.sleep(1)
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
+            l.append([run, subrun])
             if not ctr: break
 
-    def pnnl_transfer( self, file_arg ):
 
-        # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
-        # uboonepro from near1 has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
-        # This requires that uboonepro owns a valid proxy. We might get 2 Gbps throughput with this scenario.
-        # Need more logging to message service ... also let's put all this into a function that we call.
+        rs_dict = defaultdict(list)
+        for k,v in l:
+            rs_dict[k].append(v)
 
+
+        for runk in rs_dict.keys():
+
+            # This is a unique run from our above list of runs.
+            files = self._samweb.listFiles("run_number=" + str(runk) + " AND data_tier=reconstructed-2d AND ub_project.name=" + self._stream)
+            
+            for f in files:
+
+                subs = list()
+                status = kSTATUS_FAILED_FILE_XFER
+                m = self._samweb.getMetadata(filenameorid = f)
+                # Make a list subs of subruns merged in this file.
+                for s in range(len(m['runs'])):
+                    sub = m['runs'][s][1] # subrun from meta data
+                    subs.append(sub)
+
+                if len(list(set(subs) & set(rs_dict[runk]))) > 0:
+                    # If any of the r,s pairs that we got from get_xtable live in this file, we transfer the file
+                    # And below set the status for all those r,s pairs.
+                    # And, we note, if we come into this project subsequently, asking for different subruns from 
+                    # this same run, which shouldn't happen, it'll fail the get_xtable call, and we won't try again
+                    # to transfer that file (as is appropriate).
+                    if "pnnl" in self._project:
+                        self.info('Will  look for  %s' % f )
+                        try:
+                            if "pnnl" in self._project:
+                                (resi, resj) = self.pnnl_transfer(f)
+                            if resi == 0 and resj == 0:
+                                status = 0
+                            else:
+                                status = 1
+                        except:
+                            pass
+
+                    else:
+                        status = kSTATUS_NO_KNOWN_SITE
+                        self.error("Big problem: This project not doing a transfer to PNNL.")
+
+                        
+                    # Create a status object to be logged to DB (if necessary). Do this for each subrun in this run's file.
+                    for s in subs:
+
+                        statuss = ds_status( project = self._project,
+                                            run     = runk,
+                                            subrun  = s,
+                                            seq     = 0,
+                                            status  = status,
+                                            data = None )
+
+                        # Log status
+                        self.log_status( statuss )
+
+
+
+    def voms_proxy_check ( self ):
 
         cmd = "voms-proxy-info -all "
         proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
@@ -185,40 +175,61 @@ class transfer_remote( ds_project_base ):
                     break;
 
         if not goodProxy:
-            self.error('uboonepro has no proxy.')
-            raise Exception 
+            self.info('uboonepro has no good proxy.')
+
+        return goodProxy
+
+    def voms_proxy_get ( self ):
+
+        cmd = "voms-proxy-init -rfc -cert /uboone/app/home/uboonepro/ubooneprocert.pem -key /uboone/app/home/uboonepro/ubooneprokey.pem -voms fermilab:/fermilab/uboone/Role=Analysis"
+        proc = sub.Popen(cmd,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
+        (out,err) = proc.communicate()
+
+        for line in out.split('\n'):
+            if "Your proxy " in line:
+                self.info('Apparently got uboonepro a good proxy')
+                break;
+
+        return
    
 
-        in_file = os.path.basename(file_arg)
-    # We do a samweb.fileLocate on basename of in_file. This project's parent must be check_root_on_tape.
+
+    def pnnl_transfer( self, file_arg ):
+
+        # sshftp-to-sshftp not enabled on near1, so must use gsiftp: must thus ship from the Sam'd-up dcache file.
+        # uboonepro from uboonegpvm0N has an ssh-key to sshftp to dtn2.pnl.gov as chur558.
+        # This requires that uboonepro owns a valid proxy. We might get 2 Gbps throughput with this scenario.
+
+        in_file = file_arg
+    # We do a samweb.fileLocate on basename of in_file. 
         transfer = 0
-        samweb = samweb_cli.SAMWebClient(experiment="uboone")
-        loc = samweb.locateFile(filenameorid=in_file)
-        size_in = samweb.getMetadata(filenameorid=in_file)['file_size']
+
+        loc = self._samweb.locateFile(filenameorid=in_file)
+        size_in = self._samweb.getMetadata(filenameorid=in_file)['file_size']
         samcode = 12
 
-
+        # We expect to transfer files out of dCache.
         if not ('enstore' in loc[0]["full_path"] and 'pnfs' in loc[0]["full_path"]):
             self.error('No enstore or pnfs in loc[0]["full_path"]')
             return (transfer, samcode)
 
 
-        full_file = loc[0]["full_path"].replace('enstore:/pnfs/uboone','') + "/" +  in_file
+        full_file = loc[0]["full_path"].replace('enstore:/pnfs','') + "/" +  in_file
 
         pnnl_machine = "dtn2.pnl.gov"
         pnnl_dir = 'pic/projects/microboone/data/'
-        ddir = str(samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
-        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + ddir
+        ddir = str(self._samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
+        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + self._stream + "/" + ddir 
         proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
-        # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain if run is not new.) 
+        # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain harmlessly if run is not new.) 
         (out,err) = proc.communicate() 
         
-        pnnl_loc = pnnl_machine + "/" + pnnl_dir + ddir + "/" + in_file
+        pnnl_loc = pnnl_machine + "/" + pnnl_dir + self._stream + "/" + ddir + "/" + in_file
         cmd_gsiftp_to_sshftp = "globus-url-copy -rst -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
 
         # Popen() gymnastics here
         ntry = 0
-        delay = 5
+        delay = 20
         ntry_max = 1 # more than 1 is not demonstrably helping. In fact, it creates lotsa orphaned ssh's. EC, 8-Aug-2015.
         ndelays = self._ndelays # 20
         while (ntry != ntry_max):
@@ -276,13 +287,13 @@ class transfer_remote( ds_project_base ):
 
 # end file lives in enstore
 
-
+        pdb.set_trace()
         if not transfer:
             try:
                 # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
-                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + ddir + "/" + in_file
-                samadd = samweb.addFileLocation(filenameorid=in_file,location=pnnl_loc_withcolon)
-                samloc  = samweb.locateFile(filenameorid=in_file)
+                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + self._stream + "/" + ddir + "/" + in_file
+                samadd = self._samweb.addFileLocation(filenameorid=in_file,location=os.path.dirname(pnnl_loc_withcolon))
+                samloc  = self._samweb.locateFile(filenameorid=in_file)
                 if len(samloc)>0:
                     samcode = 0
                     self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
