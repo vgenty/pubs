@@ -76,7 +76,6 @@ class transfer_remote( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        pdb.set_trace()
         if not self.voms_proxy_check ():
             self.voms_proxy_get()
             if not self.voms_proxy_check ():
@@ -96,6 +95,7 @@ class transfer_remote( ds_project_base ):
         run = subrun = None
         for x in self.get_xtable_runs([self._project, self._parent_project],
                                       [1, 10] ):  # ,self._sort_new_to_old):
+
             # Counter decreases by 1
             ctr -= 1
             (run, subrun) = (int(x[0]), int(x[1]))
@@ -287,7 +287,6 @@ class transfer_remote( ds_project_base ):
 
 # end file lives in enstore
 
-        pdb.set_trace()
         if not transfer:
             try:
                 # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
