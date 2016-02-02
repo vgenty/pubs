@@ -305,8 +305,8 @@ class daq_uptime_monitor(ds_project_base):
         datenum = mpd.date2num(dates)
         #print datenum
 
-        first_date = dates[0]  + datetime.timedelta(0,-12*3600)
-        end_date   = dates[-1] + datetime.timedelta(0,12*3600)
+        first_date = dates[0]  + datetime.timedelta(0,12*3600)
+        end_date   = dates[-1] + datetime.timedelta(0,24+12*3600)
 
         #plt.plot(overlay_range, [1,1], marker='',linestyle='--',linewidth=2,color='black')
         #plt.axvspan(xmin=dates[0],xmax=dates[-1],ymin=0.,ymax=1./1.3,color='gray',alpha=0.1)
