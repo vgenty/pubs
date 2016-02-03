@@ -244,7 +244,7 @@ def getRunsVsIntensity(outdir='',regenerate=True):
                         weight='bold',
                         fontsize=16, color='k',horizontalalignment='center',
                         verticalalignment='bottom',rotation='vertical')
-    plt.ylim([-0.1,5.0])
+    plt.ylim([-0.1,5.5])
     plt.xlabel('Date (US/Central)',fontsize=20)
     plt.ylabel('Intensity [ppp E12]',fontsize=20,color='b')
     plt.title('Daily Run and Beam Intensity Summary',fontsize=20)
