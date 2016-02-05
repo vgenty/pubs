@@ -89,6 +89,10 @@ class production(ds_project_base):
         self._nsubruns    = []
         self._store       = []
         self._storeana    = []
+        self._add_location = []
+        self._add_location_ana = []
+        self._check = []
+        self._checkana = []
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -224,7 +228,6 @@ class production(ds_project_base):
                 self._store[-1] = 1
 
             # Set storeana flag.
-
             if proj_info._resource.has_key('STOREANA'):
                 self._storeana = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
             else:
@@ -233,6 +236,34 @@ class production(ds_project_base):
 
                 self._storeana = [0] * len(self._stage_names)
                 self._storeana[-1] = 1
+
+            # Set add location flag.
+            if proj_info._resource.has_key('ADD_LOCATION'):
+                self._add_location = [int(x) for x in proj_info._resource['ADD_LOCATION'].split(':')]
+            else:
+                # Default is to not add locations.
+                self._add_location = [0] * len(self._stage_names)
+
+            # Set add analysis location flag.
+            if proj_info._resource.has_key('ADD_LOCATION_ANA'):
+                self._add_location_ana = [int(x) for x in proj_info._resource['ADD_LOCATION_ANA'].split(':')]
+            else:
+                # Default is to not add analysis locations.
+                self._add_location_ana = [0] * len(self._stage_names)
+
+            # Set check flag.
+            if proj_info._resource.has_key('CHECK'):
+                self._check = [int(x) for x in proj_info._resource['CHECK'].split(':')]
+            else:
+                # Default is to check all stages.
+                self._check = [1] * len(self._stage_names)
+
+            # Set checkana flag.
+            if proj_info._resource.has_key('CHECKANA'):
+                self._checkana = [int(x) for x in proj_info._resource['CHECKANA'].split(':')]
+            else:
+                # Default is to not do analysis check on any stages.
+                self._checkana = [0] * len(self._stage_names)
 
         except Exception as e:
             self.error('Failed to load project parameters...')
@@ -610,7 +641,11 @@ class production(ds_project_base):
             sys.stdout = StringIO.StringIO()
             sys.stderr = StringIO.StringIO()
             project.doshorten(stobj)
-            check_status = project.docheck(probj, stobj, ana=False)
+            check_status = 0
+            if self._check[istage]:
+                check_status = project.docheck(probj, stobj, ana=False)
+            elif self._checkana[istage]:
+                check_status = project.docheck(probj, stobj, ana=True)                
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
             sys.stdout = real_stdout
@@ -870,7 +905,7 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage] and not self._storeana[istage]:
+        if not self._store[istage] and not self._storeana[istage] and not self._add_location[istage] and not self._add_location_ana[istage]:
             self.info('Skipping store.')
             #statusCode = self.kDONE
             #istage += 10
@@ -902,23 +937,23 @@ Job IDs    : %s
             # Store files.
 
             store_status = 0
-            if self._store[istage]:
+            if self._store[istage] or self._add_location[istage]:
                 self.info('Storing artroot files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=False)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                         add=False,
+                                                         add=self._add_location[istage],
                                                          clean=False,
                                                          remove=False,
-                                                         upload=True)
+                                                         upload=self._store[istage])
 
-            if self._storeana[istage] and store_status == 0 and stobj.ana_data_tier != '':
+            if (self._storeana[istage] or self._add_location_ana[istage]) and store_status == 0 and stobj.ana_data_tier != '':
                 self.info('Storing analysis root files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                         add=False,
+                                                         add=self._add_location_ana[istage],
                                                          clean=False,
                                                          remove=False,
-                                                         upload=True)
+                                                         upload=self._storeana[istage])
 
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
@@ -962,7 +997,7 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage] and not self._storeana[istage]:
+        if not self._store[istage] and not self._storeana[istage] and not self._add_location[istage] and not self._add_location_ana[istage]:
             self.info('Skipping check location.')
             statusCode = self.kDONE
             istage += 10

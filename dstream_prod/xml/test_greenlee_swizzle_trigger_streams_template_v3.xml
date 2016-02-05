@@ -8,7 +8,7 @@
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
 <!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
-<!ENTITY prod_version "v2">
+<!ENTITY prod_version "v3">
 <!ENTITY prod_mode "test">
 ]>
 
@@ -42,7 +42,7 @@
 
   <stage name="swizzle">
     <inputdef>prod_assembler_binary_&run_tag;</inputdef>
-    <fcl>swizzle_trigger_streams.fcl</fcl>
+    <fcl>swizzle_software_trigger_streams.fcl</fcl>
     <outdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</outdir>
     <logdir>/pnfs/uboone/scratch/users/greenlee/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</logdir>
     <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
