@@ -124,6 +124,9 @@ class define_samdata(ds_project_base):
                     joblist[jobid] = 0
                 joblist[jobid] += 1
         self.info('Found %d dataset possibilities' % len(joblist))
+
+        missing_runlist=[]
+
         for j,f_ctr in joblist.iteritems():
 
             run,seq = j
@@ -160,12 +163,12 @@ class define_samdata(ds_project_base):
                         text += '\n'
                         text += 'Run=%d SubRun=%d not found in project status table!\n' % (run,subrun)
                         text += 'Please update Offline MainRun table...\n'
-                        try:
-                            pub_smtp( receiver=self._experts, 
-                                      subject=subject, 
-                                      text=text )
-                        except Exception:
-                            self.error('Failed to send an email notice about the failure...')
+                        #try:
+                        #    pub_smtp( receiver=self._experts, 
+                        #              subject=subject, 
+                        #              text=text )
+                        #except Exception:
+                        #    self.error('Failed to send an email notice about the failure...')
                     break
 
             if skip: continue
