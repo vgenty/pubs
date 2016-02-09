@@ -87,12 +87,12 @@ class production(ds_project_base):
         self._njobs_tot   = 0
         self._njobs_tot_limit = None
         self._nsubruns    = []
-        self._store       = []
-        self._storeana    = []
-        self._add_location = []
-        self._add_location_ana = []
-        self._check = []
-        self._checkana = []
+        self._store       = {}
+        self._storeana    = {}
+        self._add_location = {}
+        self._add_location_ana = {}
+        self._check = {}
+        self._checkana = {}
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -221,53 +221,67 @@ class production(ds_project_base):
 
             # Set store flag.
             if proj_info._resource.has_key('STORE'):
-                self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
+                store_v = [int(x) for x in proj_info._resource['STORE'].split(':')]
             else:
                 # Default is to store only final stage.
-                self._store = [0] * len(self._stage_names)
-                self._store[-1] = 1
+                store_v = [0] * len(self._stage_names)
+                store_v[-1] = 1
+            for x in xrange(len(self._stage_digits)):
+                self._store[self._stage_digits[x]] = store_v[x]
 
             # Set storeana flag.
             if proj_info._resource.has_key('STOREANA'):
-                self._storeana = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
+                storeana_v = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
             else:
 
                 # Default is to store only final stage.
 
-                self._storeana = [0] * len(self._stage_names)
-                self._storeana[-1] = 1
+                storeana_v = [0] * len(self._stage_names)
+                storeana_v[-1] = 1
+            for x in xrange(len(self._stage_digits)):
+                self._storeana[self._stage_digits[x]] = storeana_v[x]
 
             # Set add location flag.
             if proj_info._resource.has_key('ADD_LOCATION'):
-                self._add_location = [int(x) for x in proj_info._resource['ADD_LOCATION'].split(':')]
+                add_location_v = [int(x) for x in proj_info._resource['ADD_LOCATION'].split(':')]
             else:
                 # Default is to not add locations.
-                self._add_location = [0] * len(self._stage_names)
+                add_location_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._add_location[self._stage_digits[x]] = add_location_v[x]
 
             # Set add analysis location flag.
             if proj_info._resource.has_key('ADD_LOCATION_ANA'):
-                self._add_location_ana = [int(x) for x in proj_info._resource['ADD_LOCATION_ANA'].split(':')]
+                add_location_ana_v = [int(x) for x in proj_info._resource['ADD_LOCATION_ANA'].split(':')]
             else:
                 # Default is to not add analysis locations.
-                self._add_location_ana = [0] * len(self._stage_names)
+                add_location_ana_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._add_location_ana[self._stage_digits[x]] = add_location_v[x]
 
             # Set check flag.
+            check_v = []
             if proj_info._resource.has_key('CHECK'):
-                self._check = [int(x) for x in proj_info._resource['CHECK'].split(':')]
+                check_v = [int(x) for x in proj_info._resource['CHECK'].split(':')]
             else:
                 # Default is to check all stages.
-                self._check = [1] * len(self._stage_names)
+                check_v = [1] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._check[self._stage_digits[x]] = check_v[x]
 
             # Set checkana flag.
             if proj_info._resource.has_key('CHECKANA'):
-                self._checkana = [int(x) for x in proj_info._resource['CHECKANA'].split(':')]
+                checkana_v = [int(x) for x in proj_info._resource['CHECKANA'].split(':')]
             else:
                 # Default is to not do analysis check on any stages.
-                self._checkana = [0] * len(self._stage_names)
+                checkana_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._checkana[self._stage_digits[x]] = checkana_v[x]
 
         except Exception as e:
             self.error('Failed to load project parameters...')
             raise e
+
 
         # Get job stat
         jobstat = self._jobstat_from_log()
