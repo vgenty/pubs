@@ -1232,11 +1232,12 @@ Job IDs    : %s
                                                             status  = statusCode,
                                                             data    = self._data ) )
 
+                                # Counter decreases by 1
+                                ctr -=1
+
                             runid = (run, subrun)
                             self._runid_status[runid] = statusCode
 
-                            # Counter decreases by 1
-                            ctr -=1
                             # Break from loop if counter became 0
                             if ctr < 0: return
         return
