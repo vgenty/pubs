@@ -3,7 +3,7 @@
 # Suppress the annoying "$1: unbound variable" error when no option
 # was given
 if [ -z $1 ] ; then
-	echo "Usage: $0 [start|stop|restart] "
+	echo "Usage: $0 [status|start|stop|restart] "
 	exit 1
 fi
 
