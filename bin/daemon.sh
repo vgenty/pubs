@@ -11,6 +11,13 @@ daemon_script=$PUB_TOP_DIR/dstream/daemon.py
 proc=$(ps aux | grep "dstream/daemon.py" | grep "python" | awk '{print $2}');
 
 case $1 in
+    (status)
+    if [[ -z $proc ]]; then
+	echo daemon is not running...;
+    else
+	echo daemon already running;
+    fi
+    ;;
     (start)
     if [[ -z $proc ]]; then
 	echo starting daemon;
