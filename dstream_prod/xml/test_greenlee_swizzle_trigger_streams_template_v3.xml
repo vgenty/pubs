@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_03">
+<!ENTITY release "v04_26_04_05">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
@@ -26,7 +26,7 @@
   <resource>DEDICATED,OPPORTUNISTIC</resource>
 
   <!-- Project Version -->
-  <version>&prod_mode;_v04_26_04</version>
+  <version>&prod_mode;_v04_26_04_05</version>
 
   <!-- Larsoft information -->
   <larsoft>
