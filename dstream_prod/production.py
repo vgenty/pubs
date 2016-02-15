@@ -434,6 +434,12 @@ class production(ds_project_base):
                 self.error(line)
             return current_status
 
+        # Make sure we are getting job fcl from the correct uboonecode version.
+
+        if probj.release_tag != os.environ['UBOONECODE_VERSION']:
+            self.error('Project version mismatch between environment and xml file.')
+            raise Exception
+
         # Submit job.
         jobid=''
         try:
@@ -741,6 +747,12 @@ Job IDs    : %s
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
+
+        # Make sure we are getting job fcl from the correct uboonecode version.
+
+        if probj.release_tag != os.environ['UBOONECODE_VERSION']:
+            self.error('Project version mismatch between environment and xml file.')
+            raise Exception
 
         # Submit job.
         jobid=''
