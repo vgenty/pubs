@@ -64,7 +64,7 @@ class production(ds_project_base):
                              self.kSUBMITTED     : self.isRunning,
                              self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
-                             self.kTOBERECOVERED : None,
+                             self.kTOBERECOVERED : self.single_recover,
                              self.kREADYFORSAM   : self.declare,
                              self.kDECLARED      : self.store,
                              self.kSTORED        : self.check_location }
@@ -74,7 +74,7 @@ class production(ds_project_base):
                                   self.kSUBMITTED     : None,
                                   self.kRUNNING       : None,
                                   self.kFINISHED      : None,
-                                  self.kTOBERECOVERED : self.recover,
+                                  self.kTOBERECOVERED : None,
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None,
                                   self.kSTORED        : None }
@@ -722,6 +722,14 @@ Job IDs    : %s
         return statusCode
     # def check()
 
+    # Single-subrun recovery.
+
+    def single_recover( self, statusCode, istage, run, subrun ):
+        result = self.recover(statusCode, istage, run, [subrun])
+        self._data = self._data[0]
+        return result
+
+    # Multiple-subrun recovery.
 
     def recover( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
