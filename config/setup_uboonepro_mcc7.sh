@@ -70,7 +70,7 @@ case `uname -n` in
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
-	setup uboonecode v04_36_00 -q e9:prof
+	setup uboonecode v04_36_00_01 -q e9:prof
 	#setup larbatch v01_20_02
 	#setup sam_web_client v2_0
 	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
