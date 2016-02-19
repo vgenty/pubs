@@ -64,7 +64,7 @@ class production(ds_project_base):
                              self.kSUBMITTED     : self.isRunning,
                              self.kRUNNING       : self.isRunning,
                              self.kFINISHED      : self.check,
-                             self.kTOBERECOVERED : None,
+                             self.kTOBERECOVERED : self.single_recover,
                              self.kREADYFORSAM   : self.declare,
                              self.kDECLARED      : self.store,
                              self.kSTORED        : self.check_location }
@@ -74,7 +74,7 @@ class production(ds_project_base):
                                   self.kSUBMITTED     : None,
                                   self.kRUNNING       : None,
                                   self.kFINISHED      : None,
-                                  self.kTOBERECOVERED : self.recover,
+                                  self.kTOBERECOVERED : None,
                                   self.kREADYFORSAM   : None,
                                   self.kDECLARED      : None,
                                   self.kSTORED        : None }
@@ -87,8 +87,12 @@ class production(ds_project_base):
         self._njobs_tot   = 0
         self._njobs_tot_limit = None
         self._nsubruns    = []
-        self._store       = []
-        self._storeana    = []
+        self._store       = {}
+        self._storeana    = {}
+        self._add_location = {}
+        self._add_location_ana = {}
+        self._check = {}
+        self._checkana = {}
         self._xml_file    = ''
         self._xml_outdir   = ''
         self._xml_template = False
@@ -217,26 +221,67 @@ class production(ds_project_base):
 
             # Set store flag.
             if proj_info._resource.has_key('STORE'):
-                self._store = [int(x) for x in proj_info._resource['STORE'].split(':')]
+                store_v = [int(x) for x in proj_info._resource['STORE'].split(':')]
             else:
                 # Default is to store only final stage.
-                self._store = [0] * len(self._stage_names)
-                self._store[-1] = 1
+                store_v = [0] * len(self._stage_names)
+                store_v[-1] = 1
+            for x in xrange(len(self._stage_digits)):
+                self._store[self._stage_digits[x]] = store_v[x]
 
             # Set storeana flag.
-
             if proj_info._resource.has_key('STOREANA'):
-                self._storeana = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
+                storeana_v = [int(x) for x in proj_info._resource['STOREANA'].split(':')]
             else:
 
                 # Default is to store only final stage.
 
-                self._storeana = [0] * len(self._stage_names)
-                self._storeana[-1] = 1
+                storeana_v = [0] * len(self._stage_names)
+                storeana_v[-1] = 1
+            for x in xrange(len(self._stage_digits)):
+                self._storeana[self._stage_digits[x]] = storeana_v[x]
+
+            # Set add location flag.
+            if proj_info._resource.has_key('ADD_LOCATION'):
+                add_location_v = [int(x) for x in proj_info._resource['ADD_LOCATION'].split(':')]
+            else:
+                # Default is to not add locations.
+                add_location_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._add_location[self._stage_digits[x]] = add_location_v[x]
+
+            # Set add analysis location flag.
+            if proj_info._resource.has_key('ADD_LOCATION_ANA'):
+                add_location_ana_v = [int(x) for x in proj_info._resource['ADD_LOCATION_ANA'].split(':')]
+            else:
+                # Default is to not add analysis locations.
+                add_location_ana_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._add_location_ana[self._stage_digits[x]] = add_location_v[x]
+
+            # Set check flag.
+            check_v = []
+            if proj_info._resource.has_key('CHECK'):
+                check_v = [int(x) for x in proj_info._resource['CHECK'].split(':')]
+            else:
+                # Default is to check all stages.
+                check_v = [1] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._check[self._stage_digits[x]] = check_v[x]
+
+            # Set checkana flag.
+            if proj_info._resource.has_key('CHECKANA'):
+                checkana_v = [int(x) for x in proj_info._resource['CHECKANA'].split(':')]
+            else:
+                # Default is to not do analysis check on any stages.
+                checkana_v = [0] * len(self._stage_names)
+            for x in xrange(len(self._stage_digits)):
+                self._checkana[self._stage_digits[x]] = checkana_v[x]
 
         except Exception as e:
             self.error('Failed to load project parameters...')
             raise e
+
 
         # Get job stat
         jobstat = self._jobstat_from_log()
@@ -388,6 +433,12 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
+
+        # Make sure we are getting job fcl from the correct uboonecode version.
+
+        if probj.release_tag != os.environ['UBOONECODE_VERSION']:
+            self.error('Project version mismatch between environment and xml file.')
+            raise Exception
 
         # Submit job.
         jobid=''
@@ -610,7 +661,11 @@ class production(ds_project_base):
             sys.stdout = StringIO.StringIO()
             sys.stderr = StringIO.StringIO()
             project.doshorten(stobj)
-            check_status = project.docheck(probj, stobj, ana=False)
+            check_status = 0
+            if self._check[istage]:
+                check_status = project.docheck(probj, stobj, ana=False)
+            elif self._checkana[istage]:
+                check_status = project.docheck(probj, stobj, ana=True)                
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
             sys.stdout = real_stdout
@@ -667,6 +722,14 @@ Job IDs    : %s
         return statusCode
     # def check()
 
+    # Single-subrun recovery.
+
+    def single_recover( self, statusCode, istage, run, subrun ):
+        result = self.recover(statusCode, istage, run, [subrun])
+        self._data = self._data[0]
+        return result
+
+    # Multiple-subrun recovery.
 
     def recover( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
@@ -692,6 +755,12 @@ Job IDs    : %s
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
+
+        # Make sure we are getting job fcl from the correct uboonecode version.
+
+        if probj.release_tag != os.environ['UBOONECODE_VERSION']:
+            self.error('Project version mismatch between environment and xml file.')
+            raise Exception
 
         # Submit job.
         jobid=''
@@ -870,7 +939,7 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage] and not self._storeana[istage]:
+        if not self._store[istage] and not self._storeana[istage] and not self._add_location[istage] and not self._add_location_ana[istage]:
             self.info('Skipping store.')
             #statusCode = self.kDONE
             #istage += 10
@@ -902,23 +971,23 @@ Job IDs    : %s
             # Store files.
 
             store_status = 0
-            if self._store[istage]:
+            if self._store[istage] or self._add_location[istage]:
                 self.info('Storing artroot files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=False)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                         add=False,
+                                                         add=self._add_location[istage],
                                                          clean=False,
                                                          remove=False,
-                                                         upload=True)
+                                                         upload=self._store[istage])
 
-            if self._storeana[istage] and store_status == 0 and stobj.ana_data_tier != '':
+            if (self._storeana[istage] or self._add_location_ana[istage]) and store_status == 0 and stobj.ana_data_tier != '':
                 self.info('Storing analysis root files.')
                 dim = project_utilities.dimensions(probj, stobj, ana=True)
                 store_status = project.docheck_locations(dim, stobj.outdir, 
-                                                         add=False,
+                                                         add=self._add_location_ana[istage],
                                                          clean=False,
                                                          remove=False,
-                                                         upload=True)
+                                                         upload=self._storeana[istage])
 
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
@@ -962,7 +1031,7 @@ Job IDs    : %s
 
         # Check store flag.
 
-        if not self._store[istage] and not self._storeana[istage]:
+        if not self._store[istage] and not self._storeana[istage] and not self._add_location[istage] and not self._add_location_ana[istage]:
             self.info('Skipping check location.')
             statusCode = self.kDONE
             istage += 10
@@ -1183,11 +1252,12 @@ Job IDs    : %s
                                                             status  = statusCode,
                                                             data    = self._data ) )
 
+                                # Counter decreases by 1
+                                ctr -=1
+
                             runid = (run, subrun)
                             self._runid_status[runid] = statusCode
 
-                            # Counter decreases by 1
-                            ctr -=1
                             # Break from loop if counter became 0
                             if ctr < 0: return
         return

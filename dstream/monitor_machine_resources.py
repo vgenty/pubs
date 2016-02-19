@@ -260,15 +260,15 @@ def plot_resource_usage(proj,outpath):
     ax.set_ylabel('Usage %',fontsize=20)
     ax.set_ylim([0,100])
 
-    if (len(datesCPU) == len(CPU)):
+    if (len(datesCPU) == len(CPU) and (len(CPU) != 0)):
         cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
-    if (len(datesDISK) == len(DISK)):
+    if (len(datesDISK) == len(DISK) and (len(DISK) != 0)):
         diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage @ /data/', markersize=7)
-    if (len(datesRAM) == len(RAM)):
+    if (len(datesRAM) == len(RAM) and (len(RAM) != 0)):
         ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
-    if (len(datesDLOC) == len(DLOC)):
+    if (len(datesDLOC) == len(DLOC) and (len(DLOC) != 0)):
         diskPlot = ax.plot_date(datesDLOC,DLOC, fmt='*--', color='m',label='DISK usage @ /datalocal/', markersize=7)
-    if (len(datesHOME) == len(HOME)):
+    if (len(datesHOME) == len(HOME) and (len(HOME) != 0)):
         diskPlot = ax.plot_date(datesHOME,HOME, fmt='^--', color='c',label='DISK usage @ /home/', markersize=7)
 
 

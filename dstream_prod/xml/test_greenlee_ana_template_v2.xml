@@ -6,7 +6,7 @@
 <!ENTITY release "v04_26_04_03">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
-<!ENTITY name "reco_PUBS_XMLVAR_INPUT_STREAM">
+<!ENTITY name "ana_PUBS_XMLVAR_INPUT_STREAM">
 <!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
 <!ENTITY prod_version "v2">
 <!ENTITY prod_mode "test">
@@ -40,15 +40,15 @@
 
   <!-- Project stages -->
 
-  <stage name="reco">
-    <inputdef>greenlee_&prod_mode;_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
-    <fcl>reco_uboone_data_minimal_driver.fcl</fcl>
-    <outdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
-    <logdir>/pnfs/uboone/scratch/users/greenlee/reco/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
-    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
+  <stage name="ana">
+    <inputdef>greenlee_&prod_mode;_reco_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
+    <fcl>standard_ana_uboone_data_minimal.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/users/greenlee/ana/&release;/&prod_mode;_&name;_&prod_version;/ana_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/users/greenlee/ana/&release;/&prod_mode;_&name;_&prod_version;/ana_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/users/greenlee/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/ana_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>100</numjobs>
-    <datatier>reconstructed-2d</datatier>
-    <defname>greenlee_&prod_mode;_reco_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <datatier>root-tuple</datatier>
+    <defname>greenlee_&prod_mode;_anatree_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 

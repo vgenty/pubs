@@ -3,7 +3,7 @@
 # Suppress the annoying "$1: unbound variable" error when no option
 # was given
 if [ -z $1 ] ; then
-	echo "Usage: $0 [start|stop|restart] "
+	echo "Usage: $0 [status|start|stop|restart] "
 	exit 1
 fi
 
@@ -11,6 +11,13 @@ daemon_script=$PUB_TOP_DIR/dstream/daemon.py
 proc=$(ps aux | grep "dstream/daemon.py" | grep "python" | awk '{print $2}');
 
 case $1 in
+    (status)
+    if [[ -z $proc ]]; then
+	echo daemon is not running...;
+    else
+	echo daemon already running;
+    fi
+    ;;
     (start)
     if [[ -z $proc ]]; then
 	echo starting daemon;

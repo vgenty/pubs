@@ -84,6 +84,7 @@ class define_samdata(ds_project_base):
         subrun_ctr = {}
         for x in self.get_runs(self._project,1):
             run,subrun = (int(x[0]),int(x[1]))
+
             if run > self._max_run: continue
             if run < self._min_run: continue
             runsubrun_list.append((run,subrun))
@@ -92,7 +93,8 @@ class define_samdata(ds_project_base):
             subrun_ctr[run] += 1
         self.info('Files to be processed: %d' % len(runsubrun_list))
         for r in subrun_ctr:
-            self.debug('Run %d ... %d subruns' % (r,subrun_ctr[r]))
+            nsubrun = self._api.get_last_subrun(self._runtable,r)+1
+            self.debug('Run %d ... %d subruns ... %d subruns to be processed' % (r,nsubrun,subrun_ctr[r]))
 
         last_run = self._api.get_last_run(self._runtable)
         last_subrun = self._api.get_last_subrun(self._runtable,last_run)
@@ -122,6 +124,9 @@ class define_samdata(ds_project_base):
                     joblist[jobid] = 0
                 joblist[jobid] += 1
         self.info('Found %d dataset possibilities' % len(joblist))
+
+        missing_runlist=[]
+
         for j,f_ctr in joblist.iteritems():
 
             run,seq = j
@@ -146,27 +151,28 @@ class define_samdata(ds_project_base):
             skip = False
             for x in xrange(subrun_end - subrun_start + 1):
                 subrun = x + subrun_start
-                if not (run,subrun) in runsubrun_list:
-                    self.error('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
-                    skip=True
 
-                    subject = '%s found missing sub-run in run table' % self._project
-                    text = subject
-                    text += '\n'
-                    text += 'Run=%d SubRun=%d not found in project status table!\n' % (run,subrun)
-                    text += 'Please update Offline MainRun table...\n'
-                    try:
-                        pub_smtp( receiver=self._experts, 
-                                  subject=subject, 
-                                  text=text )
-                    except Exception:
-                        self.error('Failed to send an email notice about the failure...')
+                if not (run,subrun) in runsubrun_list:
+                    skip=True
+                    if not self._api.subrun_exist(self._runtable,run,subrun):
+
+
+                        self.error('Skipping Run %d Sequence %d (missing subrun %d from Project table)' % (run,seq,subrun))
+                        subject = '%s found missing sub-run in run table' % self._project
+                        text = subject
+                        text += '\n'
+                        text += 'Run=%d SubRun=%d not found in project status table!\n' % (run,subrun)
+                        text += 'Please update Offline MainRun table...\n'
+                        #try:
+                        #    pub_smtp( receiver=self._experts, 
+                        #              subject=subject, 
+                        #              text=text )
+                        #except Exception:
+                        #    self.error('Failed to send an email notice about the failure...')
                     break
 
             if skip: continue
             
-            #defname = self._defname_format % (run,seq)
-            #query   = self._declare_format % (run,run,subrun_start,run,subrun_end)
             defname = self.sam_query_formatter(self._defname_format,run)
             query   = self.sam_query_formatter(self._declare_format,run)
             try:
