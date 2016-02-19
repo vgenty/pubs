@@ -27,6 +27,7 @@ import pdb, json
 
 kSTATUS_NO_KNOWN_SITE = 100
 kSTATUS_FAILED_FILE_XFER = 101
+kSTATUS_RECO_SUCCESS = 20
 
 class transfer_remote( ds_project_base ):
 
@@ -59,7 +60,6 @@ class transfer_remote( ds_project_base ):
         self._nruns = int(resource['NRUNS'])
         self._ndelays = int(resource['NDELAYS'])
 #        self._out_dir = '%s' % (resource['OUTDIR'])
-#        self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
         self._stream = resource['STREAM']
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
@@ -93,8 +93,9 @@ class transfer_remote( ds_project_base ):
 
 
         run = subrun = None
+
         for x in self.get_xtable_runs([self._project, self._parent_project],
-                                      [1, 10] ):  # ,self._sort_new_to_old):
+                                      [1, kSTATUS_RECO_SUCCESS] ):  # ,self._sort_new_to_old):
 
             # Counter decreases by 1
             ctr -= 1
@@ -111,7 +112,8 @@ class transfer_remote( ds_project_base ):
         for runk in rs_dict.keys():
 
             # This is a unique run from our above list of runs.
-            files = self._samweb.listFiles("run_number=" + str(runk) + " AND data_tier=reconstructed-2d AND ub_project.name=" + self._stream)
+#            pdb.set_trace()
+            files = self._samweb.listFiles("run_number=" + str(runk) + " AND ub_project.name=" + self._stream)
             
             for f in files:
 
