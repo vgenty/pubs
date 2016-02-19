@@ -6,7 +6,7 @@
 <!ENTITY release "v04_36_00_01">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
-<!ENTITY name "reco_trigger_streams">
+<!ENTITY name "reco_PUBS_XMLVAR_INPUT_STREAM">
 <!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
 <!ENTITY prod_version "v3">
 <!ENTITY prod_mode "test">
@@ -58,7 +58,7 @@
     <workdir>/pnfs/uboone/scratch/uboonepro/work/reco2/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>100</numjobs>
     <datatier>reconstructed</datatier>
-    <defname>&prod_mode;_reco1_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <defname>&prod_mode;_reco2_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
