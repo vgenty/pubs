@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_05">
+<!ENTITY release "v04_26_04_06">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
