@@ -72,7 +72,7 @@ case `uname -n` in
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
 	#setup uboonecode v04_26_03_01 -q e7:prof # Used till Nov. 30th. 2015
 	#setup uboonecode v04_26_03_02 -q e7:prof
-	setup uboonecode v04_26_04_05 -q e7:prof
+	setup uboonecode v04_26_04_06 -q e7:prof
 	#setup postgresql v9_3_6 -q p279
 	#setup larbatch v01_20_02
 	#setup sam_web_client v2_0
