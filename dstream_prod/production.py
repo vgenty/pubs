@@ -452,7 +452,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.debug( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Delete the job log, which is now obsolete.
 
@@ -605,6 +605,7 @@ class production(ds_project_base):
         return statusCode
 
     def check( self, statusCode, istage, run, subrun ):
+        self.info('Check run %d, subrun %d' % (run, subrun))
         self._data = str( self._data )
         nSubmit     = None
 
@@ -634,12 +635,14 @@ class production(ds_project_base):
         nout = 0
         nlog = 0
         for path, subdirs, files in os.walk(stobj.outdir):
+            #self.debug(path)
             dname = path.split('/')[-1]
             if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
                 continue
             if path != stobj.outdir:
                 nout += 1
         for path, subdirs, files in os.walk(stobj.logdir):
+            #self.debug(path)
             dname = path.split('/')[-1]
             if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
                 continue
@@ -656,6 +659,7 @@ class production(ds_project_base):
 
         # Do check.
         try:
+            self.info('Invoking project.docheck')
             real_stdout = sys.stdout
             real_stderr = sys.stderr
             sys.stdout = StringIO.StringIO()
@@ -1052,11 +1056,34 @@ Job IDs    : %s
                 self.error(line)
             return statusCode + istage 
 
-        # Here is where we could check for a sam location.
-        # For now we don't do anything, but just hope the delay of an extra step
-        # is enought to let files get a sam location.
+        # Check for locations.
 
-        loc_status = 0
+        loc_status = 1
+        samweb = project_utilities.samweb()
+        dim = project_utilities.dimensions(probj, stobj)
+        filelist = samweb.listFiles(dimensions=dim, stream=True)
+        while 1:
+            try:
+                filename = filelist.next()
+            except StopIteration:
+                break
+
+            # Got a filename.
+
+            self.info('Checking location: %s' % filename)
+
+            # Look for locations.
+
+            has_location = False
+            sam_locs = samweb.locateFile(filenameorid=filename)
+            for sam_loc in sam_locs:
+                has_location = True
+                break
+            if has_location:
+                self.info('File has location.')
+                loc_status = 0
+            else:
+                self.info('File does not have a location.')
 
         # Update pubs status.
         if loc_status == 0:
@@ -1109,7 +1136,7 @@ Job IDs    : %s
                         self.info('Skipping job submission stage: # running/queued total jobs = %d > set limit (%d)' % (self._njobs_tot,self._njobs_tot_limit))
                         continue
 
-                self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
+                self.info('Inspecting status %s @ %s' % (fstatus,self.now_str()))
                 
                 target_list = []
                 if fstatus == self.kINITIATED and self._parent:
@@ -1180,12 +1207,12 @@ Job IDs    : %s
                                 status = self._api.get_status(ds_status(self._project,
                                                                         run, subruns[0], 0))
                                 self._data = status._data
-                                self.debug('Starting a multiple subrun action: %s @ %s' % (
+                                self.info('Starting a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
-                                self.debug('Run %s' % run)
-                                self.debug('Subruns: %s' % str(subruns))
+                                self.info('Run %s' % run)
+                                self.info('Subruns: %s' % str(subruns))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
-                                self.debug('Finished a multiple subrun action: %s @ %s' % (
+                                self.info('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
                                 # Create a status object to be logged to DB (if necessary)
@@ -1237,10 +1264,10 @@ Job IDs    : %s
                             old_state = status._status
                             self._data = status._data
 
-                            self.debug('Starting an action: %s @ %s' % (
+                            self.info('Starting an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
                             statusCode = action( statusCode, istage, run, subrun )
-                            self.debug('Finished an action: %s @ %s' % (
+                            self.info('Finished an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
