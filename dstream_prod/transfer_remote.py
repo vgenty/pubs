@@ -112,9 +112,9 @@ class transfer_remote( ds_project_base ):
         for runk in rs_dict.keys():
 
             # This is a unique run from our above list of runs.
-#            pdb.set_trace()
+
             files = self._samweb.listFiles("run_number=" + str(runk) + " AND ub_project.name=" + self._stream)
-            
+
             for f in files:
 
                 subs = list()
@@ -149,7 +149,8 @@ class transfer_remote( ds_project_base ):
 
                         
                     # Create a status object to be logged to DB (if necessary). Do this for each subrun in this run's file.
-                    for s in subs:
+#                    for s in subs:
+                    for s in rs_dict[runk]:
 
                         statuss = ds_status( project = self._project,
                                             run     = runk,
@@ -222,6 +223,16 @@ class transfer_remote( ds_project_base ):
         pnnl_dir = 'pic/projects/microboone/data/'
         ddir = str(self._samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
         cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + self._stream + "/" + ddir 
+        # For YTT
+        try:
+            del os.environ['X509_USER_KEY']
+        except:
+            pass 
+        try:
+            del os.environ['X509_USER_CERT']
+        except:
+            pass 
+
         proc = sub.Popen(cmd_mkdir,shell=True,stderr=sub.PIPE,stdout=sub.PIPE)
         # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain harmlessly if run is not new.) 
         (out,err) = proc.communicate() 
@@ -294,14 +305,19 @@ class transfer_remote( ds_project_base ):
                 # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
                 pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + self._stream + "/" + ddir + "/" + in_file
                 samadd = self._samweb.addFileLocation(filenameorid=in_file,location=os.path.dirname(pnnl_loc_withcolon))
-                samloc  = self._samweb.locateFile(filenameorid=in_file)
-                if len(samloc)>0:
-                    samcode = 0
-                    self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
-                    self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
-                    self.info('Transfer and samaddFile are successful. Full SAM location for file is now ' + str(samloc))
+                samloc = self._samweb.locateFile(filenameorid=in_file)
             except:
                 self.error('pnnl_transfer finished with a problem on ' + in_file + ' during addFile or locFile. samadd/samloc is: ' + str(samadd)+"/"+str(samloc))
+                self.error('Therefore, pnnl_transfer going to get its own proxy and try again.')
+                self.voms_proxy_get()
+                samadd = self._samweb.addFileLocation(filenameorid=in_file,location=os.path.dirname(pnnl_loc_withcolon))
+                samloc = self._samweb.locateFile(filenameorid=in_file)
+            if len(samloc)>0:
+                samcode = 0
+                self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
+                self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
+                self.info('Transfer and samaddFile are successful. Full SAM location for file is now ' + str(samloc))
+
         else:
             self.error('pnnl_transfer finished with a problem on ' + in_file)
                 
