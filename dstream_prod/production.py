@@ -901,8 +901,10 @@ Job IDs    : %s
             # Create analysis dataset definition.
 
             if declare_status == 0:
-                dim = project_utilities.dimensions(probj, stobj, ana=True)
-                declare_status = project.docheck_definition(stobj.defname, dim, True)
+                nopubs_stobj = stobj
+                nopubs_stobj.pubs_output = 0
+                dim = project_utilities.dimensions(probj, nopubs_stobj, ana=True)
+                declare_status = project.docheck_definition(stobj.ana_defname, dim, True)
 
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
@@ -1058,35 +1060,74 @@ Job IDs    : %s
 
         # Check for locations.
 
-        loc_status = 1
         samweb = project_utilities.samweb()
-        dim = project_utilities.dimensions(probj, stobj)
-        filelist = samweb.listFiles(dimensions=dim, stream=True)
-        while 1:
-            try:
-                filename = filelist.next()
-            except StopIteration:
-                break
 
-            # Got a filename.
+        loc_status = 0
+        if self._store[istage] or self._add_location[istage]:
+            nfile = 0
+            loc_status = 1
+            dim = project_utilities.dimensions(probj, stobj, ana=False)
+            filelist = samweb.listFiles(dimensions=dim, stream=True)
+            while 1:
+                try:
+                    filename = filelist.next()
+                except StopIteration:
+                    break
 
-            self.info('Checking location: %s' % filename)
+                # Got a filename.
 
-            # Look for locations.
+                nfile = nfile + 1
+                self.info('Checking location: %s' % filename)
 
-            has_location = False
-            sam_locs = samweb.locateFile(filenameorid=filename)
-            for sam_loc in sam_locs:
-                has_location = True
-                break
-            if has_location:
-                self.info('File has location.')
+                # Look for locations.
+
+                has_location = False
+                sam_locs = samweb.locateFile(filenameorid=filename)
+                for sam_loc in sam_locs:
+                    has_location = True
+                    break
+                if has_location:
+                    self.info('Artroot file has location.')
+                    loc_status = 0
+                else:
+                    self.info('Artroot file does not have a location.')
+            if nfile == 0:
                 loc_status = 0
-            else:
-                self.info('File does not have a location.')
+
+        loc_status_ana = 0
+        if self._storeana[istage] or self._add_location_ana[istage]:
+            nfile_ana = 0
+            loc_status_ana = 1
+            dim = project_utilities.dimensions(probj, stobj, ana=True)
+            filelist = samweb.listFiles(dimensions=dim, stream=True)
+            while 1:
+                try:
+                    filename = filelist.next()
+                except StopIteration:
+                    break
+
+                # Got a filename.
+
+                nfile_ana = nfile_ana + 1
+                self.info('Checking location: %s' % filename)
+
+                # Look for locations.
+
+                has_location = False
+                sam_locs = samweb.locateFile(filenameorid=filename)
+                for sam_loc in sam_locs:
+                    has_location = True
+                    break
+                if has_location:
+                    self.info('Analysis file has location.')
+                    loc_status_ana = 0
+                else:
+                    self.info('Analysis file does not have a location.')
+            if nfile_ana == 0:
+                loc_status_ana = 0
 
         # Update pubs status.
-        if loc_status == 0:
+        if loc_status == 0 and loc_status_ana == 0:
            statusCode = self.kDONE
            istage += 10
 
@@ -1111,6 +1152,20 @@ Job IDs    : %s
 
     ## @brief access DB and retrieves new runs
     def process( self ):
+
+        # Get a fresh production proxy.
+
+        if os.environ.has_key('X509_USER_CERT') and os.environ.has_key('X509_USER_KEY'):
+            cmd=['voms-proxy-init',
+                 '-rfc',
+                 '-cert', os.environ['X509_USER_CERT'],
+                 '-key', os.environ['X509_USER_KEY'],
+                 '-voms', 'fermilab:/fermilab/uboone/Role=Production']
+            try:
+                subprocess.check_call(cmd, stdout=-1, stderr=-1)
+                self.info('Succeeded to get production grid proxy')
+            except:
+                self.info('Failed to get production grid proxy')
 
         ctr = self._nruns
         #return

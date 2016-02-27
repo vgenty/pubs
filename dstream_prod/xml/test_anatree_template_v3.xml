@@ -46,8 +46,8 @@
     <logdir>/pnfs/uboone/scratch/uboonepro/anatree/&release;/&prod_mode;_&name;_&prod_version;/anatree_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
     <workdir>/pnfs/uboone/scratch/uboonepro/work/anatree/&release;/&prod_mode;_&name;_&prod_version;/anatree_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
     <numjobs>100</numjobs>
-    <datatier>root-tuple</datatier>
-    <defname>&prod_mode;_anatree_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <anadatatier>root-tuple</anadatatier>
+    <anadefname>&prod_mode;_anatree_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 

@@ -62,6 +62,7 @@
     <datatier>PUBS_XMLVAR_DATA_TIER</datatier>
     <anadatatier>root-tuple</anadatatier>
     <defname>&prod_mode;_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <anadefname>&prod_mode;_specalib_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
   </stage>
 
