@@ -20,3 +20,4 @@
 *.pcm
 /GNUmakefile
 /data/*
+/log/uboonegpvm*
