@@ -567,6 +567,8 @@ class production(ds_project_base):
         for job_data in self._data.strip().split(':'):
             job_data_list = job_data.split('+')
             jobid = job_data_list[0]
+            if len(jobid) < 2:
+                continue
 
             #if len(job_data_list) > 1:
             #    submit_time = float(job_data_list[1])
@@ -659,7 +661,7 @@ class production(ds_project_base):
 
         # Do check.
         try:
-            self.info('Invoking project.docheck')
+            self.info('Invoking project.doshorten')
             real_stdout = sys.stdout
             real_stderr = sys.stderr
             sys.stdout = StringIO.StringIO()
@@ -667,8 +669,10 @@ class production(ds_project_base):
             project.doshorten(stobj)
             check_status = 0
             if self._check[istage]:
+                self.info('Invoking project.docheck for artroot files')
                 check_status = project.docheck(probj, stobj, ana=False)
             elif self._checkana[istage]:
+                self.info('Invoking project.docheck for analysis files')
                 check_status = project.docheck(probj, stobj, ana=True)                
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
