@@ -344,14 +344,76 @@ class prodsam(ds_project_base):
                 self.error(line)
             return statusCode
 
-        # Here is where we could check for a sam location.
-        # For now we don't do anything, but just hope the delay of an extra step
-        # is enought to let files get a sam location.
+        # Check for locations.
+
+        samweb = project_utilities.samweb()
 
         loc_status = 0
+        if self._store:
+            nfile = 0
+            loc_status = 1
+            dim = project_utilities.dimensions(probj, stobj, ana=False)
+            filelist = samweb.listFiles(dimensions=dim, stream=True)
+            while 1:
+                try:
+                    filename = filelist.next()
+                except StopIteration:
+                    break
+
+                # Got a filename.
+
+                nfile = nfile + 1
+                self.info('Checking location: %s' % filename)
+
+                # Look for locations.
+
+                has_location = False
+                sam_locs = samweb.locateFile(filenameorid=filename)
+                for sam_loc in sam_locs:
+                    has_location = True
+                    break
+                if has_location:
+                    self.info('Artroot file has location.')
+                    loc_status = 0
+                else:
+                    self.info('Artroot file does not have a location.')
+            if nfile == 0:
+                loc_status = 0
+
+        loc_status_ana = 0
+        if self._storeana:
+            nfile_ana = 0
+            loc_status_ana = 1
+            dim = project_utilities.dimensions(probj, stobj, ana=True)
+            filelist = samweb.listFiles(dimensions=dim, stream=True)
+            while 1:
+                try:
+                    filename = filelist.next()
+                except StopIteration:
+                    break
+
+                # Got a filename.
+
+                nfile_ana = nfile_ana + 1
+                self.info('Checking location: %s' % filename)
+
+                # Look for locations.
+
+                has_location = False
+                sam_locs = samweb.locateFile(filenameorid=filename)
+                for sam_loc in sam_locs:
+                    has_location = True
+                    break
+                if has_location:
+                    self.info('Analysis file has location.')
+                    loc_status_ana = 0
+                else:
+                    self.info('Analysis file does not have a location.')
+            if nfile_ana == 0:
+                loc_status_ana = 0
 
         # Update pubs status.
-        if loc_status == 0:
+        if loc_status == 0 and loc_status_ana == 0:
            statusCode = 10
 
         self.info("SAM store, status: %d" % statusCode)
