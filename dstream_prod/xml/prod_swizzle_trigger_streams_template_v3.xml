@@ -50,6 +50,7 @@
     <anadatatier>root-tuple</anadatatier>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
     <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
+    <memory>4000</memory>
   </stage>
 
   <stage name="PUBS_XMLVAR_STAGE_NAME">
@@ -64,6 +65,7 @@
     <defname>&prod_mode;_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <anadefname>&prod_mode;_specalib_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <memory>1000</memory>
   </stage>
 
   <!-- file type -->
