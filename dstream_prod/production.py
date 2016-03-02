@@ -1168,6 +1168,10 @@ Job IDs    : %s
             try:
                 subprocess.check_call(cmd, stdout=-1, stderr=-1)
                 self.info('Succeeded to get production grid proxy')
+                os.environ['X509_USER_PROXY'] = subprocess.check_output(['voms-proxy-info', '-path']).strip()
+                self.info('Proxy path: %s' % os.environ['X509_USER_PROXY'])
+                del os.environ['X509_USER_CERT']
+                del os.environ['X509_USER_KEY']
             except:
                 self.info('Failed to get production grid proxy')
 
