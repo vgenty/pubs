@@ -83,10 +83,10 @@ case `uname -n` in
 	        setup uboonecode v04_36_00_01 -q e9:prof
 		;;
 	    (uboonegpvm04*)
-	        setup uboonecode v04_26_04_06 -q e7:prof
+	        setup uboonecode v04_26_04_07 -q e7:prof
 		;;
 	    (uboonegpvm05*)
-	        setup uboonecode v04_26_04_06 -q e7:prof
+	        setup uboonecode v04_36_00_02 -q e9:prof
 		;;
 	    (uboonegpvm06*)
 	        setup uboonecode v04_36_00_02 -q e9:prof
