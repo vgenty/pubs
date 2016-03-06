@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_06">
+<!ENTITY release "v04_26_04_07">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
@@ -49,7 +49,7 @@
     <datatier>reconstructed</datatier>
     <anadatatier>root-tuple</anadatatier>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
-    <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
+    <jobsub>-f /pnfs/uboone/persistent/uboonedb_passwd</jobsub>
     <memory>4000</memory>
   </stage>
 
