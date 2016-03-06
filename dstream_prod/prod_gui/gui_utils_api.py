@@ -328,7 +328,7 @@ class GuiUtils():
     #              }
     self.colors={ 1:[72, 118, 255] }#47, 75, 101] }#[0, 255, 255] } #[47, 75, 101] }
     self.update_period = 1 #seconds
-    self.relevant_daemons = [ 'uboonegpvm04.fnal.gov', 'uboonegpvm05.fnal.gov', 'uboonegpvm06.fnal.gov' ]
+    self.relevant_daemons = [ 'uboonegpvm02.fnal.gov', 'uboonegpvm03.fnal.gov', 'uboonegpvm04.fnal.gov', 'uboonegpvm05.fnal.gov' ]
 
   def getColors(self):
     return self.colors
