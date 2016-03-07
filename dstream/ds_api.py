@@ -68,11 +68,12 @@ class ds_reader(pubdb_reader):
 
     ## Function to return a list of project status, extended version.
     ## This function has the same interface as list_status, but will only
-    ## return information within a specified run range, and will only
-    ## return information about subruns whose parent subrun has completion
-    ## status.  The run range, parent project, and parent status information
-    ## must be available as resources in the project description.
-    def list_xstatus(self):
+    ## return information within a specified run range, exclude bad runs,
+    ## and will only return information about subruns whose parent subrun
+    ## has completion status.  The run range, parent project, and parent
+    ## status information must be available as resources in the project
+    ## description.
+    def list_xstatus(self, bad_runs):
         ptable = {}
         for probj in self.list_projects():
             project = probj._project
@@ -122,6 +123,12 @@ class ds_reader(pubdb_reader):
 
             if maxrun >= 0:
                 query += ' %s %s.run <= %d' % (conjunction, project, maxrun)
+                conjunction = 'and'
+
+            # Exclude bad runs.
+
+            for run in bad_runs:
+                query += ' %s %s.run != %d' % (conjunction, project, run)
                 conjunction = 'and'
 
             # Optionally add parent clause.
