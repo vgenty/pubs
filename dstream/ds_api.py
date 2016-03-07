@@ -66,6 +66,89 @@ class ds_reader(pubdb_reader):
 
         return result
 
+    ## Function to return a list of project status, extended version.
+    ## This function has the same interface as list_status, but will only
+    ## return information within a specified run range, and will only
+    ## return information about subruns whose parent subrun has completion
+    ## status.  The run range, parent project, and parent status information
+    ## must be available as resources in the project description.
+    def list_xstatus(self):
+        ptable = {}
+        for probj in self.list_projects():
+            project = probj._project
+
+            # Get parent project resource.
+
+            parent = ''
+            if probj._resource.has_key('PARENT'):
+                parent = probj._resource['PARENT']
+
+            # Get parent status resource.
+
+            parent_status = 0
+            if probj._resource.has_key('PARENT_STATUS'):
+                parent_status = int(probj._resource['PARENT_STATUS'])
+
+            # Get minimum run resource.
+
+            minrun = -1
+            if probj._resource.has_key('MIN_RUN'):
+                minrun = int(probj._resource['MIN_RUN'])
+
+            # Get maximum run resource.
+
+            maxrun = -1
+            if probj._resource.has_key('MAX_RUN'):
+                maxrun = int(probj._resource['MAX_RUN'])
+
+            if not project in ptable.keys():
+                ptable[project] = []
+
+            # Construct query.
+
+            conjunction = 'where'
+
+            query = 'select %s.status from %s' % (project, project)
+            if parent != '':
+                query += ',%s' % parent
+
+            # Optionally add minimum run clause.
+
+            if minrun >= 0:
+                query += ' %s %s.run >= %d' % (conjunction, project, minrun)
+                conjunction = 'and'
+
+            # Optionally add maximum run clause.
+
+            if maxrun >= 0:
+                query += ' %s %s.run <= %d' % (conjunction, project, maxrun)
+                conjunction = 'and'
+
+            # Optionally add parent clause.
+
+            if parent != '':
+                query += ' %s %s.run=%s.run and %s.subrun=%s.subrun and %s.status=%d' % (
+                    conjunction, project, parent, project, parent, parent, parent_status)
+
+            # Execute query and interpret result.
+
+            ok = self.execute(query)
+            if ok and self.nrows()>0:
+                result = {}
+                for row in self:
+                    status=row[0]
+                    if not status in result.keys():
+                        result[status] = 1
+                    else:
+                        result[status] += 1
+                for status in result.keys():
+                    ptable[project].append((status, result[status]))
+
+        # Done
+
+        return ptable
+
+
     ## Function to get latest run
     def get_last_run(self,table):
 

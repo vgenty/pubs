@@ -38,7 +38,7 @@ class GuiUtilsAPI():
         print "Unable to connect to database in query thread... womp womp :("
 
       self.is_conn_alive = self.dbi.is_conn_alive()
-      self.queried_proj_dict = self.dbi.list_status()
+      self.queried_proj_dict = self.dbi.list_xstatus()
       self.projects = self.dbi.list_projects()
       self.relevant_daemons = GuiUtils().getRelevantDaemons()
       self.threadLock = threadlock
@@ -54,7 +54,7 @@ class GuiUtilsAPI():
       #self.threadLock.acquire()
       while True:
         self.is_conn_alive = self.dbi.is_conn_alive()
-        self.queried_proj_dict = self.dbi.list_status()
+        self.queried_proj_dict = self.dbi.xlist_status()
         self.projects = self.dbi.list_projects()
         for servername in self.relevant_daemons:
           self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
@@ -345,16 +345,35 @@ class GuiUtils():
     return self.relevant_daemons
 
   def isInitialStatus(self, status):
-    return True if status in [0, 1, 2] else False
+      if status == 0:
+          return True
+      if status >= 100:
+          return False
+      if status % 10 == 1 or status % 10 == 2:
+          return True
+      return False
 
   def isGoodStatus(self, status):
-    return True if status in [5, 6, 7, 8, 9, 10, 100] else False
+      if status == 0 or status > 100:
+          return False
+      if status % 10 >= 5 and status % 10 <= 9:
+          return True
+      if status % 10 == 0:
+          return True
+      return False
 
   def isIntermediateStatus(self, status):
-    return True if status in [3, 4] else False
+      if status > 100:
+          return False
+      if status % 10 == 3 or status % 10 == 4:
+          return True
+      return False
 
   def isErrorStatus(self,status):
-    return True if status >= 1000 else False
+    if status >= 1000:
+        return True
+    else:
+        return False
 
   def getNGoodInterError_fullhistory(self,projname,history):
     latest_data = []
