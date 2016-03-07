@@ -27,6 +27,11 @@ class GuiUtilsAPI():
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.name = name  
+
+      # Bad run list.
+
+      self.bad_runs = [5220, 5244, 5246, 5248, 5250, 5255, 5257, 5259, 5260]
+
       # DB interface:
       self.dbi = ds_reader(pubdb_conn_info.reader_info())
       self.last_updated = "Not yet updated! Hold your horses..."
@@ -38,7 +43,7 @@ class GuiUtilsAPI():
         print "Unable to connect to database in query thread... womp womp :("
 
       self.is_conn_alive = self.dbi.is_conn_alive()
-      self.queried_proj_dict = self.dbi.list_xstatus()
+      self.queried_proj_dict = self.dbi.list_xstatus(self.bad_runs)
       self.projects = self.dbi.list_projects()
       self.relevant_daemons = GuiUtils().getRelevantDaemons()
       self.threadLock = threadlock
@@ -54,7 +59,7 @@ class GuiUtilsAPI():
       #self.threadLock.acquire()
       while True:
         self.is_conn_alive = self.dbi.is_conn_alive()
-        self.queried_proj_dict = self.dbi.xlist_status()
+        self.queried_proj_dict = self.dbi.list_xstatus(self.bad_runs)
         self.projects = self.dbi.list_projects()
         for servername in self.relevant_daemons:
           self.daemon_last_logtimes[servername] = self.dbi.list_daemon_log(servername)[-1]._logtime
