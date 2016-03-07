@@ -51,6 +51,7 @@ class transfer_remote( ds_project_base ):
         self._parent_project = ''
         self._stream = ''
         self._samweb = None
+        self._version = None
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -62,6 +63,7 @@ class transfer_remote( ds_project_base ):
 #        self._out_dir = '%s' % (resource['OUTDIR'])
         self._parent_project = resource['PARENT_PROJECT']
         self._stream = resource['STREAM']
+        self._version = resource['VERSION']
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
 
 
@@ -113,7 +115,7 @@ class transfer_remote( ds_project_base ):
 
             # This is a unique run from our above list of runs.
 
-            files = self._samweb.listFiles("run_number=" + str(runk) + " AND ub_project.name=" + self._stream)
+            files = self._samweb.listFiles("run_number=" + str(runk) + " AND ub_project.name=" + self._stream + " AND ub_project.version=" + self._version)
 
             for f in files:
 
