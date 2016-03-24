@@ -12,6 +12,7 @@ prod_swizzle_merge_ext_bnb_v3 Merge ext BNB
 prod_swizzle_merge_ext_numi_v3 Merge ext NUMI
 prod_swizzle_merge_ext_unbiased_v3 Merge ext unbiased
 prod_swizzle_merge_mucs_v3 Merge MUCS
+prod_swizzle_merge_notpc_v3 Merge NoTPC
 
 prod_reco_bnb_v4 Reco BNB
 prod_reco_bnb_unbiased_v4 Reco BNB unbiased
