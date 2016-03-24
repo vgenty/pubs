@@ -382,6 +382,8 @@ class production(ds_project_base):
 
     def check_subrun(self, stagename, run, subrun):
 
+        self.info('Checking input readiness for run %d, subrun %d' % (run,subrun))
+
         xml = self.getXML(run)
 
         # First check if we are reading files from sam.
@@ -401,6 +403,9 @@ class production(ds_project_base):
             result = True
         except:
             result = False
+
+        if not result:
+            self.info('Input not ready.')
 
         # Done.
 
@@ -1246,6 +1251,7 @@ Job IDs    : %s
                         nsubruns += 1
 
                     if nsubruns >= self._nruns:
+                        self.info('Quitting run/subrun loop because of nruns limit')
                         break
 
                 # Loop over runs.
