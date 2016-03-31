@@ -101,7 +101,7 @@ class define_samdata(ds_project_base):
         
         runlist = []
         joblist = {}
-        ignore_jobid = (last_run, int(last_subrun) % int(self._num_subrun_per_job))
+        ignore_jobid = (last_run, int(last_subrun) / int(self._num_subrun_per_job))
         
         for run,subrun in runsubrun_list:
             if run in runlist: continue

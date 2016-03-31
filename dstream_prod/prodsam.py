@@ -171,6 +171,8 @@ class prodsam(ds_project_base):
 
     def declare( self, statusCode, run, subrun ):
 
+        self.info('Declaring run %d, subrun %d' % (run,subrun))
+
         # Get project and stage object.
         try:
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', self._stage, run, [subrun], self._version)
