@@ -96,7 +96,8 @@ case `uname -n` in
 		;;
 	esac
 	#setup postgresql v9_3_6 -q p279
-	setup larbatch v01_20_05
+	#setup larbatch v01_20_05
+	setup ubutil v01_38_00 -q e9:prof
 	#setup sam_web_client v2_0
 	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
 
