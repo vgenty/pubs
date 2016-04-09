@@ -74,7 +74,7 @@ case `uname -n` in
 	#setup uboonecode v04_26_03_02 -q e7:prof
 	case `uname -n` in
 	    (uboonegpvm01*)
-	        setup uboonecode v04_36_00_02 -q e9:prof
+	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm02*)
 	        setup uboonecode v04_36_00_01 -q e9:prof
@@ -86,7 +86,7 @@ case `uname -n` in
 	        setup uboonecode v04_26_04_08 -q e7:prof
 		;;
 	    (uboonegpvm05*)
-	        setup uboonecode v04_36_00_02 -q e9:prof
+	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm06*)
 	        setup uboonecode v04_36_00_02 -q e9:prof
