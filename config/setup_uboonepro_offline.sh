@@ -70,6 +70,7 @@ case `uname -n` in
 	fi
 	source $HOME/.sqlaccess/prod_access.sh
 	source /grid/fermiapp/products/uboone/setup_uboone.sh
+	source /uboone/app/users/uboonepro/mrb/localProducts_larsoft_v05_08_00_e9_prof/setup
 	#setup uboonecode v04_26_03_01 -q e7:prof # Used till Nov. 30th. 2015
 	#setup uboonecode v04_26_03_02 -q e7:prof
 	case `uname -n` in
@@ -77,7 +78,7 @@ case `uname -n` in
 	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm02*)
-	        setup uboonecode v04_36_00_01 -q e9:prof
+	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm03*)
 	        setup uboonecode v04_36_00_01 -q e9:prof
@@ -97,7 +98,7 @@ case `uname -n` in
 	esac
 	#setup postgresql v9_3_6 -q p279
 	#setup larbatch v01_20_05
-	setup ubutil v01_38_00 -q e9:prof
+	setup ubutil v01_38_01 -q e9:prof
 	#setup sam_web_client v2_0
 	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
 

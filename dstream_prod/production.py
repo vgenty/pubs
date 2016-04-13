@@ -6,6 +6,7 @@
 # python include
 import time,os,sys,time
 import subprocess, traceback
+import shutil
 import StringIO
 # pub_dbi package include
 from pub_dbi import DBException
@@ -44,16 +45,20 @@ class production(ds_project_base):
     _project = 'production'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__( self, arg = '' ):
+    def __init__( self, proj_name='', table_name='' ):
 
         # Call base class ctor
-        super(production,self).__init__(arg)
+        super(production,self).__init__(proj_name)
 
-        if not arg:
+        if not proj_name:
             self.error('No project name specified!')
             raise Exception
 
-        self._project = arg
+        if table_name == '':
+            table_name = proj_name
+
+        self._project = proj_name
+        self._table = table_name
         self._parent  = ''
         self._parent_status = None
         # Actions associated with single subruns.
@@ -81,6 +86,7 @@ class production(ds_project_base):
         self._max_runid   = None
         self._min_runid   = None
         self._max_status  = len(self.PROD_STATUS)
+        self._min_status  = 0
         self._nruns       = None
         self._njobs       = 0
         self._njobs_limit = None
@@ -200,6 +206,8 @@ class production(ds_project_base):
 
             if proj_info._resource.has_key('MAX_STATUS'):
                 self._max_status = int(proj_info._resource['MAX_STATUS'])
+            if proj_info._resource.has_key('MIN_STATUS'):
+                self._min_status = int(proj_info._resource['MIN_STATUS'])
 
             # Set subrun multiplicity.
 
@@ -534,7 +542,7 @@ class production(ds_project_base):
             if self._runid_status.has_key(merge_runid):
                 merge_status = self._runid_status[merge_runid]
             else:
-                merge_ds_status = self._api.get_status(ds_status(self._project, run, merge_subrun, 0))
+                merge_ds_status = self._api.get_status(ds_status(self._table, run, merge_subrun, 0))
                 merge_status = merge_ds_status._status
                 self._runid_status[merge_runid] = merge_status
 
@@ -648,6 +656,10 @@ class production(ds_project_base):
                 continue
             if path != stobj.outdir:
                 nout += 1
+            if nout > 1:
+                self.info('Deleting extra output directory %s' % path)
+                shutil.rmtree(path)
+                nout -= 1
         for path, subdirs, files in os.walk(stobj.logdir):
             #self.debug(path)
             dname = path.split('/')[-1]
@@ -866,6 +878,8 @@ Job IDs    : %s
 
     def declare( self, statusCode, istage, run, subrun ):
 
+        self.info('Declare run %d, subrun %d' % (run, subrun))
+
         # Get stage name.
         stage = self._digit_to_name[istage]
 
@@ -1043,6 +1057,7 @@ Job IDs    : %s
 
 
     def check_location( self, statusCode, istage, run, subrun ):
+        self.info('Check location for run %d, subrun %d' % (run, subrun))
 
         # Check store flag.
 
@@ -1190,9 +1205,11 @@ Job IDs    : %s
         # temporary fix: record the processed run and only process once per process function call
         processed_run=[]
         for istage in stage_v:
-            # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
+            self.info('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
                 if istatus > self._max_status:
+                    continue
+                if istatus < self._min_status:
                     continue
                 fstatus = istage + istatus
 
@@ -1208,9 +1225,9 @@ Job IDs    : %s
                 
                 target_list = []
                 if fstatus == self.kINITIATED and self._parent:
-                    target_list = self.get_xtable_runs([self._project,self._parent],[fstatus,self._parent_status])
+                    target_list = self.get_xtable_runs([self._table,self._parent],[fstatus,self._parent_status])
                 else:
-                    target_list = self.get_runs( self._project, fstatus )
+                    target_list = self.get_runs( self._table, fstatus )
 
                 run_subruns = {}
                 nsubruns = 0
@@ -1273,7 +1290,7 @@ Job IDs    : %s
 
                             multiaction = self.PROD_MULTIACTION[statusCode]
                             if multiaction != None:
-                                status = self._api.get_status(ds_status(self._project,
+                                status = self._api.get_status(ds_status(self._table,
                                                                         run, subruns[0], 0))
                                 self._data = status._data
                                 self.info('Starting a multiple subrun action: %s @ %s' % (
@@ -1295,7 +1312,7 @@ Job IDs    : %s
                                             data = self._data[process]
                                         else:
                                             data = None
-                                    status = ds_status( project = self._project,
+                                    status = ds_status( project = self._table,
                                                         run     = run,
                                                         subrun  = subrun,
                                                         seq     = 0,
@@ -1312,7 +1329,9 @@ Job IDs    : %s
                                 ctr -= len(subruns)
 
                                 # Break from loop if counter became 0
-                                if ctr < 0: return
+                                if ctr < 0:
+                                    self.info('Quitting because of nruns limit')
+                                    return
 
                             subruns = []
 
@@ -1327,7 +1346,7 @@ Job IDs    : %s
 
                             # Read data.
 
-                            status = self._api.get_status(ds_status(self._project,
+                            status = self._api.get_status(ds_status(self._table,
                                                                     run, subrun, 0))
                             old_data  = status._data
                             old_state = status._status
@@ -1341,7 +1360,7 @@ Job IDs    : %s
 
                             # Create a status object to be logged to DB (if necessary)
                             if not old_state == statusCode or not self._data == old_data:
-                                self.log_status( ds_status( project = self._project,
+                                self.log_status( ds_status( project = self._table,
                                                             run     = run,
                                                             subrun  = subrun,
                                                             seq     = 0,
@@ -1355,7 +1374,9 @@ Job IDs    : %s
                             self._runid_status[runid] = statusCode
 
                             # Break from loop if counter became 0
-                            if ctr < 0: return
+                            if ctr < 0:
+                                self.info('Quitting because of nruns limit')
+                                return
         return
 
 
@@ -1363,8 +1384,12 @@ Job IDs    : %s
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]
+    if len(sys.argv) > 2:
+        table_name = sys.argv[2]
+    else:
+        table_name = proj_name
 
-    test_obj = production(proj_name)
+    test_obj = production(proj_name, table_name)
     
     now_str = time.strftime('%Y-%m-%d %H:%M:%S')
     test_obj.info("Project %s start @ %s" % (proj_name,now_str))
