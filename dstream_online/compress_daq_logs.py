@@ -1,8 +1,11 @@
 from dstream import ds_status
+from dstream import ds_project_base
+from ds_online_constants import *
 import os
 import glob
 import datetime
 import tarfile
+import sys
 
 class compress_daq_logs(ds_project_base):
 
@@ -14,8 +17,6 @@ class compress_daq_logs(ds_project_base):
     _outfile_format = ''
     _infile_foramt  = ''
     _infile_age     = 0
-    _parent_project = ''
-    _parent_status = kSTATUS_DONE
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
@@ -34,26 +35,21 @@ class compress_daq_logs(ds_project_base):
         if not self.connect():
             self.error('Cannot connect to DB! Aborting...')
             return False
-        try:
-            resource = self._api.get_resource(self._project)
-            self._nruns = int(resource['NRUNS'])
-            self._out_dir = '%s' % (resource['OUTDIR'])
-            self._outfile_format = resource['OUTFILE_FORMAT']
-            self._in_dir = '%s' % (resource['INDIR'])
-            self._infile_format = resource['INFILE_FORMAT']
-            self._infile_age = resource['INFILE_AGE']
-            self._parent_project = resource['PARENT_PROJECT']
-            exec('self._parent_status  = int(%s)' % resource['PARENT_STATUS'])
-            status_name(self._parent_status)
-        except Exception:
-            return False
+
+        resource = self._api.get_resource(self._project)
+        self._nruns = int(resource['NRUNS'])
+        self._out_dir = '%s' % (resource['OUTDIR'])
+        self._outfile_format = resource['OUTFILE_FORMAT']
+        self._in_dir = '%s' % (resource['INDIR'])
+        self._infile_format = resource['INFILE_FORMAT']
+        self._infile_age = resource['INFILE_AGE']
 
         return True
 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
         ctr = self._nruns
-        for x in self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] ):
+        for x in self.get_runs(self._project, kSTATUS_INIT):
             # Break from loop if counter became 0
             if ctr <= 0: break
 
@@ -112,7 +108,7 @@ class compress_daq_logs(ds_project_base):
     ## @brief access DB and validate finished runs
     def validate( self ):
         ctr = self._nruns
-        for x in self.get_xtable_runs( self._project, kSTATUS_TO_BE_VALIDATED ):
+        for x in self.get_runs( self._project, kSTATUS_TO_BE_VALIDATED ):
             # Break from loop if counter became 0
             if ctr <= 0: break
 
