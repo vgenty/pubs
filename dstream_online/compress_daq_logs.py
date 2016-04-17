@@ -153,8 +153,10 @@ class compress_daq_logs(ds_project_base):
                     # Remove the original DAQ logs
                     self.info('Done with compressing DAQ logs from run %d!  Removing...' % run )
                     for f in flist:
+                        self.debug('Removing %s' % f )
                         os.remove( f )
-                    check_flist = glob.glob( self._infile_format % run )
+                    self.debug('fFormat: %s' % fFormat )
+                    check_flist = glob.glob( fFormat )
                     if len( check_flist ) == 0:
                         statusCode = kSTATUS_DONE
                     else:
