@@ -81,7 +81,7 @@ case `uname -n` in
 	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm03*)
-	        setup uboonecode v04_36_00_01 -q e9:prof
+	        setup uboonecode v05_08_00 -q e9:prof
 		;;
 	    (uboonegpvm04*)
 	        setup uboonecode v04_26_04_08 -q e7:prof
@@ -92,6 +92,10 @@ case `uname -n` in
 	    (uboonegpvm06*)
 	        setup uboonecode v04_36_00_02 -q e9:prof
 		;;
+            (uboonegpvm07*)
+                setup uboonecode v04_36_00_01 -q e9:prof
+                ;;
+
 	    (*)
 	        echo "Unknown node"
 		;;
