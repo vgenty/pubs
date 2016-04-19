@@ -73,10 +73,12 @@ class ds_reader(pubdb_reader):
     ## has completion status.  The run range, parent project, and parent
     ## status information must be available as resources in the project
     ## description.
-    def list_xstatus(self, bad_runs):
+    def list_xstatus(self, bad_runs=[], prjname=None):
         ptable = {}
         for probj in self.list_projects():
             project = probj._project
+            if prjname != None and project != prjname:
+                continue
 
             # Get parent project resource.
 
