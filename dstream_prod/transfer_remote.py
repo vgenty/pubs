@@ -52,6 +52,7 @@ class transfer_remote( ds_project_base ):
         self._stream = ''
         self._samweb = None
         self._version = None
+        self._success = int(kSTATUS_RECO_SUCCESS)
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -64,9 +65,13 @@ class transfer_remote( ds_project_base ):
         self._parent_project = resource['PARENT_PROJECT']
         self._stream = resource['STREAM']
         self._version = resource['VERSION']
+
         exec('self._sort_new_to_old = bool(%s)' % resource['SORT_NEW_TO_OLD'])
-
-
+        try:
+                self._success = int(resource['SUCCESS'])
+        except:
+            pass
+                
     def transfer_file( self ):
 
         # Attempt to connect DB. If failure, abort
@@ -97,7 +102,7 @@ class transfer_remote( ds_project_base ):
         run = subrun = None
 
         for x in self.get_xtable_runs([self._project, self._parent_project],
-                                      [1, kSTATUS_RECO_SUCCESS] ):  # ,self._sort_new_to_old):
+                                      [1, self._success] ):  # ,self._sort_new_to_old):
 
             # Counter decreases by 1
             ctr -= 1
@@ -224,7 +229,7 @@ class transfer_remote( ds_project_base ):
         pnnl_machine = "dtn2.pnl.gov"
         pnnl_dir = 'pic/projects/microboone/data/'
         ddir = str(self._samweb.getMetadata(filenameorid=in_file)['runs'][0][0])
-        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + self._stream + "/" + ddir 
+        cmd_mkdir = "ssh chur558@" + pnnl_machine + " mkdir -p "  + "/" + pnnl_dir + self._stream + "/" + self._version + "/" + ddir 
         # For YTT
         try:
             del os.environ['X509_USER_KEY']
@@ -239,7 +244,7 @@ class transfer_remote( ds_project_base ):
         # block, but plow on w.o. regard to whether I was successful to create ddir. (Cuz this will complain harmlessly if run is not new.) 
         (out,err) = proc.communicate() 
         
-        pnnl_loc = pnnl_machine + "/" + pnnl_dir + self._stream + "/" + ddir + "/" + in_file
+        pnnl_loc = pnnl_machine + "/" + pnnl_dir + self._stream + "/" + self._version + "/" + ddir + "/" + in_file
         cmd_gsiftp_to_sshftp = "globus-url-copy -rst -vb -p 10 gsiftp://fndca1.fnal.gov:2811" + full_file + " sshftp://chur558@" + pnnl_loc
 
         # Popen() gymnastics here
@@ -305,7 +310,7 @@ class transfer_remote( ds_project_base ):
         if not transfer:
             try:
                 # Then samweb.addFileLocation() to pnnl location, with resj capturing that return status.
-                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + self._stream + "/" + ddir + "/" + in_file
+                pnnl_loc_withcolon = pnnl_machine + ":/" + pnnl_dir + self._stream + "/" + self._version + "/" + ddir + "/" + in_file
                 samadd = self._samweb.addFileLocation(filenameorid=in_file,location=os.path.dirname(pnnl_loc_withcolon))
                 samloc = self._samweb.locateFile(filenameorid=in_file)
             except:
@@ -317,7 +322,7 @@ class transfer_remote( ds_project_base ):
             if len(samloc)>0:
                 samcode = 0
                 self.info('pnnl_transfer() finished moving ' + in_file + ', size ' + str(size_in) + ' [bytes], to PNNL')
-                self.info('Transfer rate was ' + str(out.split("\n")[4].split("    ")[8]))
+                self.info('Transfer rate was ' + str(out.split("\n")[4].split(" ")[-3]))
                 self.info('Transfer and samaddFile are successful. Full SAM location for file is now ' + str(samloc))
 
         else:
