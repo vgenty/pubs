@@ -5,7 +5,7 @@ import project_utilities
 
 # Hard-wired parameters.
 
-dim = 'file_type data and file_format root and data_tier root-tuple and ub_project.stage anatree and ub_project.version prod_v05_08_00 and availability: anylocation'
+dim = 'file_type data and file_format root and data_tier root-tuple and ub_project.stage anatree and ub_project.version prod_v05_08_00 and availability: anylocation and event_count 0'
 
 # Get samweb
 

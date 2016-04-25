@@ -3,12 +3,12 @@
 import sys, os
 os.environ['PUB_LOGGER_LEVEL'] = 'kLOGGER_ERROR'
 
-from dstream.ds_api import ds_reader
+from dstream.ds_api import ds_writer
 from pub_dbi import pubdb_conn_info
 
 # DB connection.
 
-dbi = ds_reader(pubdb_conn_info.reader_info())
+dbi = ds_writer(pubdb_conn_info.writer_info())
 try:
     dbi.connect()
     print "Connection successful."
@@ -48,10 +48,24 @@ for probj in dbi.list_projects():
     query += ' order by run desc, subrun'
     ok = dbi.execute(query)
     if ok and dbi.nrows()>0:
+        rslist = []
         for row in dbi:
             run = int(row[0])
             subrun = int(row[1])
             status = int(row[2])
+            rslist.append((run, subrun, status))
+
+        for rs in rslist:
+            run = rs[0]
+            subrun = rs[1]
+            status = rs[2]
             print run, subrun, status
+            new_status = status - 1000 - status%10 + 1
+            print 'Resetting status from %d to %d' % (status, new_status)
+            update_query = 'update %s set status=%d where run=%d and subrun=%d and status=%d' % (
+                project, new_status, run, subrun, status)
+            ok = dbi.commit(update_query)
+            if ok:
+                print 'Update OK.'
 
 sys.exit(0)

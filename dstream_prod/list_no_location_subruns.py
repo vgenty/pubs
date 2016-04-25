@@ -54,11 +54,16 @@ for probj in dbi.list_projects():
         for run, subrun in rs:
             print run, subrun
             rs_dim = dim + ' and run_number %d.%d' % (run, subrun)
+            has_location = True
             filelist = samweb.listFiles(dimensions=rs_dim)
-            if len(filelist) == 0:
-                print run, subrun
+            for filename in filelist:
+                locs = samweb.locateFile(filename)
+                if len(locs) == 0:
+                    has_location = False
+            if not has_location:
+                print filename
                 update_query = 'update %s set status=%d where status=%d and run=%d and subrun=%d' % (
-                    prjname, complete_status-5, complete_status, run, subrun)
+                    prjname, complete_status-2, complete_status, run, subrun)
                 ok = dbi.commit(update_query)
                 if ok:
                     print 'Update OK.'
