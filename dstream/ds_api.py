@@ -75,7 +75,7 @@ class ds_reader(pubdb_reader):
     ## description.
     def list_xstatus(self, bad_runs=[], prjname=None):
         ptable = {}
-        for probj in self.list_projects():
+        for probj in self.list_all_projects():
             project = probj._project
             if prjname != None and project != prjname:
                 continue
