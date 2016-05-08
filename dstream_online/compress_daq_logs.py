@@ -132,10 +132,12 @@ class compress_daq_logs(ds_project_base):
 
             fFormat = self._infile_format % run
             fFormat = '%s/%s' %( self._in_dir, fFormat )
-            # self.debug('Fileformat: %s ' % fFormat )
+            self.debug('Fileformat: %s ' % fFormat )
             flist = glob.glob( fFormat )
             if flist:
                 date, hour, minute, second = self.find_run_time( flist[0] )
+            else:
+                continue
 
             outName = self._outfile_format % ( run, date, hour, minute, second )
             outFile = '%s/%s' % ( self._out_dir, outName )
