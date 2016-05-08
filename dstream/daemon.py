@@ -465,7 +465,7 @@ class proc_daemon(ds_base):
                     if self._project_v[x].active(): active_ctr += 1
 
                 if active_ctr >= self._config._max_proj_ctr:
-                    self.debug('Max number of simultaneous project execution reached.')
+                    self.info('Max number of simultaneous project execution reached.')
                     break
                 
                 last_ts = self._exe_time_v[proj]

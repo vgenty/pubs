@@ -100,7 +100,7 @@ class transfer_remote( ds_project_base ):
 
 
         run = subrun = None
-
+        pdb.set_trace()
         for x in self.get_xtable_runs([self._project, self._parent_project],
                                       [1, self._success] ):  # ,self._sort_new_to_old):
 

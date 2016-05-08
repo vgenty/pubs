@@ -6,7 +6,6 @@
 # python include
 import time,os,sys,time
 import subprocess, traceback
-import shutil
 import StringIO
 # pub_dbi package include
 from pub_dbi import DBException
@@ -45,20 +44,16 @@ class production(ds_project_base):
     _project = 'production'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__( self, proj_name='', table_name='' ):
+    def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super(production,self).__init__(proj_name)
+        super(production,self).__init__(arg)
 
-        if not proj_name:
+        if not arg:
             self.error('No project name specified!')
             raise Exception
 
-        if table_name == '':
-            table_name = proj_name
-
-        self._project = proj_name
-        self._table = table_name
+        self._project = arg
         self._parent  = ''
         self._parent_status = None
         # Actions associated with single subruns.
@@ -86,7 +81,6 @@ class production(ds_project_base):
         self._max_runid   = None
         self._min_runid   = None
         self._max_status  = len(self.PROD_STATUS)
-        self._min_status  = 0
         self._nruns       = None
         self._njobs       = 0
         self._njobs_limit = None
@@ -206,8 +200,6 @@ class production(ds_project_base):
 
             if proj_info._resource.has_key('MAX_STATUS'):
                 self._max_status = int(proj_info._resource['MAX_STATUS'])
-            if proj_info._resource.has_key('MIN_STATUS'):
-                self._min_status = int(proj_info._resource['MIN_STATUS'])
 
             # Set subrun multiplicity.
 
@@ -390,8 +382,6 @@ class production(ds_project_base):
 
     def check_subrun(self, stagename, run, subrun):
 
-        self.info('Checking input readiness for run %d, subrun %d' % (run,subrun))
-
         xml = self.getXML(run)
 
         # First check if we are reading files from sam.
@@ -407,27 +397,10 @@ class production(ds_project_base):
         # Check if this (run, subrun) has pubs input available.
         result = False
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
             result = True
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             result = False
-
-        if not result:
-            self.info('Input not ready.')
 
         # Done.
 
@@ -444,33 +417,15 @@ class production(ds_project_base):
         # Main command
         stage = self._digit_to_name[istage]
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
                                                   self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except PubsDeadEndError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
         except PubsInputError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -488,25 +443,8 @@ class production(ds_project_base):
         # Submit job.
         jobid=''
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
-
-            # Submit jobs.
-
             jobid = project.dosubmit(probj, stobj)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
@@ -514,7 +452,7 @@ class production(ds_project_base):
             for line in traceback.format_tb(e[2]):
                 self.error(line)
             return current_status
-        self.info( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
+        self.debug( 'Submit jobs: xml: %s, stage: %s' %( self.getXML(run), stage ) )
 
         # Delete the job log, which is now obsolete.
 
@@ -591,7 +529,7 @@ class production(ds_project_base):
             if self._runid_status.has_key(merge_runid):
                 merge_status = self._runid_status[merge_runid]
             else:
-                merge_ds_status = self._api.get_status(ds_status(self._table, run, merge_subrun, 0))
+                merge_ds_status = self._api.get_status(ds_status(self._project, run, merge_subrun, 0))
                 merge_status = merge_ds_status._status
                 self._runid_status[merge_runid] = merge_status
 
@@ -629,8 +567,6 @@ class production(ds_project_base):
         for job_data in self._data.strip().split(':'):
             job_data_list = job_data.split('+')
             jobid = job_data_list[0]
-            if len(jobid) < 2:
-                continue
 
             #if len(job_data_list) > 1:
             #    submit_time = float(job_data_list[1])
@@ -650,7 +586,24 @@ class production(ds_project_base):
                     job_status = self.kRUNNING
                     statusCode = self.kRUNNING
                     break
-            msg = 'jobid: %s: ' % jobid
+		if job_state == 'H':
+		   self.info("Killing held job %s " % jobid)
+		   command = ['jobsub_rm']
+                   command.append('--jobid')
+		   command.append('%s' % jobid)
+                   command.append('-G')
+		   command.append('uboone')
+		   command.append('--role')
+		   command.append('Production')
+		   self.info('Command: %s' % command)
+                   jobinfo = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		   jobout, joberr = jobinfo.communicate()
+                   rc = jobinfo.poll()
+                   if rc != 0:
+                     self.error('Unable to kill held job %s' % jobid)
+		     self.error('Error is: %s' % joberr)
+            
+	    msg = 'jobid: %s: ' % jobid
             if job_status == self.kSUBMITTED:
                 msg += 'SUBMITTED'
             elif job_status == self.kRUNNING:
@@ -669,7 +622,6 @@ class production(ds_project_base):
         return statusCode
 
     def check( self, statusCode, istage, run, subrun ):
-        self.info('Check run %d, subrun %d' % (run, subrun))
         self._data = str( self._data )
         nSubmit     = None
 
@@ -684,22 +636,8 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -713,18 +651,12 @@ class production(ds_project_base):
         nout = 0
         nlog = 0
         for path, subdirs, files in os.walk(stobj.outdir):
-            #self.debug(path)
             dname = path.split('/')[-1]
             if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
                 continue
             if path != stobj.outdir:
                 nout += 1
-            if nout > 1:
-                self.info('Deleting extra output directory %s' % path)
-                shutil.rmtree(path)
-                nout -= 1
         for path, subdirs, files in os.walk(stobj.logdir):
-            #self.debug(path)
             dname = path.split('/')[-1]
             if not len(dname.split('_'))==2 or not dname.split('_')[0].isdigit() or not dname.split('_')[1].isdigit():
                 continue
@@ -741,7 +673,6 @@ class production(ds_project_base):
 
         # Do check.
         try:
-            self.info('Invoking project.doshorten')
             real_stdout = sys.stdout
             real_stderr = sys.stderr
             sys.stdout = StringIO.StringIO()
@@ -749,10 +680,8 @@ class production(ds_project_base):
             project.doshorten(stobj)
             check_status = 0
             if self._check[istage]:
-                self.info('Invoking project.docheck for artroot files')
                 check_status = project.docheck(probj, stobj, ana=False)
             elif self._checkana[istage]:
-                self.info('Invoking project.docheck for analysis files')
                 check_status = project.docheck(probj, stobj, ana=True)                
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
@@ -818,35 +747,31 @@ Job IDs    : %s
         return result
 
     # Multiple-subrun recovery.
-
+    
+    #RECOVER
     def recover( self, statusCode, istage, run, subruns ):
         current_status = statusCode + istage
         error_status   = current_status + 1000
+	
+	nSubmit     = None
+        # Get the number of job submissions.
+        if self._data != None and len(self._data) > 0:
+
+            holder = self._data.split(':')
+            nSubmit = len(holder)
+	
                              
         # Report starting
         self.info('Recover run %d, subruns %s' % (run, str(subruns)))
-        self._data = str( self._data )
+        self._data = str( self._data )	
+	
 
         # Main command
         stage = self._digit_to_name[istage]
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
                                                   self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except PubsInputError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
@@ -866,23 +791,20 @@ Job IDs    : %s
 
         # Submit job.
         jobid=''
-        try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
+	
+	'''
+	if(nSubmit == 2):
+          stobj.memory = '6 GB'
+	'''
+	if(nSubmit == 2):
+	  stobj.memory = '12 GB'
+	  stobj.resource = 'FERMICLOUD'
+	  stobj.jobsub = '--maxConcurrent 50'
+	
+	
+	try:
             jobid = project.dosubmit(probj, stobj)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
@@ -969,29 +891,13 @@ Job IDs    : %s
 
     def declare( self, statusCode, istage, run, subrun ):
 
-        self.info('Declare run %d, subrun %d' % (run, subrun))
-
         # Get stage name.
         stage = self._digit_to_name[istage]
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -1029,10 +935,8 @@ Job IDs    : %s
             # Create analysis dataset definition.
 
             if declare_status == 0:
-                nopubs_stobj = stobj
-                nopubs_stobj.pubs_output = 0
-                dim = project_utilities.dimensions(probj, nopubs_stobj, ana=True)
-                declare_status = project.docheck_definition(stobj.ana_defname, dim, True)
+                dim = project_utilities.dimensions(probj, stobj, ana=True)
+                declare_status = project.docheck_definition(stobj.defname, dim, True)
 
             strout = sys.stdout.getvalue()
             strerr = sys.stderr.getvalue()
@@ -1085,22 +989,8 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -1176,7 +1066,6 @@ Job IDs    : %s
 
 
     def check_location( self, statusCode, istage, run, subrun ):
-        self.info('Check location for run %d, subrun %d' % (run, subrun))
 
         # Check store flag.
 
@@ -1191,22 +1080,8 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -1215,76 +1090,14 @@ Job IDs    : %s
                 self.error(line)
             return statusCode + istage 
 
-        # Check for locations.
-
-        samweb = project_utilities.samweb()
+        # Here is where we could check for a sam location.
+        # For now we don't do anything, but just hope the delay of an extra step
+        # is enought to let files get a sam location.
 
         loc_status = 0
-        if self._store[istage] or self._add_location[istage]:
-            nfile = 0
-            loc_status = 1
-            dim = project_utilities.dimensions(probj, stobj, ana=False)
-            filelist = samweb.listFiles(dimensions=dim, stream=True)
-            while 1:
-                try:
-                    filename = filelist.next()
-                except StopIteration:
-                    break
-
-                # Got a filename.
-
-                nfile = nfile + 1
-                self.info('Checking location: %s' % filename)
-
-                # Look for locations.
-
-                has_location = False
-                sam_locs = samweb.locateFile(filenameorid=filename)
-                for sam_loc in sam_locs:
-                    has_location = True
-                    break
-                if has_location:
-                    self.info('Artroot file has location.')
-                    loc_status = 0
-                else:
-                    self.info('Artroot file does not have a location.')
-            if nfile == 0:
-                loc_status = 0
-
-        loc_status_ana = 0
-        if self._storeana[istage] or self._add_location_ana[istage]:
-            nfile_ana = 0
-            loc_status_ana = 1
-            dim = project_utilities.dimensions(probj, stobj, ana=True)
-            filelist = samweb.listFiles(dimensions=dim, stream=True)
-            while 1:
-                try:
-                    filename = filelist.next()
-                except StopIteration:
-                    break
-
-                # Got a filename.
-
-                nfile_ana = nfile_ana + 1
-                self.info('Checking location: %s' % filename)
-
-                # Look for locations.
-
-                has_location = False
-                sam_locs = samweb.locateFile(filenameorid=filename)
-                for sam_loc in sam_locs:
-                    has_location = True
-                    break
-                if has_location:
-                    self.info('Analysis file has location.')
-                    loc_status_ana = 0
-                else:
-                    self.info('Analysis file does not have a location.')
-            if nfile_ana == 0:
-                loc_status_ana = 0
 
         # Update pubs status.
-        if loc_status == 0 and loc_status_ana == 0:
+        if loc_status == 0:
            statusCode = self.kDONE
            istage += 10
 
@@ -1310,24 +1123,6 @@ Job IDs    : %s
     ## @brief access DB and retrieves new runs
     def process( self ):
 
-        # Get a fresh production proxy.
-
-        if os.environ.has_key('X509_USER_CERT') and os.environ.has_key('X509_USER_KEY'):
-            cmd=['voms-proxy-init',
-                 '-rfc',
-                 '-cert', os.environ['X509_USER_CERT'],
-                 '-key', os.environ['X509_USER_KEY'],
-                 '-voms', 'fermilab:/fermilab/uboone/Role=Production']
-            try:
-                subprocess.check_call(cmd, stdout=-1, stderr=-1)
-                self.info('Succeeded to get production grid proxy')
-                os.environ['X509_USER_PROXY'] = subprocess.check_output(['voms-proxy-info', '-path']).strip()
-                self.info('Proxy path: %s' % os.environ['X509_USER_PROXY'])
-                del os.environ['X509_USER_CERT']
-                del os.environ['X509_USER_KEY']
-            except:
-                self.info('Failed to get production grid proxy')
-
         ctr = self._nruns
         #return
         # Kazu's version of submit jobs
@@ -1338,11 +1133,9 @@ Job IDs    : %s
         # temporary fix: record the processed run and only process once per process function call
         processed_run=[]
         for istage in stage_v:
-            self.info('Inspecting stage %s @ %s' % (istage,self.now_str()))
+            # self.warning('Inspecting stage %s @ %s' % (istage,self.now_str()))
             for istatus in status_v:
                 if istatus > self._max_status:
-                    continue
-                if istatus < self._min_status:
                     continue
                 fstatus = istage + istatus
 
@@ -1354,13 +1147,13 @@ Job IDs    : %s
                         self.info('Skipping job submission stage: # running/queued total jobs = %d > set limit (%d)' % (self._njobs_tot,self._njobs_tot_limit))
                         continue
 
-                self.info('Inspecting status %s @ %s' % (fstatus,self.now_str()))
+                self.debug('Inspecting status %s @ %s' % (fstatus,self.now_str()))
                 
                 target_list = []
                 if fstatus == self.kINITIATED and self._parent:
-                    target_list = self.get_xtable_runs([self._table,self._parent],[fstatus,self._parent_status])
+                    target_list = self.get_xtable_runs([self._project,self._parent],[fstatus,self._parent_status])
                 else:
-                    target_list = self.get_runs( self._table, fstatus )
+                    target_list = self.get_runs( self._project, fstatus )
 
                 run_subruns = {}
                 nsubruns = 0
@@ -1401,7 +1194,6 @@ Job IDs    : %s
                         nsubruns += 1
 
                     if nsubruns >= self._nruns:
-                        self.info('Quitting run/subrun loop because of nruns limit')
                         break
 
                 # Loop over runs.
@@ -1423,15 +1215,15 @@ Job IDs    : %s
 
                             multiaction = self.PROD_MULTIACTION[statusCode]
                             if multiaction != None:
-                                status = self._api.get_status(ds_status(self._table,
+                                status = self._api.get_status(ds_status(self._project,
                                                                         run, subruns[0], 0))
                                 self._data = status._data
-                                self.info('Starting a multiple subrun action: %s @ %s' % (
+                                self.debug('Starting a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
-                                self.info('Run %s' % run)
-                                self.info('Subruns: %s' % str(subruns))
+                                self.debug('Run %s' % run)
+                                self.debug('Subruns: %s' % str(subruns))
                                 statusCode = multiaction( statusCode, istage, run, subruns )
-                                self.info('Finished a multiple subrun action: %s @ %s' % (
+                                self.debug('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
                                 # Create a status object to be logged to DB (if necessary)
@@ -1445,7 +1237,7 @@ Job IDs    : %s
                                             data = self._data[process]
                                         else:
                                             data = None
-                                    status = ds_status( project = self._table,
+                                    status = ds_status( project = self._project,
                                                         run     = run,
                                                         subrun  = subrun,
                                                         seq     = 0,
@@ -1462,9 +1254,7 @@ Job IDs    : %s
                                 ctr -= len(subruns)
 
                                 # Break from loop if counter became 0
-                                if ctr < 0:
-                                    self.info('Quitting because of nruns limit')
-                                    return
+                                if ctr < 0: return
 
                             subruns = []
 
@@ -1479,21 +1269,21 @@ Job IDs    : %s
 
                             # Read data.
 
-                            status = self._api.get_status(ds_status(self._table,
+                            status = self._api.get_status(ds_status(self._project,
                                                                     run, subrun, 0))
                             old_data  = status._data
                             old_state = status._status
                             self._data = status._data
 
-                            self.info('Starting an action: %s @ %s' % (
+                            self.debug('Starting an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
                             statusCode = action( statusCode, istage, run, subrun )
-                            self.info('Finished an action: %s @ %s' % (
+                            self.debug('Finished an action: %s @ %s' % (
                                     action.__name__,self.now_str()))
 
                             # Create a status object to be logged to DB (if necessary)
                             if not old_state == statusCode or not self._data == old_data:
-                                self.log_status( ds_status( project = self._table,
+                                self.log_status( ds_status( project = self._project,
                                                             run     = run,
                                                             subrun  = subrun,
                                                             seq     = 0,
@@ -1507,9 +1297,7 @@ Job IDs    : %s
                             self._runid_status[runid] = statusCode
 
                             # Break from loop if counter became 0
-                            if ctr < 0:
-                                self.info('Quitting because of nruns limit')
-                                return
+                            if ctr < 0: return
         return
 
 
@@ -1517,12 +1305,8 @@ Job IDs    : %s
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]
-    if len(sys.argv) > 2:
-        table_name = sys.argv[2]
-    else:
-        table_name = proj_name
 
-    test_obj = production(proj_name, table_name)
+    test_obj = production(proj_name)
     
     now_str = time.strftime('%Y-%m-%d %H:%M:%S')
     test_obj.info("Project %s start @ %s" % (proj_name,now_str))
@@ -1532,5 +1316,4 @@ if __name__ == '__main__':
     now_str = time.strftime('%Y-%m-%d %H:%M:%S')
     test_obj.info("Project %s end @ %s" % (proj_name,now_str))
 
-    #sys.exit(0)
-    os._exit(0)
+    sys.exit(0)

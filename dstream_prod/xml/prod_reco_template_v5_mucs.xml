@@ -52,7 +52,7 @@
   </stage>
 
   <stage name="reco2">
-    <fcl>reco_uboone_data_Feb2016_driver_stage2.fcl</fcl>
+    <fcl>reco_uboone_data_Feb2016_driver_stage2_MuCSTags.fcl</fcl>
     <outdir>/pnfs/uboone/scratch/uboonepro/reco2/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
     <logdir>/pnfs/uboone/scratch/uboonepro/reco2/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
     <workdir>/pnfs/uboone/scratch/uboonepro/work/reco2/&release;/&prod_mode;_&name;_&prod_version;/reco_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>

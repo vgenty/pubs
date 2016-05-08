@@ -407,23 +407,9 @@ class production(ds_project_base):
         # Check if this (run, subrun) has pubs input available.
         result = False
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             project.get_pubs_stage(xml, '', stagename, run, [subrun], self._version)
             result = True
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             result = False
 
         if not result:
@@ -444,33 +430,15 @@ class production(ds_project_base):
         # Main command
         stage = self._digit_to_name[istage]
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
                                                   self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except PubsDeadEndError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsDeadEndError raised by project.get_pubs_stage')
             return 100
         except PubsInputError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -488,25 +456,8 @@ class production(ds_project_base):
         # Submit job.
         jobid=''
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
-
-            # Submit jobs.
-
             jobid = project.dosubmit(probj, stobj)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
@@ -578,6 +529,7 @@ class production(ds_project_base):
         return statusCode
 
     def isRunning( self, statusCode, istage, run, subrun ):
+        self.info('Is running run %d, subrun %d' % (run, subrun))
         current_status = statusCode + istage
         error_status   = current_status + 1000
 
@@ -594,6 +546,7 @@ class production(ds_project_base):
                 merge_ds_status = self._api.get_status(ds_status(self._table, run, merge_subrun, 0))
                 merge_status = merge_ds_status._status
                 self._runid_status[merge_runid] = merge_status
+            self.info('Merge status = %d' % merge_status)
 
             if merge_status in [istage + self.kSUBMITTED, istage + self.kRUNNING]:
                 self._njobs += 1
@@ -684,22 +637,8 @@ class production(ds_project_base):
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -742,10 +681,10 @@ class production(ds_project_base):
         # Do check.
         try:
             self.info('Invoking project.doshorten')
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
+            #real_stdout = sys.stdout
+            #real_stderr = sys.stderr
+            #sys.stdout = StringIO.StringIO()
+            #sys.stderr = StringIO.StringIO()
             project.doshorten(stobj)
             check_status = 0
             if self._check[istage]:
@@ -754,17 +693,17 @@ class production(ds_project_base):
             elif self._checkana[istage]:
                 self.info('Invoking project.docheck for analysis files')
                 check_status = project.docheck(probj, stobj, ana=True)                
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
+            #strout = sys.stdout.getvalue()
+            #strerr = sys.stderr.getvalue()
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
+            #if strout:
+            #    self.info(strout)
+            #if strerr:
+            #    self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
             self.error('Exception raised by project.docheck:')
             e = sys.exc_info()
             for item in e:
@@ -830,23 +769,9 @@ Job IDs    : %s
         # Main command
         stage = self._digit_to_name[istage]
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, subruns,
                                                   self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except PubsInputError:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.info('Exception PubsInputError raised by project.get_pubs_stage')
             return current_status
         except:
@@ -867,22 +792,8 @@ Job IDs    : %s
         # Submit job.
         jobid=''
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             jobid = project.dosubmit(probj, stobj)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.dosubmit:')
             e = sys.exc_info()
             for item in e:
@@ -976,22 +887,8 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -1002,10 +899,10 @@ Job IDs    : %s
 
         # Do declaration.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
+            #real_stdout = sys.stdout
+            #real_stderr = sys.stderr
+            #sys.stdout = StringIO.StringIO()
+            #sys.stderr = StringIO.StringIO()
 
             # Declare artroot files.
 
@@ -1034,17 +931,17 @@ Job IDs    : %s
                 dim = project_utilities.dimensions(probj, nopubs_stobj, ana=True)
                 declare_status = project.docheck_definition(stobj.ana_defname, dim, True)
 
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
+            #strout = sys.stdout.getvalue()
+            #strerr = sys.stderr.getvalue()
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
+            #if strout:
+            #    self.info(strout)
+            #if strerr:
+            #    self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
             self.error('Exception raised by project.docheck_definitions:')
             e = sys.exc_info()
             for item in e:
@@ -1085,22 +982,8 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
@@ -1111,10 +994,10 @@ Job IDs    : %s
 
         # Do store.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
+            #real_stdout = sys.stdout
+            #real_stderr = sys.stderr
+            #sys.stdout = StringIO.StringIO()
+            #sys.stderr = StringIO.StringIO()
 
             # Store files.
 
@@ -1137,17 +1020,17 @@ Job IDs    : %s
                                                          remove=False,
                                                          upload=self._storeana[istage])
 
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
+            #strout = sys.stdout.getvalue()
+            #strerr = sys.stderr.getvalue()
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
+            #if strout:
+            #    self.info(strout)
+            #if strerr:
+            #    self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+            #sys.stdout = real_stdout
+            #sys.stderr = real_stderr
             self.error('Exception raised by project.docheck_locations:')
             e = sys.exc_info()
             for item in e:
@@ -1191,22 +1074,8 @@ Job IDs    : %s
 
         # Get project and stage object.
         try:
-            real_stdout = sys.stdout
-            real_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
             probj, stobj = project.get_pubs_stage(self.getXML(run), '', stage, run, [subrun], self._version)
-            strout = sys.stdout.getvalue()
-            strerr = sys.stderr.getvalue()
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            if strout:
-                self.info(strout)
-            if strerr:
-                self.warning(strerr)
         except:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
             self.error('Exception raised by project.get_pubs_stage:')
             e = sys.exc_info()
             for item in e:
