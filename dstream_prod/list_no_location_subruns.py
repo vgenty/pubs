@@ -20,8 +20,9 @@ except:
 # Hard-wired parameters.
 
 complete_status = 10
-prjname='prod_anatree_ext_bnb_v5'
-dim = 'file_type data and file_format root and data_tier root-tuple and ub_project.name anatree_outextbnb and ub_project.stage anatree and ub_project.version prod_v05_08_00 and availability: anylocation'
+prjname='prod_anatree_mucs_v5'
+dim = 'file_type data and file_format root and data_tier root-tuple and ub_project.name anatree_outmucs and ub_project.stage anatree and ub_project.version prod_v05_08_00 and availability: virtual'
+#dim = 'file_type data and file_format artroot and data_tier reconstructed and ub_project.name reco_outmucs and ub_project.stage reco2 and ub_project.version prod_v05_08_00 and availability: virtual'
 
 # Get samweb
 
@@ -45,7 +46,7 @@ for probj in dbi.list_projects():
     # Query completed subruns for this project.
 
     query = 'select run, subrun from %s where status=%d' % (project, complete_status)
-    query += ' order by run desc, subrun'
+    query += ' order by run desc, subrun desc'
     ok = dbi.execute(query)
     if ok and dbi.nrows()>0:
         rs = []

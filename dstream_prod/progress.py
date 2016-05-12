@@ -53,27 +53,27 @@ html.write('<p>Updated %s</p>\n' % update_time)
 # Generate legend.
 
 html.write(
-'''<table width=400>
+'''<table style="width:300px">
 <caption><strong>Legend</strong></caption>
 <tr bgcolor=#ffffe0>
 <td>Complete</td>
-<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-green2.gif height=13 width=100></td>
+<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-green2.gif height=13 width=150></td>
 </tr>
 <tr bgcolor=#ffffe0>
 <td>Merged</td>
-<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-green.gif height=13 width=100></td>
+<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-green.gif height=13 width=150></td>
 </tr>
 <tr bgcolor=#ffffe0>
 <td>Processing</td>
-<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-yellow.gif height=13 width=33><img src=http://www-microboone.fnal.gov/images/bar-orange.gif height=13 width=33><img src=http://www-microboone.fnal.gov/images/bar-purple.gif height=13 width=34></td>
+<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-yellow.gif height=13 width=50><img src=http://www-microboone.fnal.gov/images/bar-orange.gif height=13 width=50><img src=http://www-microboone.fnal.gov/images/bar-purple.gif height=13 width=50></td>
 </tr>
 <tr bgcolor=#ffffe0>
 <td>Waiting</td>
-<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-blue.gif height=13 width=100></td>
+<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-blue.gif height=13 width=150></td>
 </tr>
 <tr bgcolor=#ffffe0>
 <td>Error</td>
-<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-red.gif height=13 width=100></td>
+<td nowrap align=left><img src=http://www-microboone.fnal.gov/images/bar-red.gif height=13 width=150></td>
 </tr>
 </table>
 ''')
@@ -195,40 +195,41 @@ html.write(
 <caption><strong>Reconstruction</strong></caption>
 ''')
 
-streams = [('prod_reco_bnb_v5', 'BNB'),
-           ('prod_reco_ext_bnb_v5', 'BNB External'),
-           ('prod_reco_bnb_unbiased_v5', 'BNB Unbiased'),
-           ('prod_reco_numi_v5', 'NUMI'),
-           ('prod_reco_ext_numi_v5', 'NUMI External'),
-           ('prod_reco_numi_unbiased_v5', 'NUMI Unbiased'),
-           ('prod_reco_ext_unbiased_v5', 'External Unbiased'),
-           ('prod_reco_mucs_v5', 'MuCS')]
+streams = [(['prod_reco_bnb_v5', 'prod_reco_bnb_v5_quietwires'], 'BNB'),
+           (['prod_reco_ext_bnb_v5', 'prod_reco_ext_bnb_v5_quietwires'], 'BNB External'),
+           (['prod_reco_bnb_unbiased_v5', 'prod_reco_bnb_unbiased_v5_quietwires'], 'BNB Unbiased'),
+           (['prod_reco_numi_v5', 'prod_reco_numi_v5_quietwires'], 'NUMI'),
+           (['prod_reco_ext_numi_v5', 'prod_reco_ext_numi_v5_quietwires'], 'NUMI External'),
+           (['prod_reco_numi_unbiased_v5', 'prod_reco_numi_unbiased_v5_quietwires'], 'NUMI Unbiased'),
+           (['prod_reco_ext_unbiased_v5', 'prod_reco_ext_unbiased_v5_quietwires'], 'External Unbiased'),
+           (['prod_reco_mucs_v5', 'prod_reco_mucs_v5_quietwires'], 'MuCS')]
 
 for stream in streams:
-    project = stream[0]
+    projects = stream[0]
     name = stream[1]
-    prjdict = dbi.list_xstatus(bad_runs, project)
     n1 = 0
     n2 = 0
     n3 = 0
     n4 = 0
     n5 = 0
     n6 = 0
-    if not prjdict.has_key(project):
-        continue
-    for status, num in prjdict[project]:
-        if status == 20:
-            n1 += num
-        elif status >=2 and status <= 9:
-            n2 += num
-        elif status >=10 and status <= 11:
-            n3 += num
-        elif status >=12 and status <= 19:
-            n4 += num
-        elif status == 1:
-            n5 += num
-        elif status >= 1000:
-            n6 += num
+    for project in projects:
+        prjdict = dbi.list_xstatus(bad_runs, project)
+        #if not prjdict.has_key(project):
+        #    continue
+        for status, num in prjdict[project]:
+            if status == 20:
+                n1 += num
+            elif status >=2 and status <= 9:
+                n2 += num
+            elif status >=10 and status <= 11:
+                n3 += num
+            elif status >=12 and status <= 19:
+                n4 += num
+            elif status == 1:
+                n5 += num
+            elif status >= 1000:
+                n6 += num
     ntot = n1 + n2 + n3 + n4 + n5 + n6
     s1 = int(500. * float(n1) / float(ntot))
     s2 = int(500. * float(n2) / float(ntot))
@@ -269,34 +270,35 @@ html.write(
 <caption><strong>Analysis Tree</strong></caption>
 ''')
 
-streams = [('prod_anatree_bnb_v5', 'BNB'),
-           ('prod_anatree_ext_bnb_v5', 'BNB External'),
-           ('prod_anatree_bnb_unbiased_v5', 'BNB Unbiased'),
-           ('prod_anatree_numi_v5', 'NUMI'),
-           ('prod_anatree_ext_numi_v5', 'NUMI External'),
-           ('prod_anatree_numi_unbiased_v5', 'NUMI Unbiased'),
-           ('prod_anatree_ext_unbiased_v5', 'External Unbiased'),
-           ('prod_anatree_mucs_v5', 'MuCS')]
+streams = [(['prod_anatree_bnb_v5', 'prod_anatree_bnb_v5_quietwires'], 'BNB'),
+           (['prod_anatree_ext_bnb_v5', 'prod_anatree_ext_bnb_v5_quietwires'], 'BNB External'),
+           (['prod_anatree_bnb_unbiased_v5', 'prod_anatree_bnb_unbiased_v5_quietwires'], 'BNB Unbiased'),
+           (['prod_anatree_numi_v5', 'prod_anatree_numi_v5_quietwires'], 'NUMI'),
+           (['prod_anatree_ext_numi_v5', 'prod_anatree_ext_numi_v5_quietwires'], 'NUMI External'),
+           (['prod_anatree_numi_unbiased_v5', 'prod_anatree_numi_unbiased_v5_quietwires'], 'NUMI Unbiased'),
+           (['prod_anatree_ext_unbiased_v5', 'prod_anatree_ext_unbiased_v5_quietwires'], 'External Unbiased'),
+           (['prod_anatree_mucs_v5', 'prod_anatree_mucs_v5_quietwires'], 'MuCS')]
 
 for stream in streams:
-    project = stream[0]
+    projects = stream[0]
     name = stream[1]
-    prjdict = dbi.list_xstatus(bad_runs, project)
     n1 = 0
     n2 = 0
     n3 = 0
     n4 = 0
-    if not prjdict.has_key(project):
-        continue
-    for status, num in prjdict[project]:
-        if status == 10:
-            n1 += num
-        elif status >=2 and status <= 9:
-            n2 += num
-        elif status == 1:
-            n3 += num
-        elif status >= 1000:
-            n4 += num
+    for project in projects:
+        prjdict = dbi.list_xstatus(bad_runs, project)
+        #if not prjdict.has_key(project):
+        #    continue
+        for status, num in prjdict[project]:
+            if status == 10:
+                n1 += num
+            elif status >=2 and status <= 9:
+                n2 += num
+            elif status == 1:
+                n3 += num
+            elif status >= 1000:
+                n4 += num
     ntot = n1 + n2 + n3 + n4
     s1 = int(500. * float(n1) / float(max(1, ntot)))
     s2 = int(500. * float(n2) / float(max(1, ntot)))
