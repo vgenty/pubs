@@ -78,7 +78,8 @@ def disk_usage_alert(proj,max_disk,emails):
 
     # if we are at a round 5-minute interval
     timenow = datetime.datetime.now()
-    
+    print timenow
+    print timenow.minute
     # send email only on the hour
     if ( timenow.minute != 0 ):
         return
@@ -125,8 +126,6 @@ def disk_usage_alert(proj,max_disk,emails):
         if (str(key) == 'DISK_USAGE_HOME'):
             lastDISK = float(last_log_dict[key])*100
             secondDISK = float(second_log_dict[key])*100
-
-    print 'home disk usage: ',lastDist
 
     if ( (lastDISK > max_disk) and (lastDISK > secondDISK) ):
         
