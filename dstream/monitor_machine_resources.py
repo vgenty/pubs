@@ -79,7 +79,8 @@ def disk_usage_alert(proj,max_disk,emails):
     # if we are at a round 5-minute interval
     timenow = datetime.datetime.now()
     
-    if ( timenow.minute == 0 ):
+    # send email only on the hour
+    if ( timenow.minute != 0 ):
         return
 
     last_entry = proj[-1]
