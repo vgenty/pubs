@@ -81,19 +81,19 @@ case `uname -n` in
 	        setup uboonecode v05_08_00_01 -q e9:prof
 		;;
 	    (uboonegpvm03*)
-	        setup uboonecode v05_08_00 -q e9:prof
+	        setup uboonecode v05_08_00_01 -q e9:prof
 		;;
 	    (uboonegpvm04*)
-	        setup uboonecode v04_26_04_08 -q e7:prof
+	        setup uboonecode v04_26_04_09 -q e7:prof
 		;;
 	    (uboonegpvm05*)
 	        setup uboonecode v05_08_00_01 -q e9:prof
 		;;
 	    (uboonegpvm06*)
-	        setup uboonecode v04_36_00_02 -q e9:prof
+	        setup uboonecode v04_36_00_03 -q e9:prof
 		;;
             (uboonegpvm07*)
-                setup uboonecode v04_36_00_03 -q e9:prof
+                setup uboonecode v05_11_01 -q e9:prof
                 ;;
 
 	    (*)
@@ -101,7 +101,7 @@ case `uname -n` in
 		;;
 	esac
 	#setup postgresql v9_3_6 -q p279
-	setup larbatch v01_21_02
+	setup larbatch v01_21_05
 	#setup ubutil v01_39_00 -q e9:prof
 	#setup sam_web_client v2_0
 	export PYTHONPATH=/uboone/app/users/uboonepro/requests/build/lib:$PYTHONPATH
