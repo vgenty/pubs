@@ -27,10 +27,21 @@
 #
 # Here are the fixes that this script knows how to do.
 #
-# 1.  Missing input errors:
+# 1.  Missing input errors.
 #
 #     Set the subrun status back to one.  Declare any existing files
-#     in sam as bad.
+#     in sam as bad.  This only works if the status is something
+#     other than one.
+#
+# 2.  No file declared.
+#
+#     Set the subrun status back to one.
+#
+# 3.  No files.list or filesana.list.
+#
+#     Set the subrun status back to one.  Declare any existing files
+#     in sam as bad.  In this case, it can sometimes work to manually 
+#     rerun project.py --check(ana).
 #
 ######################################################################
 

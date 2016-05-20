@@ -28,6 +28,13 @@ for probj in dbi.list_projects():
     if project.find('pnnl') >= 0:
         continue
     print '\nProject %s:' % project
+
+    # Get table.
+
+    table = project
+    words = probj._command.split()
+    if len(words) > 3:
+        table = words[3]
     
     # Get parent project resource.
 
@@ -55,26 +62,26 @@ for probj in dbi.list_projects():
 
     # Construct query.
 
-    query = 'select %s.run,%s.subrun from %s' % (project, project, project)
+    query = 'select %s.run,%s.subrun from %s' % (table, table, table)
     if parent != '':
         query += ',%s' % parent
-    query += ' where %s.status=1' % project
+    query += ' where %s.status=1' % table
 
     # Optionally add minimum run clause.
 
     if minrun >= 0:
-        query += ' and %s.run >= %d' % (project, minrun)
+        query += ' and %s.run >= %d' % (table, minrun)
 
     # Optionally add maximum run clause.
 
     if maxrun >= 0:
-        query += ' and %s.run <= %d' % (project, maxrun)
+        query += ' and %s.run <= %d' % (table, maxrun)
 
     # Optionally add parent clause.
 
     if parent != '':
         query += ' and %s.run=%s.run and %s.subrun=%s.subrun and %s.status=%d' % (
-            project, parent, project, parent, parent, parent_status)
+            table, parent, table, parent, parent, parent_status)
 
     # Execute query.
 
