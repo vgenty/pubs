@@ -43,6 +43,8 @@
 #     in sam as bad.  In this case, it can sometimes work to manually 
 #     rerun project.py --check(ana).
 #
+# 4.  Missing files in dropbox.
+#
 ######################################################################
 
 import sys, os
@@ -497,9 +499,9 @@ for proj_info in proj_infos:
                             print 'Xml = %s' % xml
                             continue
 
-                    # For status 7 and 8, check for validated files on disk.
+                    # For status 7-9, check for validated files on disk.
 
-                    if check and status - base_status >= 7 and status - base_status <= 8:
+                    if check and status - base_status >= 7 and status - base_status <= 9:
 
                         listpath = os.path.join(pubs_stobj.logdir, 'files.list')
                         if not project_utilities.safeexist(listpath):
@@ -538,9 +540,9 @@ for proj_info in proj_infos:
                             else:
                                 disk_file_names.append(os.path.basename(filepath))
 
-                    # For status 7 and 8, check for validated analysis files on disk.
+                    # For status 7-9, check for validated analysis files on disk.
 
-                    if checkana and status - base_status >= 7 and status - base_status <= 8:
+                    if checkana and status - base_status >= 7 and status - base_status <= 9:
 
                         listpath = os.path.join(pubs_stobj.logdir, 'filesana.list')
                         if not project_utilities.safeexist(listpath):
@@ -577,4 +579,59 @@ for proj_info in proj_infos:
                                 print 'Xml = %s' % xml
                                 continue
                             else:
-                                disk_file_names.append(os.path.basename(filepath))
+                                disk_ana_file_names.append(os.path.basename(filepath))
+
+                    # For status 9, check for file in dropbox.
+
+                    if store and status - base_status == 9:
+
+                        for filename in declared_files:
+                            dropbox_dir = project_utilities.get_dropbox(filename)
+                            dropbox_path = os.path.join(dropbox_dir, filename)
+                            if not project_utilities.safeexist(dropbox_path):
+                                print '***Error missing dropbox file %s' % dropbox_path
+                                print 'Xml = %s' % xml
+                                if fix:
+                                    print 'Fixing.'
+
+                                    # Declare files bad in sam.
+
+                                    for filename in declared_files:
+                                        declare_bad(samweb, filename)
+                                    for filename in ana_declared_files:
+                                        declare_bad(samweb, filename)
+
+                                    # Reset status back to 1.
+
+                                    update_query = 'update %s set status=1 where run=%d and subrun=%d and status=%d' % (table, run, subrun, status)
+                                    ok = dbi.commit(update_query)
+                                    if ok:
+                                        print 'Status reset to 1.'
+
+                    # For status 9, check for analysis files in dropbox.
+
+                    if storeana and status - base_status == 9:
+
+                        for filename in ana_declared_files:
+                            dropbox_dir = project_utilities.get_dropbox(filename)
+                            dropbox_path = os.path.join(dropbox_dir, filename)
+                            if not project_utilities.safeexist(dropbox_path):
+                                print '***Error missing dropbox file %s' % dropbox_path
+                                print 'Xml = %s' % xml
+                                if fix:
+                                    print 'Fixing.'
+
+                                    # Declare files bad in sam.
+
+                                    for filename in declared_files:
+                                        declare_bad(samweb, filename)
+                                    for filename in ana_declared_files:
+                                        declare_bad(samweb, filename)
+
+                                    # Reset status back to 1.
+
+                                    update_query = 'update %s set status=1 where run=%d and subrun=%d and status=%d' % (table, run, subrun, status)
+                                    ok = dbi.commit(update_query)
+                                    if ok:
+                                        print 'Status reset to 1.'
+
