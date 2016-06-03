@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v05_08_00_01">
+<!ENTITY release "v05_08_00_02">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "anatree_PUBS_XMLVAR_INPUT_STREAM">
