@@ -78,8 +78,10 @@ def disk_usage_alert(proj,max_disk,emails):
 
     # if we are at a round 5-minute interval
     timenow = datetime.datetime.now()
-    
-    if ( (timenow.minute%5) != 0):
+    print timenow
+    print timenow.minute
+    # send email only within [0,11] minute range of each hour
+    if ( (timenow.minute >= 0) and (timenow.minute <= 11) ):
         return
 
     last_entry = proj[-1]
@@ -139,6 +141,7 @@ def plot_resource_usage(proj,outpath):
     try:
         import matplotlib
         matplotlib.use('Agg')
+        matplotlib.rcParams.update({'font.size': 16})
         import matplotlib.pyplot as plt
         import matplotlib.dates as dts
         from mpl_toolkits.axes_grid1 import host_subplot
@@ -254,20 +257,36 @@ def plot_resource_usage(proj,outpath):
     # example for multi-axes (i.e. >= 3) plot here:
     # http://stackoverflow.com/questions/9103166/multiple-axis-in-matplotlib-with-different-scales
 
+    # -------------------------------------
+    # first plot : save disk-occupancy info
+    # -------------------------------------
+
     fig, ax = plt.subplots(1,figsize=(12,8))
 
     ax.set_xlabel('Time',fontsize=20)
     ax.set_ylabel('Usage %',fontsize=20)
     ax.set_ylim([0,100])
 
+    # save either /data/ or /datalocal/ depending on which is available
+    # for this machine
+    dates_DISK = None
+    rates_DISK = None
+    diskNAME  = ''
+
     if (len(datesCPU) == len(CPU) and (len(CPU) != 0)):
         cpuPlot  = ax.plot_date(datesCPU,CPU, fmt='o', color='k', label='CPU usage', markersize=7)    
     if (len(datesDISK) == len(DISK) and (len(DISK) != 0)):
         diskPlot = ax.plot_date(datesDISK,DISK, fmt='o--', color='r',label='DISK usage @ /data/', markersize=7)
+        dates_DISK = datesDISK
+        rates_DISK = DISK
+        diskNAME  = 'data'
     if (len(datesRAM) == len(RAM) and (len(RAM) != 0)):
         ramPlot  = ax.plot_date(datesRAM,RAM, fmt='o', color='b', label='RAM usage', markersize=7)
     if (len(datesDLOC) == len(DLOC) and (len(DLOC) != 0)):
         diskPlot = ax.plot_date(datesDLOC,DLOC, fmt='*--', color='m',label='DISK usage @ /datalocal/', markersize=7)
+        dates_DISK = datesDLOC
+        rates_DISK = DLOC
+        diskNAME  = 'datalocal'
     if (len(datesHOME) == len(HOME) and (len(HOME) != 0)):
         diskPlot = ax.plot_date(datesHOME,HOME, fmt='^--', color='c',label='DISK usage @ /home/', markersize=7)
 
@@ -311,10 +330,6 @@ def plot_resource_usage(proj,outpath):
     ax.format_xdata = dts.DateFormatter('%m-%d %H:%M')
     fig.autofmt_xdate()
             
-    #host.axis["left"].label.set_color('r')
-    #pltRAM.axis["right"].label.set_color('b')
-    #pltCPU.axis["right"].label.set_color('k')
-
     #plt.figure.autofmt_xdate()    
     plt.grid()
     plt.title('Resource Usage on %s'%(servername), fontsize=20)
@@ -339,7 +354,6 @@ def plot_resource_usage(proj,outpath):
     # number of samples to average over
     Navg = 7
 
-    #print len(rTHOME)
     # 1st step is to calculate and smooth the rates
     if (len(rTHOME) > Navg):
         dsize = getDISKSize('/home/')
@@ -357,7 +371,12 @@ def plot_resource_usage(proj,outpath):
         datesRHOME  = dts.date2num(rateTHOME)
         plt.plot(datesRHOME,rateHOME,'o--',color='c',label='Rate @ /home/')
 
-    #print len(rTDISK)
+    # save either /data/ or /datalocal/ depending on which is available
+    # for this machine
+    dates_rDISK = None
+    rates_rDISK = None
+    diskNAMEr   = ''
+
     if (len(rTDISK) > Navg):
         dsize = getDISKSize('/data/')
         #datesRDATA, rateDATA = smooth_rate(dsize,rTDISK,rDISK,Navg)
@@ -373,8 +392,10 @@ def plot_resource_usage(proj,outpath):
             rateDATA.append(rdata/Navg)
         datesRDATA  = dts.date2num(rateTDATA)
         plt.plot(datesRDATA,rateDATA,'o--',color='r',label='Rate @ /data/')
+        diskNAMEr   = 'data'
+        dates_rDISK = datesRDATA
+        rates_rDISK = rateDATA
 
-    #print len(rTDLOC)
     if (len(rTDLOC) > Navg):
         dsize = getDISKSize('/datalocal/')
         #datesRDLOC, rateDLOC = smooth_rate(dsize,rTDLOC,rDLOC,Navg)
@@ -390,6 +411,9 @@ def plot_resource_usage(proj,outpath):
             rateDLOC.append(rdloc/Navg)
         datesRDLOC  = dts.date2num(rateTDLOC)
         plt.plot(datesRDLOC,rateDLOC,'o--',color='m',label='Rate @ /datalocal/')
+        diskNAMEr   = 'datalocal'
+        dates_rDISK = datesRDLOC
+        rates_rDISK = rateDLOC
 
         
     Rmin = -50
@@ -434,8 +458,52 @@ def plot_resource_usage(proj,outpath):
     plt.savefig(outpathResource)
 
 
+    # ----------------------------------------------------------
+    #  third plot : simplified shifter version of resource usage
+    # ----------------------------------------------------------
+    fig, ax = plt.subplots(1,figsize=(12,8))
+    ay = ax.twinx()
+
+    axrate = ax.plot(dates_rDISK,rates_rDISK,'o--',color='r')#,label='Rate @ /%s/'%diskNAMEr)
+    # format the ticks
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(daysFmt)
+    ax.set_xlim([datetime.datetime.now()-maxTime, datetime.datetime.now()])
+    ax.set_xlabel('Time',fontsize=20)
+    ax.set_ylabel('Disk Filling/Draining Rate [ MB/sec ]',fontsize=20)
+    # set the min & max y-lim based on the axis ranges
+    rate_min = np.min(rates_rDISK)
+    rate_max = np.max(rates_rDISK)
+    ax.set_ylim([rate_min-50,rate_max+50])
+    #ax.spines['left'].set_color('red')
+    ax.tick_params(axis='y',colors='red')
+    ax.yaxis.label.set_color('red')
+    # calculate average rate for last 40 data points (roughly 1 hour of data but this is estimated
+    # and not calculated from variables so poor practice and may change)
+    avgrate = np.mean( rates_rDISK[-40:] )
+    if (avgrate < 100):
+        plt.text(0.02,0.9,'Avg Filling Rate [last hour] : %i MB/sec'%int(avgrate), verticalalignment='bottom',horizontalalignment='left', color='k', transform=ax.transAxes )
+    else:
+        plt.text(0.02,0.9,'Avg Filling Rate [last hour] : %i MB/sec. CONTACT EXPERT NOW!'%int(avgrate), verticalalignment='bottom',horizontalalignment='left', color='r', fontsize=20, transform=ax.transAxes )
+
+    ayocc = ay.plot(dates_DISK, rates_DISK, 'o--', color='b')#,label='Occupancy @ /%s/'%diskNAME)
+    ay.set_ylabel('Disk Occupancy [%]',fontsize=20)
+    #ay.spines['right'].set_color('blue')
+    ay.set_ylim([-5.,105.])
+    ay.tick_params(axis='y',colors='blue')
+    ay.yaxis.label.set_color('blue')
+
+    plt.grid()
+    #plt.legend( [axrate, ayocc], ['Rate @ /%s/'%diskNAMEr, 'Occupancy @ /%s/'%diskNAME], loc=2)
+    plt.text(0.02,0.05,'Last Updated @ %s'%(datetime.datetime.now().strftime("%d/%m/%y %H:%M")), verticalalignment='bottom',horizontalalignment='left',color='m', transform=ax.transAxes)
+    plt.title('Resource Monitoring for %s @ /%s/'%(servername.split('.')[0], diskNAME) )
+
+    outpathResource = outpath+"simple_monitoring_%s.png"%(servername)
+    plt.savefig(outpathResource)
+    
+
     # -------------------------------------------------------
-    #  third plot : number of projects running simulatneously
+    #  fourt plot : number of projects running simulatneously
     # -------------------------------------------------------
     
     fig, ax = plt.subplots(1,figsize=(12,8))
