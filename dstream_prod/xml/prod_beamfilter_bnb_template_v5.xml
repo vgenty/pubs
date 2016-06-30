@@ -40,7 +40,7 @@
   <!-- Project stages -->
 
   <stage name="beamfilter">
-    <inputdef>prod_bnb_reco_neutrino2016_goodruns_v5</inputdef>
+    <inputdef>prod_bnb2_reco_neutrino2016_goodruns_v5</inputdef>
     <fcl>filter_data_beamdata_beamdataquality.fcl</fcl>
     <outdir>/pnfs/uboone/scratch/uboonepro/beamfilter/&release;/&prod_mode;_&name;_&prod_version;/beamfilter_bnb_&run_tag;</outdir>
     <logdir>/pnfs/uboone/scratch/uboonepro/beamfilter/&release;/&prod_mode;_&name;_&prod_version;/beamfilter_bnb_&run_tag;</logdir>
