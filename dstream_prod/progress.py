@@ -2,6 +2,7 @@
 
 import sys, os, datetime
 os.environ['PUB_LOGGER_LEVEL'] = 'kLOGGER_ERROR'
+import subprocess
 
 from dstream.ds_api import ds_reader
 from pub_dbi import pubdb_conn_info
@@ -13,7 +14,7 @@ bad_runs = [5113, 5220, 5244, 5246, 5248, 5250, 5255, 5257, 5259, 5260,
             5785, 5786, 5787, 5788, 5789, 5790, 5791, 5792, 5793, 5794,
             5795, 5796, 5797, 5798, 5799, 5800, 5801, 5802, 5803, 5804,
             5805, 5806, 5807, 5808, 5809, 5810, 5811, 5812, 5813, 5814,
-            5815, 5816, 5817, 5818]
+            5815, 5816, 5817, 5818, 6512, 6515, 6516, 6741, 6742, 6743, 6745, 6746]
 
 # DB connection.
 
@@ -50,10 +51,48 @@ html.write(
 update_time = datetime.datetime.now().strftime('%d-%b-%Y %H:%M')
 html.write('<p>Updated %s</p>\n' % update_time)
 
+# Generate daemon status.
+
+daemons = ('uboonegpvm01.fnal.gov',
+           'uboonegpvm02.fnal.gov',
+           'uboonegpvm03.fnal.gov',
+           'uboonegpvm04.fnal.gov',
+           'uboonegpvm05.fnal.gov',
+           'uboonegpvm06.fnal.gov',
+           'uboonegpvm07.fnal.gov')
+
+
+html.write('<table style="width:300px; display:inline-block">')
+html.write('<caption><strong>Daemons</strong></caption>')
+
+# Loop over daemons.
+
+for daemon in daemons:
+    color = 'black'
+    status = 'Unknown'
+    command = ['ssh', daemon, 'ps', 'aux']
+    try:
+        lines = subprocess.check_output(command).splitlines()
+        color = 'red'
+        status = 'Stopped'
+        for line in lines:
+            if line.find('python') >= 0 and line.find('daemon.py') >= 0:
+                status = 'Running'
+                color = 'green'
+    except:
+        color = 'black'
+        status = 'Unknown'
+
+    html.write('<tr bgcolor=#ffffe0>\n')
+    html.write('<td>%s</td>\n' % daemon)
+    html.write('<td><font color="%s">%s</font></td>\n' % (color, status))
+    html.write('</tr>\n')
+html.write('</table>\n')
+
 # Generate legend.
 
 html.write(
-'''<table style="width:300px">
+'''<table style="width:300px; display:inline-block">
 <caption><strong>Legend</strong></caption>
 <tr bgcolor=#ffffe0>
 <td>Complete</td>
@@ -198,9 +237,9 @@ html.write(
 streams = [(['prod_reco_bnb_v5', 'prod_reco_bnb_v5_quietwires'], 'BNB'),
            (['prod_reco_ext_bnb_v5', 'prod_reco_ext_bnb_v5_quietwires'], 'BNB External'),
            (['prod_reco_bnb_unbiased_v5', 'prod_reco_bnb_unbiased_v5_quietwires'], 'BNB Unbiased'),
-           (['prod_reco_numi_v5', 'prod_reco_numi_v5_quietwires'], 'NUMI'),
-           (['prod_reco_ext_numi_v5', 'prod_reco_ext_numi_v5_quietwires'], 'NUMI External'),
-           (['prod_reco_numi_unbiased_v5', 'prod_reco_numi_unbiased_v5_quietwires'], 'NUMI Unbiased'),
+           (['prod_reco_numi_v5'], 'NUMI'),
+           (['prod_reco_ext_numi_v5'], 'NUMI External'),
+           (['prod_reco_numi_unbiased_v5'], 'NUMI Unbiased'),
            (['prod_reco_ext_unbiased_v5', 'prod_reco_ext_unbiased_v5_quietwires'], 'External Unbiased'),
            (['prod_reco_mucs_v5', 'prod_reco_mucs_v5_quietwires'], 'MuCS')]
 
