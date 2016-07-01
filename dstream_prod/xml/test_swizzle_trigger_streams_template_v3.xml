@@ -3,12 +3,12 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_03">
+<!ENTITY release "v04_26_04_09">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
 <!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
-<!ENTITY prod_version "v2">
+<!ENTITY prod_version "v3">
 <!ENTITY prod_mode "test">
 ]>
 
@@ -26,7 +26,7 @@
   <resource>DEDICATED,OPPORTUNISTIC</resource>
 
   <!-- Project Version -->
-  <version>&prod_mode;_v04_26_04</version>
+  <version>&prod_mode;_v04_26_04_05</version>
 
   <!-- Larsoft information -->
   <larsoft>
@@ -41,7 +41,7 @@
 
   <stage name="swizzle">
     <inputdef>prod_assembler_binary_&run_tag;</inputdef>
-    <fcl>swizzle_trigger_streams.fcl</fcl>
+    <fcl>swizzle_software_trigger_streams.fcl</fcl>
     <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</outdir>
     <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</logdir>
     <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/swizzle_filter_&run_tag;</workdir>
@@ -49,7 +49,8 @@
     <datatier>reconstructed</datatier>
     <anadatatier>root-tuple</anadatatier>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
-    <jobsub>-f /uboone/data/uboonedb_passwd</jobsub>
+    <jobsub>-f /pnfs/uboone/persistent/uboonedb_passwd --expected-lifetime=short</jobsub>
+    <memory>4000</memory>
   </stage>
 
   <stage name="PUBS_XMLVAR_STAGE_NAME">
@@ -62,7 +63,10 @@
     <datatier>PUBS_XMLVAR_DATA_TIER</datatier>
     <anadatatier>root-tuple</anadatatier>
     <defname>&prod_mode;_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <anadefname>&prod_mode;_specalib_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <memory>1000</memory>
+    <jobsub>--expected-lifetime=short</jobsub>
   </stage>
 
   <!-- file type -->
