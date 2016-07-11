@@ -49,6 +49,7 @@
     <datatier>reconstructed-2d</datatier>
     <defname>&prod_mode;_reco1_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>--expected-lifetime=long</jobsub>
   </stage>
 
   <stage name="reco2">
@@ -60,6 +61,7 @@
     <datatier>reconstructed</datatier>
     <defname>&prod_mode;_reco2_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>--expected-lifetime=long</jobsub>
   </stage>
 
   <!-- file type -->

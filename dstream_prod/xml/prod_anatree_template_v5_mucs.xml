@@ -49,6 +49,7 @@
     <anadatatier>root-tuple</anadatatier>
     <anadefname>&prod_mode;_anatree_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>--expected-lifetime=short</jobsub>
   </stage>
 
   <!-- file type -->
