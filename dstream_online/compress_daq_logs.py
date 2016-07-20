@@ -140,7 +140,7 @@ class compress_daq_logs(ds_project_base):
                 outFileMissingInFiles = '%s/*-%d-*.tar.bz2' %(self._out_dir, run)
                 if os.path.exists(outFileMissingInFiles):
                     if os.path.getsize(outFileMissingInFiles) > 0:
-                        self.debug('Found a tarball for run %d without any input logs so marking complete.' % run )
+                        self.info('Found a tarball for run %d without any input logs so marking complete.' % run )
                         statusCode = kSTATUS_DONE
                         status = ds_status( project = self._project,
                                             run     = run,
@@ -150,7 +150,7 @@ class compress_daq_logs(ds_project_base):
                                             data    = self._data )
                         self.log_status( status )
                     else:
-                        self.debug('Found a tarball for run %d but there are still log files in %s.' % (run, self._in_dir) )
+                        self.info('Found a tarball for run %d but there are still log files in %s.' % (run, self._in_dir) )
                         statusCode = kSTATUS_ERROR_UNKNOWN
                         status = ds_status( project = self._project,
                                             run     = run,
@@ -160,7 +160,7 @@ class compress_daq_logs(ds_project_base):
                                             data    = self._data )
                         self.log_status( status )
                 else:
-                    self.debug('Found no tarball or input files for run %d. Marking it done.' % run )
+                    self.info('Found no tarball or input files for run %d. Marking it done.' % run )
                     statusCode = kSTATUS_DONE
                     status = ds_status( project = self._project,
                                         run     = run,
