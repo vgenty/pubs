@@ -137,6 +137,39 @@ class compress_daq_logs(ds_project_base):
             if flist:
                 date, hour, minute, second = self.find_run_time( flist[0] )
             else:
+                outFileMissingInFiles = '%s/*-%d-*.tar.bz2' %(self._out_dir, run)
+                if os.path.exists(outFileMissingInFiles):
+                    if os.path.getsize(outFileMissingInFiles) > 0:
+                        self.info('Found a tarball for run %d without any input logs so marking complete.' % run )
+                        statusCode = kSTATUS_DONE
+                        status = ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = 0,
+                                            seq     = 0,
+                                            status  = statusCode,
+                                            data    = self._data )
+                        self.log_status( status )
+                    else:
+                        self.info('Found a tarball for run %d but there are still log files in %s.' % (run, self._in_dir) )
+                        statusCode = kSTATUS_ERROR_UNKNOWN
+                        status = ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = 0,
+                                            seq     = 0,
+                                            status  = statusCode,
+                                            data    = self._data )
+                        self.log_status( status )
+                else:
+                    self.info('Found no tarball or input files for run %d. Marking it done.' % run )
+                    statusCode = kSTATUS_DONE
+                    status = ds_status( project = self._project,
+                                        run     = run,
+                                        subrun  = 0,
+                                        seq     = 0,
+                                        status  = statusCode,
+                                        data    = self._data )
+                    self.log_status( status )
+
                 continue
 
             outName = self._outfile_format % ( run, date, hour, minute, second )
