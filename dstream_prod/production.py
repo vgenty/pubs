@@ -1314,6 +1314,7 @@ Job IDs    : %s
 
         if os.environ.has_key('X509_USER_CERT') and os.environ.has_key('X509_USER_KEY'):
             cmd=['voms-proxy-init',
+                 '-hours', '24',
                  '-rfc',
                  '-cert', os.environ['X509_USER_CERT'],
                  '-key', os.environ['X509_USER_KEY'],
