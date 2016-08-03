@@ -3,7 +3,7 @@
 <!-- Production Project -->
 
 <!DOCTYPE project [
-<!ENTITY release "v04_26_04_09">
+<!ENTITY release "v05_08_00_03">
 <!ENTITY file_type "data">
 <!ENTITY run_type "physics">
 <!ENTITY name "swizzle_trigger_streams">
@@ -31,7 +31,7 @@
   <!-- Larsoft information -->
   <larsoft>
     <tag>&release;</tag>
-    <qual>e7:prof</qual>
+    <qual>e9:prof</qual>
   </larsoft>
 
   <!-- Run Number -->
@@ -49,7 +49,7 @@
     <datatier>reconstructed</datatier>
     <anadatatier>root-tuple</anadatatier>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
-    <jobsub>-f /pnfs/uboone/persistent/uboonedb_passwd --expected-lifetime=short</jobsub>
+    <jobsub>-f /pnfs/uboone/persistent/uboonedb_passwd --expected-lifetime=medium</jobsub>
     <memory>4000</memory>
   </stage>
 
@@ -66,6 +66,7 @@
     <anadefname>&prod_mode;_specalib_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
     <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
     <memory>1000</memory>
+    <targetsize>2000000000</targetsize>
     <jobsub>--expected-lifetime=short</jobsub>
   </stage>
 
