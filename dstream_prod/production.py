@@ -1431,7 +1431,21 @@ Job IDs    : %s
                                         multiaction.__name__, self.now_str()))
                                 self.info('Run %s' % run)
                                 self.info('Subruns: %s' % str(subruns))
+
+                                # Multiaction might truncate subrun list.
+
+                                before_subruns = set(subruns)
                                 statusCode = multiaction( statusCode, istage, run, subruns )
+
+                                # Return unprocessed subruns to original set of subruns.
+
+                                unprocessed_subruns = before_subruns - set(subruns)
+                                if len(unprocessed_subruns) > 0:
+                                    self.info('Unprocessed subruns: %s' % unprocessed_subruns)
+                                    all_subruns.update(unprocessed_subruns)
+
+                                # Done.
+
                                 self.info('Finished a multiple subrun action: %s @ %s' % (
                                         multiaction.__name__, self.now_str()))
 
