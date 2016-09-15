@@ -24,6 +24,7 @@
 #                       only select enabled projects).
 # --quick             - If specified, skip auditing completed subruns.
 # --fix               - Fix problems (see below).
+# --big               - Flag files with more than 100 events.
 #
 # Here are the fixes that this script knows how to do.
 #
@@ -88,7 +89,13 @@ def getXML(proj_info, run):
     xml_path = '%s/%s_run_%07d.xml' % (proj_info._resource['XML_OUTDIR'], 
                                        proj_info._project, int(run))
 
-    if not os.path.exists(xml_path):
+    xml_template = proj_info._resource['XML_TEMPLATE']
+    if not '/' in xml_template:
+        xml_template = '%s/dstream_prod/xml/%s' % (os.environ['PUB_TOP_DIR'], xml_template)
+
+    if not os.path.exists(xml_path) or \
+        os.path.getctime(xml_path) < os.path.getctime(xml_template):
+
         print 'Remake xml file %s' % xml_path
 
         # Make dictionary.
@@ -100,9 +107,6 @@ def getXML(proj_info, run):
 
         # Make xml file using template.
 
-        xml_template = proj_info._resource['XML_TEMPLATE']
-        if not '/' in xml_template:
-            xml_template = '%s/dstream_prod/xml/%s' % (os.environ['PUB_TOP_DIR'], xml_template)
         fout = open(xml_path,'w')
         contents = open(xml_template,'r').read()
         contents = contents.replace('REP_RUN_NUMBER','%d' % run)
@@ -122,7 +126,7 @@ def declare_bad(samweb, filename):
     # Find descendants of filename and declare them bad as well.
 
     children = samweb.listFiles(
-        dimensions='ischildof: (file_name %s and availability: anylocation)' % filename)
+        dimensions='ischildof: (file_name %s and availability: anylocation) and availability: anylocation' % filename)
 
     for child in children:
         declare_bad(samweb, child)
@@ -145,6 +149,7 @@ maxrun_arg = 0
 all = 0
 quick = 0
 fix = 0
+big = 0
 
 args = sys.argv[1:]
 while len(args) > 0:
@@ -159,6 +164,9 @@ while len(args) > 0:
         del args[0]
     elif args[0] == '--fix':
         fix = 1
+        del args[0]
+    elif args[0] == '--big':
+        big = 1
         del args[0]
     elif args[0] == '--project' and len(args) > 1:
         project_arg = args[1]
@@ -388,6 +396,7 @@ for proj_info in proj_infos:
                         if len(declared_files) == 0:
                             print '***Error no file declared for run %d, subrun %d' % (run, subrun)
                             print 'Xml = %s' % xml
+                            print subrun_dim
 
                             # If fix requested, set status back to 1.
 
@@ -399,6 +408,21 @@ for proj_info in proj_infos:
                             continue
                         else:
                             print 'Declaration OK.'
+                            if len(declared_files) > 1:
+                                print 'Number of declared files: %d' % len(declared_files)
+
+                            # Check event count.
+                            # This check only makes sense for swizzle merge projects.
+
+                            if big and parent == 'prod_swizzle_filter_v3':
+                                for filename in declared_files:
+                                    md = samweb.getMetadata(filename)
+                                    nev = 0
+                                    if md.has_key('event_count') and project_name.find('notpc') < 0:
+                                        nev = md['event_count']
+                                    if nev > 100:
+                                        print '***Error too many events: %d' % nev
+                                        print '   Run %d, subrun %d' % (run, subrun)
 
                     # Check analysis sam declarations.
 
@@ -489,6 +513,12 @@ for proj_info in proj_infos:
                                 if ok:
                                     print 'Status reset to 1.'
 
+                            elif fix and status == 1 and parent == 'prod_swizzle_filter_v3':
+                                update_query = 'update %s set status=1 where run=%d and subrun=%d' % (parent, run, subrun)
+                                ok = dbi.commit(update_query)
+                                if ok:
+                                    print 'Reswizzle run %d, subrun %d' % (run, subrun)
+
                             continue
 
                         except:
@@ -533,10 +563,20 @@ for proj_info in proj_infos:
                         disk_file_names = []
                         for filepath in validated_file_paths:
                             if not project_utilities.safeexist(filepath):
-                                print '***Error validated file not on disk.'
-                                print filepath
-                                print 'Xml = %s' % xml
-                                continue
+
+                                # File is not on disk, but might be alreday on tape
+                                # (in case of status 9)
+
+                                ontape = False
+                                if status - base_status == 9:
+                                    print '***Error validated file not on disk (might be on tape)'
+                                    ontape = True
+
+                                if not ontape:
+                                    print '***Error validated file not on disk.'
+                                    print filepath
+                                    print 'Xml = %s' % xml
+                                    continue
                             else:
                                 disk_file_names.append(os.path.basename(filepath))
 

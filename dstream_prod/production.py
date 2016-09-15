@@ -1401,7 +1401,7 @@ Job IDs    : %s
                         run_subruns[run].add(subrun)
                         nsubruns += 1
 
-                    if nsubruns >= 10*self._nruns:
+                    if nsubruns >= self._nruns:
                         self.info('Quitting run/subrun loop because of nruns limit')
                         break
 
