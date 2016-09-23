@@ -343,7 +343,7 @@ class get_metadata( ds_project_base ):
 
             status_v.append((3,None))
             in_file = in_file_v[index_run]
-            in_file_split = in_file.split('-')
+            in_file_split = os.path.basename(in_file).split('-')
             
             if in_file_split[0]=='PhysicsRun':
                 run_type='physics'
@@ -579,18 +579,18 @@ class get_metadata( ds_project_base ):
                 self.error('Failed extracting metadata: %s' % in_file)
                 continue
 
-            if ( (gps_stime_sec[0] - stime_secs[0]) > 100):
+            if ( (gps_stime_secs[0] - stime_secs[0]) > 100):
                 self.error("The GPS Event time was more than 100 seconds different than the localhost time from NTP!!!!")
                 self.error("We are gonna use the localhost NTP time for online microseconds")
                 gps_stime_usec = stime_usec
                 
-            if ( ( gps_etime_sec[0] - etime_secs[0]) > 100 ):
+            if ( ( gps_etime_secs[0] - etime_secs[0]) > 100 ):
                 self.error("The GPS Event time was more than 100 seconds different than the localhost time from NTP!!!!")
                 self.error("We are gonna use the localhost NTP time for online microseconds")
                 gps_etime_usec = etime_usec
 
             num_events = eevt - sevt + 1
-            if num_events < 0: num_events = 0            
+            if num_events < 0: num_events = 0
             # run number and subrun number in the metadata seem to be funny,
             # and currently we are using the values in the file name.
             # Also add ub_project.name/stage/version, and data_tier by hand
