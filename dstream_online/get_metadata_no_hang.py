@@ -436,6 +436,10 @@ class get_metadata( ds_project_base ):
             stime_secs = etime_secs = -1
             sdaqclock = edaqclock = -1
 
+            gps_etime = gps_etime_usec = gps_etime_secs = -1
+            gps_stime = gps_stime_usec = gps_etime_usec = -1
+            invalid_format = False
+
             try:
                 read_gps=False
                 read_daqclock=False
@@ -568,16 +572,38 @@ class get_metadata( ds_project_base ):
                     gps_stime_usec = str ( int (gps_stime_tmp - ( int(gps_stime_tmp *1.0E-6) * 1.0E6)) )
                     self.info('Changed start time from ' + start_prePPS + ' to ' + gps_stime + ' and ' + gps_stime_usec + ' microseconds.')
 
-                status_v[index_run] = (3,None)
-                self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
+                if not type(gps_stime_secs) == type(tuple()):
+                    self.error ('Start GPS timestamp not found in cout...')
+                    invalid_format = True
+                if not type(stime_secs) == type(tuple()):
+                    self.error ('Start NTP timestamp not found in cout...')
+                    invalid_format = True
+                if not type(gps_etime_secs) == type(tuple()):
+                    self.error ('End GPS timestamp not found in cout...')
+                    invalid_format = True
+                if not type(etime_secs) == type(tuple()):
+                    self.error ('End NTP timestamp not found in cout...')
+                    invalid_format = True
+                
+                if not invalid_format:
+                    status_v[index_run] = (3,None)
+                    self.info('Successfully extract metadata for run=%d subrun=%d: %s @ %s' % (run,subrun,in_file,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             except ValueError,TypeError:
                 self.error ("Unexpected error: %s" % sys.exc_info()[0] )
                 self.error ("1st event:\n%s" % first_event_cout)
                 self.error ("Last event:\n%s" % last_event_cout)
-                status_v[i] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
+                status_v[index_run] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
                 self.error('Failed extracting metadata: %s' % in_file)
                 continue
+
+            if invalid_format:
+                self.error ("Found invalid format in decoded data...")
+                self.error ("1st event:\n%s" % first_event_cout)
+                self.error ("Last event:\n%s" % last_event_cout)
+                status_v[index_run] = (kSTATUS_ERROR_CANNOT_MAKE_BIN_METADATA,badJsonData)
+                self.error('Failed extracting metadata: %s' % in_file)
+                continue 
 
             if ( (gps_stime_secs[0] - stime_secs[0]) > 100):
                 self.error("The GPS Event time was more than 100 seconds different than the localhost time from NTP!!!!")
