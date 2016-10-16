@@ -183,6 +183,10 @@ def getRunsVsIntensity(outdir='',regenerate=True):
     ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(daysFmt)
     ax.set_xlim([mintime, maxtime])
+    if (mintime > maxtime):
+        return
+    #print 'Min Time : ',mintime
+    #print 'Max Time : ',maxtime
     fig.autofmt_xdate()
     
     lblctr = 0

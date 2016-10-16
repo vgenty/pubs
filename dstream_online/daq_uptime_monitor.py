@@ -103,7 +103,10 @@ class daq_uptime_monitor(ds_project_base):
 
                 run_files = [x for x in samweb.listFiles('run_number %d' % current_run) if x.endswith('.ubdaq')]
 
-                if not run_files: continue
+                if not run_files: 
+                    self.info('Run %d has no data file: skipping' % current_run)
+                    continue
+
                 subrun_max=0
                 subrun_min=1e9
                 fname_max = ''
@@ -135,7 +138,7 @@ class daq_uptime_monitor(ds_project_base):
                     if time_min < run_start_time_s:
                         run_start_time_s = time_min
 
-                #print run_start_time_s,run_end_time_e
+                self.debug('Run %d ... Start @ %s ... End @ %s' % (current_run, run_start_time_s, run_end_time_s))
 
                 self._runinfo_v.append((current_run,last_subrun,run_start_time_s,run_end_time_e))
             except Exception as e:
