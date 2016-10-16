@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v05_08_00_05">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "swizzle_swtrigger_streams">
+<!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
+<!ENTITY prod_version "v3">
+<!ENTITY prod_mode "prod">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Project Version -->
+  <version>&prod_mode;_v05_08_00_05</version>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e9:prof</qual>
+  </larsoft>
+
+  <!-- Run Number -->
+  <runnumber>REP_RUN_NUMBER</runnumber>
+
+  <!-- Project stages -->
+
+  <stage name="swizzle">
+    <inputdef>prod_assembler_binary_&run_tag;</inputdef>
+    <fcl>swizzle_swtrigger_streams.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/filter/&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/filter/&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/filter/&run_tag;</workdir>
+    <numjobs>100</numjobs>
+    <datatier>reconstructed</datatier>
+    <anadatatier>root-tuple</anadatatier>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>-f /pnfs/uboone/persistent/uboonedb_passwd --expected-lifetime=medium</jobsub>
+    <memory>4000</memory>
+  </stage>
+
+  <stage name="PUBS_XMLVAR_STAGE_NAME">
+    <inputstream>PUBS_XMLVAR_INPUT_STREAM</inputstream>
+    <fcl>PUBS_XMLVAR_FCL</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/PUBS_XMLVAR_INPUT_STREAM/&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/swizzle/&release;/&prod_mode;_&name;_&prod_version;/PUBS_XMLVAR_INPUT_STREAM/&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/uboonepro/work/swizzle/&release;/&prod_mode;_&name;_&prod_version;/PUBS_XMLVAR_INPUT_STREAM/&run_tag;</workdir>
+    <numjobs>10</numjobs>
+    <datatier>PUBS_XMLVAR_DATA_TIER</datatier>
+    <anadatatier>root-tuple</anadatatier>
+    <defname>&prod_mode;_raw_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</defname>
+    <anadefname>&prod_mode;_specalib_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <memory>1000</memory>
+    <targetsize>2000000000</targetsize>
+    <jobsub>--expected-lifetime=short</jobsub>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>
