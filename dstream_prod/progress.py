@@ -36,7 +36,7 @@ html.write(
 '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head><title>Data Production</title>
+<head><title>Run 1 Data Production</title>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
 <link rel="StyleSheet" href="/css/ubcss.css" type="text/css"  media="screen, projection" />
 <link rel="StyleSheet" href="/css/ubprint.css" type="text/css"  media="print" />
@@ -143,7 +143,7 @@ stot = s1 + s2 + s3 + s4
 
 html.write(
 '''<table border bgcolor=#ffffe0>
-<caption><strong>Swizzling</strong></caption>
+<caption><strong>Software Trigger Swizzling</strong></caption>
 <tr bgcolor=#ffffe0>
 ''')
 html.write('<td nowrap>Swizzling</td>\n')
@@ -174,7 +174,9 @@ streams = [('prod_swizzle_merge_bnb_v3', 'Merge BNB'),
            ('prod_swizzle_merge_ext_numi_v3', 'Merge NUMI External'),
            ('prod_swizzle_merge_numi_unbiased_v3', 'Merge NUMI Unbiased'),
            ('prod_swizzle_merge_ext_unbiased_v3', 'Merge External Unbiased'),
-           ('prod_swizzle_merge_mucs_v3', 'Merge MuCS')]
+           ('prod_swizzle_merge_mucs_v3', 'Merge MuCS'),
+           ('prod_swizzle_merge_notpc_v3', 'Merge NoTPC'),
+           ('prod_notrig_swizzle_v3', 'Calibration')]
 
 
 for stream in streams:

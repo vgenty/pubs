@@ -96,8 +96,8 @@ case `uname -n` in
                 setup larbatch v01_21_05
 		;;
 	    (uboonegpvm06*)
-	        setup uboonecode v04_36_00_01 -q e9:prof
-                setup larbatch v01_21_05
+	        setup uboonecode v05_08_00_05 -q e9:prof
+                setup larbatch v01_23_06
 		;;
             (uboonegpvm07*)
                 #setup uboonecode v05_11_01 -q e9:prof
