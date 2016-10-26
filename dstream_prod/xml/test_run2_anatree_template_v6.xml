@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<!-- Production Project -->
+
+<!DOCTYPE project [
+<!ENTITY release "v05_08_00_05">
+<!ENTITY file_type "data">
+<!ENTITY run_type "physics">
+<!ENTITY name "run2_anatree_PUBS_XMLVAR_INPUT_STREAM">
+<!ENTITY run_tag "run_REP_ZEROPAD_RUN_NUMBER">
+<!ENTITY prod_version "v6">
+<!ENTITY prod_mode "test">
+]>
+
+<job>
+
+<project name="&name;">
+
+  <!-- Project size -->
+  <numevents>1000000</numevents>
+
+  <!-- Operating System -->
+  <os>SL6</os>
+
+  <!-- Batch resources -->
+  <resource>DEDICATED,OPPORTUNISTIC</resource>
+
+  <!-- Project Version -->
+  <version>&prod_mode;_v05_08_00_05</version>
+
+  <!-- Larsoft information -->
+  <larsoft>
+    <tag>&release;</tag>
+    <qual>e9:prof</qual>
+  </larsoft>
+
+  <!-- Run Number -->
+  <runnumber>REP_RUN_NUMBER</runnumber>
+
+  <!-- Project stages -->
+
+  <stage name="anatree">
+    <inputdef>prod_reco2_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</inputdef>
+    <fcl>standard_ana_uboone_data.fcl</fcl>
+    <outdir>/pnfs/uboone/scratch/uboonepro/anatree/&release;/&prod_mode;_&name;_&prod_version;/anatree_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</outdir>
+    <logdir>/pnfs/uboone/scratch/uboonepro/anatree/&release;/&prod_mode;_&name;_&prod_version;/anatree_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</logdir>
+    <workdir>/pnfs/uboone/scratch/uboonepro/work/anatree/&release;/&prod_mode;_&name;_&prod_version;/anatree_PUBS_XMLVAR_INPUT_STREAM_&run_tag;</workdir>
+    <numjobs>100</numjobs>
+    <anadatatier>root-tuple</anadatatier>
+    <anadefname>&prod_mode;_anatree_PUBS_XMLVAR_INPUT_STREAM_&prod_version;_&run_tag;</anadefname>
+    <maxfilesperjob>PUBS_XMLVAR_MAXFILESPERJOB</maxfilesperjob>
+    <jobsub>--expected-lifetime=short</jobsub>
+  </stage>
+
+  <!-- file type -->
+  <filetype>&file_type;</filetype>
+
+  <!-- run type -->
+  <runtype>&run_type;</runtype>
+
+</project>
+
+</job>

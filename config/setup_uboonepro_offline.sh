@@ -75,11 +75,11 @@ case `uname -n` in
 	#setup uboonecode v04_26_03_02 -q e7:prof
 	case `uname -n` in
 	    (uboonegpvm01*)
-	        setup uboonecode v05_08_00_02 -q e9:prof
+	        setup uboonecode v05_08_00_05 -q e9:prof
                 setup larbatch v01_21_05
 		;;
 	    (uboonegpvm02*)
-	        setup uboonecode v05_08_00_02 -q e9:prof
+	        setup uboonecode v05_08_00_05 -q e9:prof
                 setup larbatch v01_21_05
 		;;
 	    (uboonegpvm03*)
@@ -92,7 +92,7 @@ case `uname -n` in
                 setup larbatch v01_23_03
 		;;
 	    (uboonegpvm05*)
-	        setup uboonecode v05_08_00_02 -q e9:prof
+	        setup uboonecode v05_08_00_05 -q e9:prof
                 setup larbatch v01_21_05
 		;;
 	    (uboonegpvm06*)

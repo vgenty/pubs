@@ -561,7 +561,8 @@ for proj_info in proj_infos:
 
                         validated_file_paths = project_utilities.saferead(listpath)
                         disk_file_names = []
-                        for filepath in validated_file_paths:
+                        for line in validated_file_paths:
+                            filepath = line.strip()
                             if not project_utilities.safeexist(filepath):
 
                                 # File is not on disk, but might be alreday on tape
@@ -575,7 +576,18 @@ for proj_info in proj_infos:
                                 if not ontape:
                                     print '***Error validated file not on disk.'
                                     print filepath
+                                    print project_utilities.safeexist(filepath)
                                     print 'Xml = %s' % xml
+
+                                    if fix and status - base_status == 7:
+
+                                        # Reset status back to 1.
+
+                                        update_query = 'update %s set status=1 where run=%d and subrun=%d and status=%d' % (table, run, subrun, status)
+                                        ok = dbi.commit(update_query)
+                                        if ok:
+                                            print 'Status reset to 1.'
+
                                     continue
                             else:
                                 disk_file_names.append(os.path.basename(filepath))
