@@ -1,5 +1,4 @@
-
-import time
+import time,subprocess
 import os, sys
 from pub_dbi import DBException, pubdb_conn_info
 from pub_util import pub_logger
@@ -9,13 +8,18 @@ from dstream import ds_status
 from dstream import ds_api
 from pub_dbi.pubdb_conn import pubdb_conn
 
+
+
+def execute_remote(server,command):
+    return subprocess.Popen(["ssh",server,command],stdout=subprocess.PIPE).communicate()[0]
+
 class register_snova_dropbox(ds_project_base):
 
     # Define project name as class attribute
     _project = 'register_snova_dropbox'
 
     ## @brief default ctor can take # runs to process for this instance
-    def __init__( self, arg = '' ):
+    def __init__( self, arg = '' , sebname = ''):
 
         # Call base class ctor
         super(register_snova_dropbox,self).__init__( arg )
@@ -29,6 +33,8 @@ class register_snova_dropbox(ds_project_base):
         self._data_dir = [] # list of directories where to find binary data
 
         self._runtable = ''
+
+        self._sebname=sebname
 
         self.get_resource()
 
@@ -48,15 +54,14 @@ class register_snova_dropbox(ds_project_base):
 	    self.error('Cannot connect to DB! Aborting...')
             return
 
-
         data_path = self._data_dir
-            
+
         self.info('Start access in data directory %s'%data_path)
         self.info('Looking for data files in: %s'%data_path)
-
-        dircontents = []
-        dircontents = os.listdir(data_path)
-
+        
+        #execute a single command to get all files in snova directory
+        dir_flist=execute_remote(self._sebname,"ls -f -1 %s"%data_path).split('\n')[2:-1]
+        
         # create a dictionary to keep track of
         # - file name ----- NAME
         # - run number ---- RUN
@@ -66,30 +71,32 @@ class register_snova_dropbox(ds_project_base):
         # : dictionary key: ------ (RUN,SUBRUN)
         # : dictionary content: -- (NAME,TIMEC,TIMEM)
 
+        logger = pub_logger.get_logger(self._project)
+        reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
+        last_recorded_info   = reader.get_last_run_subrun(self._runtable)
+        
         file_info = {}
         
-        for f in dircontents:
-                
-            filepath = os.path.join(data_path,f)
+        self.info("Got last recorded info %s"%str(last_recorded_info))
+
+        #do how many at a time, 100?
+        ik=0
+        imax=1000
+        for f_ in dir_flist:
             
-            # check that this is a file
-            if (os.path.isfile(filepath) == False):
-                continue
-
             try:
-                    
-                time_create  = os.path.getctime(filepath)
-                time_modify  = os.path.getmtime(filepath)
-                    
-                # file format:
-                # snova_RUN-SUBRUN.bin
 
-                run    = int(f.split('.')[0].split('_')[-1].split('-')[1])
-                subrun = int(f.split('.')[0].split('_')[-1].split('-')[2])
-                             
-                #self.info('Found run %i, %i in dropbox from file %s)'%(run,subrun,f))
-                file_info[tuple((run,subrun))] = [f,time_create,time_modify]
+                run    = int(f_.split('.')[0].split('_')[-1].split('-')[1])
+                subrun = int(f_.split('.')[0].split('_')[-1].split('-')[2])
                 
+                run_subrun_t=tuple((run,subrun))
+
+                if run_subrun_t <= last_recorded_info: continue
+
+                #self.info('Found run %i, %i in dropbox from file %s)'%(run,subrun,f))
+                file_info[run_subrun_t] = [f_,0.0,0.0]
+                ik+=1
+                if ik==imax:break
             except:
                 
                 # if file-name is .ubdaq then we have a problem
@@ -97,81 +104,96 @@ class register_snova_dropbox(ds_project_base):
                 if (f.find('.ubdaq')):
                     self.info('Could not read RUN/SUBRUN info for file %s'%f)
 
-            # sort the dictionary
-            # we want to ignore the largest run/subrun information
-            # this will prevent us from potentially logging info
-            # for a file that has not yet been closed
-            sorted_file_info = sorted(file_info)
-            # get tuple with largest run/subrun info found in files
-            max_file_info = sorted_file_info[-1]
-            
-            # fetch from database the last run/subrun number recorded
-            logger = pub_logger.get_logger(self._project)
-            reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
-            last_recorded_info = reader.get_last_run_subrun(self._runtable)
 
-            # log which (run,subrun) pair was added last
-            #self.info('last recorded (run,subrun) is (%d,%d)'%(int(last_recorded_info[0]),int(last_recorded_info[1])))
-            #self.info('No run with (run,subrun) smaller than this will be added to the RunTable')
+        self.info("Sorting")
+        sorted_file_info = sorted(file_info)
+        max_file_info = sorted_file_info[-1]
+        
+        #lets do a big query for the creation and modified times for these files over ssh
+        sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
+                                   stdin=subprocess.PIPE, stdout = subprocess.PIPE, 
+                                   universal_newlines=True,bufsize=0)
+        
+        for f_ in sorted_file_info:
 
-            logger = pub_logger.get_logger('death_star')
-            rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
+            filepath=os.path.join(data_path,file_info[f_][0])
 
-            #self.info("max file info: %s"%str(max_file_info))
-            #self.info("last recorded info: %s"%str(last_recorded_info))
-            
-            # loop through dictionary keys and write to DB info
-            # for runs/subruns not yet stored
-            for info in sorted_file_info:
+            cmd="stat -c %%Y-%%Z %s"%filepath
+
+            sshproc.stdin.write("%s\n"%cmd)
+            sshproc.stdin.write("echo END\n")
+
+        sshproc.stdin.close()
+
+        values=[]
+
+        ic=0
+        for return_ in sshproc.stdout:
+            if return_.rstrip('\n')!="END":
+                values.append(return_.rstrip('\n'))
+                ic+=1
                 
-                # this key needs to be larger than the last logged value
-                # but less than the last element in the dictionary
-                if (info >= max_file_info):
-                    continue;
+        #ic != ik exception
 
-                if (info <= last_recorded_info):
-                    continue;
+        for ix,run_subrun in enumerate(sorted_file_info):
+            
+            time_create,time_modify=values[ix].split("-")
+            
+            file_info[run_subrun][1]=time_create
+            file_info[run_subrun][2]=time_modify
 
-                self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
+        logger = pub_logger.get_logger('death_star')
+        rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
+            
+        # loop through dictionary keys and write to DB info
+        # for runs/subruns not yet stored
+        for info in sorted_file_info:
+            
+            # this key needs to be larger than the last logged value
+            # but less than the last element in the dictionary
+            if (info >= max_file_info):
+                continue;
 
-                try:
+            self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
 
-                    # info is key (run,subrun)
-                    # dictionary value @ key is array
-                    # [file name, time_crate, time_modify]
-                    run           = info[0]
-                    subrun        = info[1]
-                    run_info      = file_info[info]
-                    file_creation = time.gmtime(int(run_info[1]))
-                    file_closing  = time.gmtime(int(run_info[2]))
-                    file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
-                    file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+            try:
+
+                # info is key (run,subrun)
+                # dictionary value @ key is array
+                # [file name, time_crate, time_modify]
+                run           = info[0]
+                subrun        = info[1]
+                run_info      = file_info[info]
+                file_creation = time.gmtime(int(run_info[1]))
+                file_closing  = time.gmtime(int(run_info[2]))
+                file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
+                file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
+                
+                self.info('Filling death star...')
+                                
+                # insert into the death start
+                rundbWriter.insert_into_death_star(self._runtable,
+                                                   run,
+                                                   subrun,
+                                                   file_creation,
+                                                   file_closing)
+
+
+                # Report starting
+                # self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
+                status = ds_status( project = self._project,
+                                    run     = run,
+                                    subrun  = subrun,
+                                    seq     = 0,
+                                    status  = 0,
+                                    data    = os.path.join(data_path,run_info[0]))
                     
-                    self.info('filling death star...')
 
-                    # insert into the death start
-                    rundbWriter.insert_into_death_star(self._runtable,
-                                                       run,
-                                                       subrun,
-                                                       file_creation,
-                                                       file_closing)
-
-
-                    # Report starting
-                    # self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
-                    status = ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = 0,
-                                        data    = os.path.join(data_path,run_info[0]))
+                
+            except:
                     
-
-                    
-                except:
-                    
-                    # we did not succeed in adding this (run,subrun)
-                    self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
+                # we did not succeed in adding this (run,subrun)
+                self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
 
                 
 
@@ -180,7 +202,7 @@ if __name__ == '__main__':
 
     proj_name = 'register_snova_dropbox_%s'%sys.argv[1]
 
-    test_obj = register_snova_dropbox( proj_name )
+    test_obj = register_snova_dropbox( proj_name , sys.argv[1] )
 
     test_obj.process_newruns()
 

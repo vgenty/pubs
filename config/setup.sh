@@ -85,7 +85,7 @@ case `uname -n` in
 	mkdir -p $PUB_LOGGER_FILE_LOCATION;
 	export PUB_DAEMON_LOG_MODULE=dstream_prod.gpvm_logger
 	;;
-    (*ubdaq-prod*)
+    (*ubdaq-prodz*)
 	echo Setting up for ubdaq-prod machines...
 #The SSL_CERT_DIR variable is being set on the advice of Robert Illingworth and a potential
 #mismatch between the version of python SSL authentication and sam_web_client. If the project
