@@ -61,7 +61,9 @@ class register_snova_dropbox(ds_project_base):
         
         #execute a single command to get all files in snova directory
         dir_flist=execute_remote(self._sebname,"ls -f -1 %s"%data_path).split('\n')[2:-1]
-        
+        self.info("Sorting")
+        sorted(dir_flist)
+        self.info("Sorted")
         # create a dictionary to keep track of
         # - file name ----- NAME
         # - run number ---- RUN
@@ -79,9 +81,9 @@ class register_snova_dropbox(ds_project_base):
         
         self.info("Got last recorded info %s"%str(last_recorded_info))
 
-        #do how many at a time, 100?
+        #do how many at a time, 1000?
         ik=0
-        imax=1000
+        imax=100
         for f_ in dir_flist:
             
             try:
