@@ -18,11 +18,9 @@ from ds_online_util import *
 import datetime, json
 import samweb_cli
 import samweb_client.utility
-import extractor_dict
-import pdb
+#import extractor_dict
+#import pdb
 import subprocess
-# script module tools
-from scripts import find_run
 
 ## @Class dstream_online.get_metadata
 #  @brief Get metadata from a binary or a swizzled file
@@ -138,7 +136,7 @@ class get_metadata( ds_project_base ):
             status_name(self._skip_ref_status)
             status_name(self._skip_status)        
 
-        self._nretrial = int(resource['NRETRIAL'])
+        #self._nretrial = int(resource['NRETRIAL'])
 
     def get_action(self):
 
@@ -159,7 +157,7 @@ class get_metadata( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-        # self.info('Here, self._nruns=%d ... ' % (self._nruns))
+        self.info('Here, self._nruns=%d ... ' % (self._nruns))
 
         if self._nskip and self._skip_ref_project:
             ctr = self._nskip
@@ -198,7 +196,7 @@ class get_metadata( ds_project_base ):
             if ctr <= 0: break
 
             # Report starting
-            #self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
+            self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
             
@@ -277,11 +275,13 @@ class get_metadata( ds_project_base ):
             status_v.append((0,''))
             jsonData = None
             try:
+                status = 100                
+                self.error('I dont do ROOT files')
                 jsonData = extractor_dict.getmetadata( in_file )
                 status = 3
                 self.info('Successfully extract metadata from the swizzled file.')
             except:
-                status = 100
+                
                 self.error('Failed extracting metadata from the swizzled file.')
                     
             status_v[-1]=(status,jsonData)
@@ -368,7 +368,7 @@ class get_metadata( ds_project_base ):
                 run_type='beamoff'
             elif in_file_split[0]=='TestRun':
                 run_type='test'
-            elif in_file_split[0]="2StreamTest-SN":
+            elif in_file_split[0]=="2StreamTest":
                 run_type='test'
             else:
                 run_type='unknown'

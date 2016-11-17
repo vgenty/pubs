@@ -183,7 +183,8 @@ class get_checksum( ds_project_base ):
         
         for i in xrange(len(in_file_v)):
             (out,err) = mp.communicate(i)
-
+            
+            self.info("Got return %s"%str(out))
             if err or not out:
                 self.error('Checksum calculculation failed for %s' % in_file_v[i])
                 self.error(err)
@@ -204,7 +205,7 @@ class get_checksum( ds_project_base ):
                 self.info("Set CRC: %s on file: %s"%(self._data,in_file_v[i]))
             except Exception:
                 errorMessage = traceback.print_exc()
-                subject = 'Failed to obtain the checksum of the file %s' % in_file
+                subject = 'Failed to obtain the checksum of the file %s' % in_file_v[i]
                 text = """File: %s
 Error message:
 %s
