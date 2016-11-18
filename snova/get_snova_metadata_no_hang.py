@@ -16,8 +16,6 @@ from ds_online_constants import *
 from ds_online_util import *
 #from ROOT import *
 import datetime, json
-import samweb_cli
-import samweb_client.utility
 #import extractor_dict
 #import pdb
 import subprocess
@@ -199,9 +197,24 @@ class get_metadata( ds_project_base ):
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
-            
-            #filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+
+
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+
+            if not ref_status._status == 0:
+                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                continue
+
+            if not ref_status._data:
+                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
+                self.log_status( ds_status( project = self._project,
+                                            run     = run,
+                                            subrun  = subrun,
+                                            seq     = 0,
+                                            status  = kSTATUS_ERROR_REFERENCE_PROJECT_DATA ) )
+
             file_,checksum_ = ref_status._data.split(':')
+            self.info("Fetched file: %s and checksum: %s"%(file_,checksum_))
             filelist=[file_]
 
             if (len(filelist)<1):
@@ -221,19 +234,6 @@ class get_metadata( ds_project_base ):
                                             seq     = 0,
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
 
-            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
-
-            if not ref_status._status == 0:
-                self.warning('Reference project (%s) not yet finished for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                continue
-
-            if not ref_status._data:
-                self.error('Checksum from project %s unknown for run=%d subrun=%d' % (self._ref_project,run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_REFERENCE_PROJECT_DATA ) )
                 continue
 
             checksum_v.append(checksum_)
@@ -243,20 +243,21 @@ class get_metadata( ds_project_base ):
             ctr -= 1
 
         action = self.get_action()
-        
+
         status_v = action(infile_v,runid_v,checksum_v)
 
         if not len(status_v) == len(runid_v):
             raise DSException('Logic error: status vector from %s must match # of run ids!' % str(action))
-
+        
         for index_run in xrange(len(status_v)):
 
             run,subrun = runid_v[index_run]
             status,data = status_v[index_run]
+            
             if data is None:
                 data = ''
             if data and type(data) == type(dict()):
-                fout = open('%s.json' % infile_v[index_run], 'w')
+                fout = open('/home/vgenty/snova_metadata/%s.json' % os.path.basename(infile_v[index_run]), 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
             # Create a status object to be logged to DB (if necessary)
@@ -293,7 +294,8 @@ class get_metadata( ds_project_base ):
         if not len(in_file_v) == len(runid_v):
             raise DSException('Input file list and runid list has different length!')
 
-        cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
+        #cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
+        cmd_template =   "echo hi"
 
         mp = ds_multiprocess(self._project)
 
@@ -301,7 +303,8 @@ class get_metadata( ds_project_base ):
 
             in_file = in_file_v[index_run]
             
-            cmd = cmd_template % (in_file,in_file)
+            #cmd = cmd_template % (in_file,in_file)
+            cmd=cmd_template
             index, active_counter = mp.execute(cmd)
 
             if not self._parallelize:
@@ -372,9 +375,12 @@ class get_metadata( ds_project_base ):
                 run_type='test'
             else:
                 run_type='unknown'
+                
 
             out,err = mp.communicate(index_run)
-            fsize = os.path.getsize(in_file)
+            
+            fsize = subprocess.Popen(["ssh","-T","seb01","stat -c %%s %s"%in_file],stdout=subprocess.PIPE).communicate()[0]
+
             run,subrun = runid_v[index_run]
 
             checksum = ''
@@ -393,9 +399,10 @@ class get_metadata( ds_project_base ):
                     status_v[index_run] = (kSTATUS_ERROR_REFERENCE_PROJECT_DATA,None)
                     continue
 
-                checksum = ref_status._data
+                checksum = ref_status._data.split(":")[1]
 
             # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
+
             badJsonData = { 'file_name': os.path.basename(in_file), 
                             'file_type': "data", 
                             'file_size': fsize, 
@@ -434,10 +441,12 @@ class get_metadata( ds_project_base ):
                 self.info('Return code = 2... will provide invalid metadata and move on!')
                 status_v[index_run] = (kSTATUS_TO_BE_VALIDATED,badJsonData)
                 continue
-                               
-            last_event_cout,first_event_cout = out.split('SPLIT_HERE')
+                            
+            #last_event_cout,first_event_cout = out.split('SPLIT_HERE')
+            last_event_cout,first_event_cout = (-1,-1)
             ver = 'unknown'
-            sevt = eevt = 0
+            #sevt = eevt = 0
+            sevt = eevt = 20
             stime = etime = '1970-01-01:T00:00:00'
             stime_usec = etime_usec  = -1
             stime_secs = etime_secs = -1
@@ -446,7 +455,7 @@ class get_metadata( ds_project_base ):
             gps_etime = gps_etime_usec = gps_etime_secs = -1
             gps_stime = gps_stime_usec = gps_etime_usec = -1
             invalid_format = False
-
+            '''
             try:
                 read_gps=False
                 read_daqclock=False
@@ -621,7 +630,7 @@ class get_metadata( ds_project_base ):
                 self.error("The GPS Event time was more than 100 seconds different than the localhost time from NTP!!!!")
                 self.error("We are gonna use the localhost NTP time for online microseconds")
                 gps_etime_usec = etime_usec
-
+            '''
             num_events = eevt - sevt + 1
             if num_events < 0: num_events = 0
             # run number and subrun number in the metadata seem to be funny,
@@ -675,7 +684,12 @@ class get_metadata( ds_project_base ):
             self.info('validating run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
-            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+            #filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
+            file_ = ref_status._data.split(":")[0]
+            filelist=[file_]
+
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 self.log_status( ds_status( project = self._project,
@@ -694,7 +708,7 @@ class get_metadata( ds_project_base ):
                                             status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
             in_file = filelist[0]
-            out_file = '%s.json' % in_file
+            out_file = '/home/vgenty/snova_metadata/%s.json' % os.path.basename(in_file)
 
             if os.path.isfile(out_file):
 #                os.system('rm %s' % in_file)
