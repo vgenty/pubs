@@ -200,16 +200,16 @@ class get_checksum( ds_project_base ):
             try:
                 metadata=None
                 exec('metadata = %s' % out)
-                self._data = ":".join(in_file_v[i],metadata['crc_value'])
+                self._data = in_file_v[i]+":"+metadata['crc_value']
                 statusCode = kSTATUS_DONE
                 self.info("Set CRC: %s on file: %s"%(self._data,in_file_v[i]))
             except Exception:
                 errorMessage = traceback.print_exc()
                 subject = 'Failed to obtain the checksum of the file %s' % in_file_v[i]
                 text = """File: %s
-Error message:
-%s
-                """ % ( in_file, errorMessage )
+                          Error message:
+                          %s
+                """ % ( in_file_v[i], errorMessage )
 
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
                 self._data = ''
