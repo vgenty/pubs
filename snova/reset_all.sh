@@ -25,3 +25,4 @@ yes | ../sbin/create_runtable FragmentRunTable_seb01
 
 
 yes | ../sbin/register_project register_snova.cfg
+yes | ../sbin/register_daemon ../daemon.cfg

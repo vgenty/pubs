@@ -90,6 +90,8 @@ class get_metadata( ds_project_base ):
         self._skip_ref_status = None
         self._skip_status = None
         
+        self._seb = None
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
 
@@ -135,7 +137,7 @@ class get_metadata( ds_project_base ):
             status_name(self._skip_status)        
 
         #self._nretrial = int(resource['NRETRIAL'])
-
+        self._seb="seb01"
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -257,10 +259,14 @@ class get_metadata( ds_project_base ):
             if data is None:
                 data = ''
             if data and type(data) == type(dict()):
-                fout = open('/home/vgenty/snova_metadata/%s.json' % os.path.basename(infile_v[index_run]), 'w+')
+                fname = os.path.basename(infile_v[index_run])
+                sfname=fname.split(".")
+                fname = sfname[0] + self._seb + sfname[1]
+                fout = open('/home/vgenty/snova_metadata/%s.json' % fname, 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
             # Create a status object to be logged to DB (if necessary)
+            data = infile_v[index_run]
             self.log_status ( ds_status( project = self._project,
                                          run     = run,
                                          subrun  = subrun,
@@ -379,7 +385,7 @@ class get_metadata( ds_project_base ):
 
             out,err = mp.communicate(index_run)
             
-            fsize = subprocess.Popen(["ssh","-T","seb01","stat -c %%s %s"%in_file],stdout=subprocess.PIPE).communicate()[0]
+            fsize = subprocess.Popen(["ssh","-T",self._seb,"stat -c %%s %s"%in_file],stdout=subprocess.PIPE).communicate()[0]
 
             run,subrun = runid_v[index_run]
 
@@ -402,7 +408,7 @@ class get_metadata( ds_project_base ):
                 checksum = ref_status._data.split(":")[1]
 
             # Can we put a "bad" metadata as a default contents for "bad file"? If we can, comment out continue
-
+            
             badJsonData = { 'file_name': os.path.basename(in_file), 
                             'file_type': "data", 
                             'file_size': fsize, 
@@ -636,7 +642,11 @@ class get_metadata( ds_project_base ):
             # run number and subrun number in the metadata seem to be funny,
             # and currently we are using the values in the file name.
             # Also add ub_project.name/stage/version, and data_tier by hand
-            jsonData = { 'file_name': os.path.basename(in_file), 
+            fname = os.path.basename(in_file)
+            sfname=fname.split(".")
+            fname = sfname[0] + self._seb + "." + sfname[1]
+
+            jsonData = { 'file_name': fname, 
                          'file_type': "data", 
                          'file_size': fsize, 
                          'file_format': "binaryraw-compressed", 
