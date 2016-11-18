@@ -645,7 +645,8 @@ class get_metadata( ds_project_base ):
             fname = os.path.basename(in_file)
             sfname=fname.split(".")
             fname = sfname[0] + self._seb + "." + sfname[1]
-
+            stime=14
+            etime=15
             jsonData = { 'file_name': fname, 
                          'file_type': "data", 
                          'file_size': fsize, 
@@ -717,13 +718,17 @@ class get_metadata( ds_project_base ):
                                             seq     = 0,
                                             status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
-            in_file = filelist[0]
-            out_file = '/home/vgenty/snova_metadata/%s.json' % os.path.basename(in_file)
+            in_file = os.path.basename(filelist[0])
+            sin_file=in_file.split(".")
+            in_file=sin_file[0]+self._seb+sin_file[1]
+
+            out_file = '/home/vgenty/snova_metadata/%s.json' % in_file
 
             if os.path.isfile(out_file):
-#                os.system('rm %s' % in_file)
+                self.info("Ok see in_file %s and out_file %s"%(in_file,out_file))
                 status = 0
             else:
+                self.info("Was fucked")
                 status = 100
 
             # Create a status object to be logged to DB (if necessary)

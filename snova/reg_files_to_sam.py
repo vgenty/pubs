@@ -186,7 +186,7 @@ class reg_files_to_sam( ds_project_base ):
             
             in_json = '/home/vgenty/snova_metadata/%s.json' % infile
 
-            self.info("Asking for info %s"%infile)
+            self.info("Asking for json file %s"%in_json)
 
             if not os.path.isfile( in_json ):
                 self.error('Missing json file: %s' % in_json)
@@ -225,9 +225,7 @@ class reg_files_to_sam( ds_project_base ):
             in_file = os.path.basename(in_file_v[i])
             sin_file=in_file.split(".")
             in_file=sin_file[0] + self._seb + "." + sin_file[1]
-            in_json = "/home/vgenty/snova_metadata/" + in_file + '.json'
-            printa
-            print i,status_v,in_file,in_json
+            in_json = "/home/vgenty/snova_metadata/" + "".join(in_file.split(".")) + ".json"
 
             try:
                 json_dict = json.load( open( in_json ) )
@@ -333,7 +331,7 @@ class reg_files_to_sam( ds_project_base ):
             in_file = filelist[0]
             in_file_base = os.path.basename(in_file)
             sin_file_base=in_file_base.split(".")
-            in_file_base=sin_file_base[0]+self._seb+sin_file_base[1]
+            in_file_base=sin_file_base[0]+self._seb+"."+sin_file_base[1]
 
             self.info("Asking for %s"%in_file_base)
 
@@ -343,8 +341,10 @@ class reg_files_to_sam( ds_project_base ):
             try:
                 samweb.getMetadata(filenameorid=in_file_base)
                 status = kSTATUS_DONE
+                self.info("It was there...")
             except samweb_cli.exceptions.FileNotFound:
                 status = kSTATUS_INIT
+                self.info("File not found...")
 
             # Create a status object to be logged to DB (if necessary)
             self.log_status( ds_status( project = self._project,
