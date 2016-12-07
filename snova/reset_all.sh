@@ -1,6 +1,7 @@
 yes | ../sbin/remove_all_projects 
 
-yes | ../sbin/remove_runtable DummyRunTable
+yes | ../sbin/remove_runtable DummyRunTable00
+yes | ../sbin/remove_runtable DummyRunTable01
 yes | ../sbin/remove_runtable FragmentRunTable_seb01
 # yes | ../sbin/remove_runtable FragmentRunTable_seb02
 # yes | ../sbin/remove_runtable FragmentRunTable_seb03
@@ -12,7 +13,8 @@ yes | ../sbin/remove_runtable FragmentRunTable_seb01
 # yes | ../sbin/remove_runtable FragmentRunTable_seb09
 
 
-yes | ../sbin/create_runtable DummyRunTable
+yes | ../sbin/create_runtable DummyRunTable00
+yes | ../sbin/create_runtable DummyRunTable01
 yes | ../sbin/create_runtable FragmentRunTable_seb01
 # yes | ../sbin/create_runtable FragmentRunTable_seb02
 # yes | ../sbin/create_runtable FragmentRunTable_seb03

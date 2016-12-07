@@ -1,3 +1,14 @@
+source /home/vgenty/sw/pubs/config/setup.sh
+
+source /uboonenew/setup_online.sh
+setup gcc v4_9_2
+setup python v2_7_9
+setup postgresql v9_3_6 -q p279
+setup psycopg2 v2_5_4
+setup git v2_3_0
+setup sam_web_client
+kx509
+
 # SQL reader account config
 export PUB_PSQL_READER_HOST=genty.servebeer.com
 export PUB_PSQL_READER_USER=vgenty

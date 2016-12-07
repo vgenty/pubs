@@ -61,7 +61,8 @@ class reg_files_to_sam( ds_project_base ):
         self._skip_ref_status = None
         self._skip_status = None
 
-        self._seb="seb01"
+        #self._seb="seb01"
+        self._seb=None
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -73,6 +74,7 @@ class reg_files_to_sam( ds_project_base ):
         #self._meta_dir = '%s' % (resource['METADIR'])
         self._infile_format = resource['INFILE_FORMAT']
         self._experts = resource['EXPERTS']
+        self._seb = resource['SEB']
 
         try:
             self._parent_project = resource['PARENT_PROJECT'].split(':')

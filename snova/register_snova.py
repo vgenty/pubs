@@ -8,21 +8,19 @@ from dstream import ds_status
 from dstream import ds_api
 from pub_dbi.pubdb_conn import pubdb_conn
 
-
-
 def execute_remote(server,command):
     return subprocess.Popen(["ssh",server,command],stdout=subprocess.PIPE).communicate()[0]
 
-class register_snova_dropbox(ds_project_base):
+class register_snova(ds_project_base):
 
     # Define project name as class attribute
-    _project = 'register_snova_dropbox'
+    _project = 'register_snova'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' , sebname = ''):
 
         # Call base class ctor
-        super(register_snova_dropbox,self).__init__( arg )
+        super(register_snova,self).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -64,6 +62,7 @@ class register_snova_dropbox(ds_project_base):
         self.info("Sorting")
         sorted(dir_flist)
         self.info("Sorted")
+        
         # create a dictionary to keep track of
         # - file name ----- NAME
         # - run number ---- RUN
@@ -202,9 +201,9 @@ class register_snova_dropbox(ds_project_base):
 # A unit test section
 if __name__ == '__main__':
 
-    proj_name = 'register_snova_dropbox_%s'%sys.argv[1]
+    proj_name = 'register_snova_%s'%sys.argv[1]
 
-    test_obj = register_snova_dropbox( proj_name , sys.argv[1] )
+    test_obj = register_snova( proj_name , sys.argv[1] )
 
     test_obj.process_newruns()
 
