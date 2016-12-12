@@ -1,33 +1,51 @@
 ## @namespace dstream_online.get_checksum
 #  @ingroup get_checksum
 #  @brief Defines a project get_checksum
-#  @author yuntse
+#  @author vgenty
 
 # python include
 import time, os, sys
 # pub_dbi package include
-from pub_dbi import DBException
+from pub_dbi import DBException, pubdb_conn_info
 # pub_util package include
 from pub_util import pub_smtp
+from pub_util import pub_logger
+from pub_dbi.pubdb_conn import pubdb_conn
 # dstream class include
 from dstream import DSException
 from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_multiprocess
+from dstream import ds_api
 from ds_online_util import *
+from snova_util import *
 import traceback
 
-import subprocess
+def query_seb_snova_size(parent_seb_ids,parent_seb_names):
+        # go through each of the SEBS and calculate the disk usage, if it's 
+        # above 70% on a single SEB we have to start slashing
 
-class get_checksum( ds_project_base ):
+        seb_datalocal_size_v = [0.0]*len(parent_seb_ids)
 
-    _project = 'get_checksum'
+        for ix,seb in enumerate(parent_seb_names):
+            ret_ = exec_system(["ssh", seb, "df /datalocal/"])
+            size_, used_, unused_ = ret_[-1].split(" ")[6:9]
+            seb_datalocal_size_v[ix] = float(used_) / float(size_)
+        
+        max_idx=argmax(seb_datalocal_size_v)
+        #self.info("SEB sizes: %s"%str(seb_datalocal_size_v))
+
+        return seb_datalocal_size_v,max_idx
+
+class monitor_snova( ds_project_base ):
+
+    _project = 'monitor_snova'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super( get_checksum, self ).__init__( arg )
+        super( monitor_snova, self ).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -58,16 +76,18 @@ class get_checksum( ds_project_base ):
 
         self._nruns = int(resource['NRUNS'])
         
-        if 'REG_PREFIX' in resource:
-            self._parent_prefix = resource['REG_PREFIX']
+        # if 'REG_PREFIX' in resource:
+            #self._parent_prefix = resource['REG_PREFIX']
+        self._parent_prefix = "get_binary_filename"
 
-        if 'FRAGMENT_PREFIX' in resource:
-            self._fragment_prefix = resource['FRAGMENT_PREFIX']
-        
+            # if 'FRAGMENT_PREFIX' in resource:
+        self._fragment_prefix = "fragmentruntable"#resource['FRAGMENT_PREFIX']
+            
         if 'SEBS' in resource:
-            self._parent_sebs = resource['PARENT_PROJECTS'].split(",")
+            self._parent_seb_ids = resource['SEBS'].split("-")
 
-        self._parent_sebs= ["%s_seb%02d"%(self._parent_prefix,parent_seb) for parent_seb in self._parent_sebs]
+        self._parent_seb_names    = ["seb%02d"%(int(parent_seb_id)) for parent_seb_id in self._parent_seb_ids]
+        self._parent_seb_projects = ["%s_%s"%(self._parent_prefix,seb_name) for seb_name in self._parent_seb_names]
 
         self._experts = resource['EXPERTS']
 
@@ -81,7 +101,7 @@ class get_checksum( ds_project_base ):
             self._min_run = int(resource['MIN_RUN'])
 
     ## @brief monitor disk usage of data local
-    def monitor_snova( self ):
+    def monitor_sebs( self ):
         
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -92,234 +112,63 @@ class get_checksum( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
+
+
+        seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
+                                                            self._parent_seb_names)
+        
+        self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
+
+        if seb_datalocal_size_v[max_idx] < 0.7: return
+
         # Fetch runs from DB and process for # runs specified for this instance.
-        runlist=[]
-        projlist=[]
-        statuslist=[]
+        status_v=[kSTATUS_DONE]*len(self._parent_seb_projects)
         
-        projlist.append(self._project)
-        statuslist.append(kSTATUS_INIT)
-        
-
-        for parent_project in self._parent_projects:
-            projlist.append(parent_project)
-            statuslist.append(kSTATUS_DONE)
-
         # all sebs runlist
-        runlist = self.get_xtable_runs( projlist, statuslist )
+        death_star = pub_logger.get_logger('death_star')
+        rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
         
-        ctr = self._nruns
-        in_file_v = []
-        runid_v = []
-        
-        #slice the run list
-        sliced_runlist = runlist[:ctr]
-
-        base_cmd="find /datalocal/supernova/ -type f -regex '.*\("
-        run_str=["%07d-%05d"%(r[0],r[1]) for r in runlist]
-        base_cmd+="\|".join(run_str)
-        base_cmd+="\)'.ubdaq"
-        
-        res_= subprocess.Popen(["ssh", self._seb, base_cmd],stdout=subprocess.PIPE).communicate()[0].split("\n")[:-1]
-        
-        file_map={}
-        
-        for res in res_:
-            split_ = res.split('.')[0].split('_')[-1].split('-')
-            run_    = int(split_[1])
-            subrun_ = int(split_[2])
-            file_map[tuple((run_,subrun_))]=res
-            
-for x in sliced_runlist:
-            # Break from loop if counter became 0
-            if ctr <= 0: break
-
+        #each subrun is 1MB
+        #should go through and remove 1G at a time?
+        ctr=-1
+	self.info("Requesting cross table runs for %s"%str(self._parent_seb_projects))
+        for x in reversed(self.get_xtable_runs(self._parent_seb_projects,status_v)):
+            ctr+=1
             (run, subrun) = (int(x[0]), int(x[1]))
-            if run < self._min_run: break
+            # do the deletion
+            self.info("ctr: %d ... run: %d ... subrun %d"%(ctr,run,subrun))
+            # remove from the runtable
+            for seb,seb_project in zip(self._parent_seb_names,self._parent_seb_projects):
+                runtable=self._fragment_prefix+"_"+seb
+                seb_status = self._api.get_status( ds_status( seb_project, run, subrun, kSTATUS_DONE ) )
+                fname = seb_status._data
+                ret = exec_system(["ssh", seb, "stat %s"%fname])
+                # ret = exec_system(["ssh", seb, "rm -rf %s"%fname])
+                #print seb,runtable,fname
+                SS="rundbWriter.star_destroyer(%s, %d, %d)"%(runtable,run,subrun)
+                #print SS
+                #print ret
+                #print "~~~~"
 
-            # Counter decreases by 1
-            ctr -= 1
+            if ctr%100==0:
+                seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
+                                                                    self._parent_seb_names) 
+                self.info("Current max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
+                if seb_datalocal_size_v[max_idx] < 0.7:  break
 
-            # Report starting
-            self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-
-            statusCode = kSTATUS_INIT
-            
-            filelist=[file_map[(run,subrun)]]
-
-            if (len(filelist)<1):
-                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
-                continue
-
-            if (len(filelist)>1):
-                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
-                continue
-
-            in_file_v.append(filelist[0])
-            runid_v.append((run,subrun))
-            
-        mp = self.process_files(in_file_v)
-        
-        for i in xrange(len(in_file_v)):
-            (out,err) = mp.communicate(i)
-            
-            self.info("Got return %s"%str(out))
-            if err or not out:
-                self.error('Checksum calculculation failed for %s' % in_file_v[i])
-                self.error(err)
-                self.log_status( ds_status( project = self._project,
-                                            run     = runid_v[i][0],
-                                            subrun  = runid_v[i][1],
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_CHECKSUM_CALCULATION_FAILED,
-                                            data    = '' ) )
-                continue
-
-            statusCode = kSTATUS_INIT
-            try:
-                metadata=None
-                exec('metadata = %s' % out)
-                self._data = in_file_v[i]+":"+metadata['crc_value']
-                statusCode = kSTATUS_DONE
-                self.info("Set CRC: %s on file: %s"%(self._data,in_file_v[i]))
-            except Exception:
-                errorMessage = traceback.print_exc()
-                subject = 'Failed to obtain the checksum of the file %s' % in_file_v[i]
-                text = """File: %s
-                          Error message:
-                          %s
-                """ % ( in_file_v[i], errorMessage )
-
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                self._data = ''
-                
-            self.log_status( ds_status( project = self._project,
-                                        run     = runid_v[i][0],
-                                        subrun  = runid_v[i][1],
-                                        seq     = 0,
-                                        status  = statusCode,
-                                        data    = self._data ) )
-
-    ## @brief process multiple files checksum calculation
-    def process_files(self, in_file_v):
-
-        mp = ds_multiprocess(self._project)
-
-        #cmd_template = 'python -c "import samweb_client.utility;print samweb_client.utility.fileEnstoreChecksum(\'%s\')"'
-        cmd_template ="ssh -T "+self._seb+" 'source /uboonenew/setup_online.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s'"
-
-        for f in in_file_v:
-            self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
-            cmd = cmd_template % f
-
-            index,active_ctr = mp.execute(cmd)
-
-            if not self._parallelize:
-                mp.communicate(index)
-            else:
-                time_slept = 0
-                while active_ctr > self._parallelize:
-                    time.sleep(0.2)
-                    time_slept += 0.2
-                    active_ctr = mp.active_count()
-
-                    if time_slept > self._max_proc_time:
-                        self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
-                        mp.kill()
-                        break
-                    if int(time_slept) and (int(time_slept*10)%50) == 0:
-                        self.info('Waiting for %d/%d process to finish...' % (active_ctr,len(in_file_v)))
-        time_slept=0
-
-        while mp.active_count():
-            time.sleep(0.2)
-            time_slept += 0.2
-            if time_slept > self._max_proc_time:
-                mp.kill()
-                break
-        return mp
-        
-    ## @brief check the checksum is in the table
-    def check_db( self ):
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-            self.error('Cannot connect to DB! Aborting...')
-            return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
-
-        # Fetch runs from DB and process for # runs specified for this instance.
-        ctr = self._nruns
-        for x in self.get_runs( self._project, 2 ):
-
-            # Counter decreases by 1
-            ctr -= 1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-
-            statusCode = kSTATUS_TO_BE_VALIDATED
-            in_file_name = self._infile_format % ( run, subrun )
-            in_file = '%s/%s' % ( self._in_dir, in_file_name )
-
-            # Get status object
-            status = self._api.get_status(ds_status(self._project,
-                                                    x[0],x[1],x[2]))
-
-            self._data = status._data
-            self._data = str( self._data )
-
-            if self._data:
-               statusCode = 0
-            else:
-                subject = 'Checksum of the file %s not in database' % in_file
-                text = """File: %s
-Checksum is not in database
-                """ % ( in_file )
-
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-
-                statusCode = 100
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = statusCode,
-                                data    = self._data )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
-
+                if ctr==5000: break
+         
+	self.info("End")
+        return
 
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]
 
-    obj = get_checksum( proj_name )
+    obj = monitor_snova( proj_name )
 
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    obj.calculate_checksum()
+    obj.monitor_sebs()
 
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

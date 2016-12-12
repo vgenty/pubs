@@ -131,7 +131,7 @@ CREATE OR REPLACE FUNCTION GetLastRun( tname TEXT ) RETURNS INT AS $$
 DECLARE
 myQuery TEXT;
 myBool  BOOLEAN;
-maxrun  SMALLINT;
+maxrun  INT;
 BEGIN
   --make sure table exists  
   IF NOT DoesTableExist(tname) THEN
@@ -160,7 +160,7 @@ CREATE OR REPLACE FUNCTION GetLastSubRun( tname TEXT,
 DECLARE
 myQuery TEXT;
 myBool  BOOLEAN;
-maxsubrun  SMALLINT;
+maxsubrun  INT;
 BEGIN
   --make sure table exists  
   IF NOT DoesTableExist(tname) THEN
@@ -195,9 +195,9 @@ CREATE OR REPLACE FUNCTION GetLastRunSubRun( tname TEXT )
 DECLARE
 myQuery    TEXT;
 myBool     BOOLEAN;
-maxrun     SMALLINT;
-maxsubrun  SMALLINT;
-maxrunsubrun SMALLINT ARRAY[2];
+maxrun     INT;
+maxsubrun  INT;
+maxrunsubrun INT ARRAY[2];
 BEGIN
   --make sure table exists  
   IF NOT DoesTableExist(tname) THEN

@@ -7,9 +7,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_api
 from pub_dbi.pubdb_conn import pubdb_conn
-
-def execute_remote(server,command):
-    return subprocess.Popen(["ssh",server,command],stdout=subprocess.PIPE).communicate()[0]
+from snova_util import *
 
 class register_snova(ds_project_base):
 
@@ -54,15 +52,15 @@ class register_snova(ds_project_base):
 
         data_path = self._data_dir
 
-        self.info('Start access in data directory %s'%data_path)
-        self.info('Looking for data files in: %s'%data_path)
+        # self.info('Start access in data directory %s'%data_path)
+        # self.info('Looking for data files in: %s'%data_path)
         
         #execute a single command to get all files in snova directory
-        dir_flist=execute_remote(self._sebname,"ls -f -1 %s"%data_path).split('\n')[2:-1]
-        self.info("Sorting")
-        sorted(dir_flist)
-        self.info("Sorted")
-        
+        dir_flist=exec_system(["ssh", self._sebname, "ls -f -1 %s"%data_path])[2:]
+
+        # self.info("Sorting dir_flist size: %s",str(len(dir_flist)))
+        dir_flist.sort(key=lambda x : int("".join(x.split('.')[0].split('_')[-1].split('-')[1:])))
+
         # create a dictionary to keep track of
         # - file name ----- NAME
         # - run number ---- RUN
@@ -82,22 +80,25 @@ class register_snova(ds_project_base):
 
         #do how many at a time, 1000?
         ik=0
-        imax=100
+        imax=10000
         for f_ in dir_flist:
             
             try:
-
-                run    = int(f_.split('.')[0].split('_')[-1].split('-')[1])
-                subrun = int(f_.split('.')[0].split('_')[-1].split('-')[2])
+                rs_tmp=f_.split('.')[0].split('_')[-1].split('-')
+                run    = int(rs_tmp[1])
+                subrun = int(rs_tmp[2])
                 
                 run_subrun_t=tuple((run,subrun))
 
-                if run_subrun_t <= last_recorded_info: continue
+                if run_subrun_t <= last_recorded_info: 
+                    continue
 
-                #self.info('Found run %i, %i in dropbox from file %s)'%(run,subrun,f))
                 file_info[run_subrun_t] = [f_,0.0,0.0]
+
                 ik+=1
-                if ik==imax:break
+
+                if ik==imax: break
+
             except:
                 
                 # if file-name is .ubdaq then we have a problem
@@ -105,16 +106,15 @@ class register_snova(ds_project_base):
                 if (f.find('.ubdaq')):
                     self.info('Could not read RUN/SUBRUN info for file %s'%f)
 
-
-        self.info("Sorting")
+        # self.info("Sorting file_info size: %s",str(len(file_info)))
         sorted_file_info = sorted(file_info)
         max_file_info = sorted_file_info[-1]
-        
+        # self.info("Query seb")
         #lets do a big query for the creation and modified times for these files over ssh
         sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
                                    stdin=subprocess.PIPE, stdout = subprocess.PIPE, 
                                    universal_newlines=True,bufsize=0)
-        
+
         for f_ in sorted_file_info:
 
             filepath=os.path.join(data_path,file_info[f_][0])
@@ -134,8 +134,6 @@ class register_snova(ds_project_base):
                 values.append(return_.rstrip('\n'))
                 ic+=1
                 
-        #ic != ik exception
-
         for ix,run_subrun in enumerate(sorted_file_info):
             
             time_create,time_modify=values[ix].split("-")
@@ -155,7 +153,7 @@ class register_snova(ds_project_base):
             if (info >= max_file_info):
                 continue;
 
-            self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
+            # self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
 
             try:
 
@@ -170,9 +168,7 @@ class register_snova(ds_project_base):
                 file_creation = time.strftime('%Y-%m-%d %H:%M:%S',file_creation)
                 file_closing  = time.strftime('%Y-%m-%d %H:%M:%S',file_closing)
                 
-                self.info('Filling death star...')
-                                
-                # insert into the death start
+                # insert into the death star
                 rundbWriter.insert_into_death_star(self._runtable,
                                                    run,
                                                    subrun,

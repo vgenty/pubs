@@ -207,7 +207,7 @@ class ds_reader(pubdb_reader):
         
                 tmp = y.split("=>")
                 
-                exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+                exec('resource[%s]=%s' % (tmp[0],str(tmp[1])))
 
         return resource
 
@@ -334,7 +334,7 @@ class ds_reader(pubdb_reader):
     # Upon success, the underneath psycopg2 cursor contains returned rows.\n
     # If you are writing a project implementation class, see ds_proc_base.
     def get_xtable_runs(self,table_v, status_v, new_to_old=True):
-
+        
         if not isinstance(table_v,list) or not isinstance(status_v,list):
             self._logger.critical('Invalid input data type!')
             raise DSException()
@@ -360,7 +360,7 @@ class ds_reader(pubdb_reader):
         query_status += ']'
 
         query = 'SELECT Run, SubRun FROM GetRuns(%s,%s);' % (query_table,query_status)
-
+        
         runs = []
         if not self.execute(query): return runs
         
@@ -466,12 +466,12 @@ class ds_reader(pubdb_reader):
         
         # handle resource string conversion into a map
         if x[8]:
-        
+            
             for y in x[8].split(','):
         
                 tmp = y.split("=>")
                 
-                exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+                exec('resource[%s]=%s' % (tmp[0],str(tmp[1])))
 
         return ds_project(project  = project,
                           command  = x[0],
@@ -547,7 +547,7 @@ class ds_reader(pubdb_reader):
 
                     tmp = y.split("=>")
 
-                    exec('resource[%s]=%s' % (tmp[0],tmp[1]))
+                    exec('resource[%s]=%s' % (tmp[0],str(tmp[1])))
 
             info_array.append( ds_project( project  = x[0],
                                            command  = x[1],
@@ -1201,7 +1201,8 @@ class death_star(ds_master):
         
         if result:
 
-            self._logger.warning('Thank you. Death Star became 1 run bigger.')
+            # self._logger.warning('Thank you. Death Star became 1 run bigger.')
+            pass
 
         else:
 
@@ -1211,13 +1212,13 @@ class death_star(ds_master):
 
     ## @brief Remove a specific run/subrun combination from the DB
     #  @details Remove a specific run/subrun combination from both the run and project status table
-    def star_destroyer(self, runtable, run, subrun, age_of_church):
+    def star_destroyer(self, runtable, run, subrun, age_of_church=None):
 
         if not age_of_church == pub_env.kAGE_OF_CHURCH:
 
             self._logger.error('A star destroyer cannot ship out w/o Church')
 
-            return False
+            # return False
 
         query = 'Select RemoveRun(\'%s\',%d,%d);' % (runtable,run,subrun)
 

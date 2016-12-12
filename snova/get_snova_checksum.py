@@ -15,6 +15,7 @@ from dstream import ds_project_base
 from dstream import ds_status
 from dstream import ds_multiprocess
 from ds_online_util import *
+from snova_util import *
 import traceback
 
 import subprocess
@@ -62,6 +63,7 @@ class get_checksum( ds_project_base ):
 
         if 'PARENT_PROJECT' in resource:
             self._parent_project = resource['PARENT_PROJECT']
+
         self._experts = resource['EXPERTS']
 
         if 'PARALLELIZE' in resource:
@@ -125,21 +127,6 @@ class get_checksum( ds_project_base ):
         
         #slice the run list
         sliced_runlist = runlist[:ctr]
-
-        base_cmd="find /datalocal/supernova/ -type f -regex '.*\("
-        run_str=["%07d-%05d"%(r[0],r[1]) for r in runlist]
-        base_cmd+="\|".join(run_str)
-        base_cmd+="\)'.ubdaq"
-        
-        res_= subprocess.Popen(["ssh", self._seb, base_cmd],stdout=subprocess.PIPE).communicate()[0].split("\n")[:-1]
-        
-        file_map={}
-        
-        for res in res_:
-            split_ = res.split('.')[0].split('_')[-1].split('-')
-            run_    = int(split_[1])
-            subrun_ = int(split_[2])
-            file_map[tuple((run_,subrun_))]=res
             
         for x in sliced_runlist:
             # Break from loop if counter became 0
@@ -153,12 +140,11 @@ class get_checksum( ds_project_base ):
 
             # Report starting
             self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-
-            statusCode = kSTATUS_INIT
             
-            filelist=[file_map[(run,subrun)]]
+            ref_status = self._api.get_status( ds_status( self._parent_project, run, subrun, kSTATUS_DONE ) )
+            fname = ref_status._data
 
-            if (len(filelist)<1):
+            if "ubdaq" not in fname:
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 self.log_status( ds_status( project = self._project,
                                             run     = run,
@@ -166,17 +152,8 @@ class get_checksum( ds_project_base ):
                                             seq     = 0,
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
-
-            if (len(filelist)>1):
-                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
-                continue
-
-            in_file_v.append(filelist[0])
+            
+            in_file_v.append(fname)
             runid_v.append((run,subrun))
             
         mp = self.process_files(in_file_v)

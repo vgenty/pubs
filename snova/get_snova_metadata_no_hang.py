@@ -16,6 +16,7 @@ from ds_online_constants import *
 from ds_online_util import *
 #from ROOT import *
 import datetime, json
+from snova_util import *
 #import extractor_dict
 #import pdb
 import subprocess
@@ -385,7 +386,7 @@ class get_metadata( ds_project_base ):
 
             out,err = mp.communicate(index_run)
             
-            fsize = subprocess.Popen(["ssh","-T",self._seb,"stat -c %%s %s"%in_file],stdout=subprocess.PIPE).communicate()[0]
+            fsize = exec_system(["ssh","-T",self._seb,"stat -c %%s %s"%in_file])
 
             run,subrun = runid_v[index_run]
 
