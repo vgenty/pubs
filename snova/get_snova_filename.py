@@ -108,6 +108,7 @@ class construct_filename( ds_project_base ):
         
 
         runlist = self.get_runs(self._project,1)
+        runlist.reverse()
         #ctr = self._nruns
         ctr = 10000
         in_file_v = []
@@ -115,6 +116,7 @@ class construct_filename( ds_project_base ):
         
         #slice the run list
         sliced_runlist = runlist[:ctr]
+        #self.info(sliced_runlist)
         # base_cmd="find /datalocal/supernova/ -type f -regex '.*\("
         # run_str=["%07d-%05d"%(r[0],r[1]) for r in sliced_runlist]
 

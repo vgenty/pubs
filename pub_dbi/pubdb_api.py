@@ -38,6 +38,10 @@ class pubdb_reader(object):
         if not self._cursor: return None
         return self._cursor.fetchone()
 
+    def fetchall(self):
+        if not self._cursor: return None
+        return self._cursor.fetchall()
+
     def is_cursor_connected(self):
         if not self._cursor: return None
         if self._cursor.closed: return False

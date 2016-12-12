@@ -171,6 +171,36 @@ class ds_reader(pubdb_reader):
         if not res: return -1
         
         return int(res[0])
+    
+
+    ## Function to get earliest run
+    def get_earliest_runs(self,table):
+
+        query = 'SELECT DISTINCT RunNumber FROM %s ORDER BY RunNumber' % table
+        
+        if not self.execute(query):
+            return -1
+
+        res = self.fetchall()
+
+        if not res: return -1
+        
+        return res
+
+    ## Function to get earliest run
+    def get_subruns(self,table,runnumber,limit=100):
+
+        query = 'SELECT SubRunNumber FROM %s WHERE RunNumber=%d ORDER BY SubRunNumber LIMIT %d' % (table,runnumber,limit)
+        
+        if not self.execute(query):
+            return -1
+
+        res = self.fetchall()
+
+        if not res: return -1
+        
+        return [int(r[0]) for r in res]
+
 
     ## Function to get latest subrun
     def get_last_subrun(self,table,run):
@@ -1222,12 +1252,12 @@ class death_star(ds_master):
 
         query = 'Select RemoveRun(\'%s\',%d,%d);' % (runtable,run,subrun)
 
-
         result = self.commit(query)
 
         if result:
 
-            self._logger.warning('Star Destroyer is shipped your way with FedEx ground.')
+            #self._logger.warning('Star Destroyer is shipped your way with FedEx ground.')
+            pass
 
         else:
 

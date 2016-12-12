@@ -19,6 +19,7 @@ from dstream import ds_multiprocess
 from dstream import ds_api
 from ds_online_util import *
 from snova_util import *
+import collections
 import traceback
 
 def query_seb_snova_size(parent_seb_ids,parent_seb_names):
@@ -33,7 +34,6 @@ def query_seb_snova_size(parent_seb_ids,parent_seb_names):
             seb_datalocal_size_v[ix] = float(used_) / float(size_)
         
         max_idx=argmax(seb_datalocal_size_v)
-        #self.info("SEB sizes: %s"%str(seb_datalocal_size_v))
 
         return seb_datalocal_size_v,max_idx
 
@@ -68,7 +68,11 @@ class monitor_snova( ds_project_base ):
         self._skip_ref_status = None
         self._skip_status = None
         self._seb=""
-        
+        self._removed_runs_list=[]
+	self._seb_occupancy = int(0.8)
+
+	self._queue_run_deletion=collections.OrderedDict()
+
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
 
@@ -113,58 +117,96 @@ class monitor_snova( ds_project_base ):
             self.get_resource()
 
 
-
         seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
                                                             self._parent_seb_names)
-        
         self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
-
-        if seb_datalocal_size_v[max_idx] < 0.7: return
+	
+        if seb_datalocal_size_v[max_idx] < self._seb_occupancy: return
 
         # Fetch runs from DB and process for # runs specified for this instance.
         status_v=[kSTATUS_DONE]*len(self._parent_seb_projects)
         
-        # all sebs runlist
+        # each subrun is 1MB
+        # should go through and remove 1G at a time?
+        ctr=-1
+
+	seb_del_map = {}
+
+	for seb in self._parent_seb_names:
+            seb_del_map[seb] = ""
+
+	self._removed_runs_list = []
+
+        logger = pub_logger.get_logger(self._project)
+        reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
+
+	self.info("Asking for earliest runs...")
+	
+	run_list_map=collections.OrderedDict()
+	
+	for seb in self._parent_seb_names:
+            runs = reader.get_earliest_runs("fragmentruntable_%s"%seb)
+
+	    if type(runs) is not list: continue
+
+	    runs = [int(run[0]) for run in runs]
+	    for run in runs:
+                 try:
+                      run_list_map[run].append(seb)
+		 except KeyError:
+		      run_list_map[run] = []
+                      run_list_map[run].append(seb)
+	    
+
+	run = run_list_map.keys()[0]
+
+	self.info("Got run %s"%str(run))
+
+	if run >= 9195: return
+	if run != 8100: return
+
+        sebs_v = run_list_map[run]
+	
         death_star = pub_logger.get_logger('death_star')
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
-        
-        #each subrun is 1MB
-        #should go through and remove 1G at a time?
-        ctr=-1
-	self.info("Requesting cross table runs for %s"%str(self._parent_seb_projects))
-        for x in reversed(self.get_xtable_runs(self._parent_seb_projects,status_v)):
-            ctr+=1
-            (run, subrun) = (int(x[0]), int(x[1]))
-            # do the deletion
-            self.info("ctr: %d ... run: %d ... subrun %d"%(ctr,run,subrun))
-            # remove from the runtable
-            for seb,seb_project in zip(self._parent_seb_names,self._parent_seb_projects):
-                runtable=self._fragment_prefix+"_"+seb
-                seb_status = self._api.get_status( ds_status( seb_project, run, subrun, kSTATUS_DONE ) )
-                fname = seb_status._data
-                ret = exec_system(["ssh", seb, "stat %s"%fname])
-                # ret = exec_system(["ssh", seb, "rm -rf %s"%fname])
-                #print seb,runtable,fname
-                SS="rundbWriter.star_destroyer(%s, %d, %d)"%(runtable,run,subrun)
-                #print SS
-                #print ret
-                #print "~~~~"
 
-            if ctr%100==0:
-                seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
-                                                                    self._parent_seb_names) 
-                self.info("Current max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
-                if seb_datalocal_size_v[max_idx] < 0.7:  break
+	for seb in sebs_v:
+            ctr=-1;
 
-                if ctr==5000: break
-         
-	self.info("End")
+	    seb_del = ""
+	    subruns=reader.get_subruns("fragmentruntable_%s"%seb,run,500)
+	    valid_subruns=[]
+	    for subrun in subruns:
+                seb_status = None
+		try:
+                    seb_status = self._api.get_status( ds_status( "get_binary_filename_%s"%seb , run, subrun, kSTATUS_DONE ) )
+		except : 
+                    continue
+		
+		fname = seb_status._data
+
+		if fname is None: 
+                    continue
+
+		seb_del += str(fname + " ")
+		valid_subruns.append(subrun)
+
+	    self.info("removing @ %s..."%seb)
+	    self.info("valid subruns... %s"%str(valid_subruns))
+	    ret = exec_system(["ssh", "root@%s"%seb, "rm -rf %s"%seb_del])
+	    #ret = exec_system(["ssh", "root@%s"%seb, "file %s"%seb_del])
+	    self.info(ret)
+	    runtable="fragmentruntable_%s"%seb
+	    for subrun in valid_subruns:
+		self.info("...removing %s %d %d"%(runtable,run,subrun))
+                rundbWriter.star_destroyer(runtable,run,subrun);
+
         return
 
 if __name__ == '__main__':
-
+	
     proj_name = sys.argv[1]
-
+	
     obj = monitor_snova( proj_name )
 
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
