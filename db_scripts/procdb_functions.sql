@@ -565,6 +565,67 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL;
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS RemoveSubRuns(RunTableName TEXT, Run INT, SubRuns INT[]);
+DROP FUNCTION IF EXISTS RemoveSubRuns(Run INT, SubRuns INT[]);
+CREATE OR REPLACE FUNCTION RemoveSubRuns(RunTableName TEXT, Run INT, SubRuns INT[]) 
+       	  	  RETURNS VOID AS $$
+DECLARE
+  query TEXT;
+  rec RECORD;
+  SubRun INT;
+BEGIN
+
+  IF NOT DoesTableExist(RunTableName) THEN
+    RAISE EXCEPTION '+++++++++++++++++ Project table not found +++++++++++++++++';
+  END IF;
+
+  FOR rec IN SELECT * FROM ListProject()
+  LOOP
+      IF NOT DoesTableExist(rec.Project::TEXT) THEN
+        RAISE EXCEPTION '+++++++++++++++++ Project table not found ++++++++++++++++++';
+      END IF;
+  END LOOP;
+
+  -- FOR rec IN SELECT * FROM ListProject()
+  -- LOOP
+  --     IF NOT DoesTableExist(rec.Project::TEXT) THEN
+  --       RAISE EXCEPTION '+++++++++++++++++ Project table not found ++++++++++++++++++';
+  --     END IF;
+  --     FOREACH SubRun IN ARRAY SubRuns LOOP
+  --           query := format( 'DELETE FROM %s WHERE %s.Run=%s AND %s.SubRun=%s;',
+  --       	       	       rec.Project::TEXT,
+  -- 			       rec.Project::TEXT, Run,
+  -- 			       rec.Project::TEXT, SubRun);
+  --           EXECUTE query;
+  --     END LOOP; 
+  -- END LOOP;
+
+  IF ( SELECT COUNT(project) > 0 FROM ListProject() WHERE project=RunTableName ) THEN
+  
+	FOREACH SubRun IN ARRAY SubRuns 
+	LOOP
+               query := format( 'DELETE FROM %s WHERE %s.Run=%s AND %s.SubRun=%s;',
+       	     	         	   RunTableName,
+	         		   RunTableName, Run,
+				   RunTableName, SubRun);
+	        EXECUTE query;
+        END LOOP; 
+  ELSE
+	FOREACH SubRun IN ARRAY SubRuns 
+	LOOP
+               query := format( 'DELETE FROM %s WHERE %s.RunNumber=%s AND %s.SubRunNumber=%s;',
+       	     	         	   RunTableName,
+	         		   RunTableName, Run,
+				   RunTableName, SubRun);
+	        EXECUTE query;
+        END LOOP; 
+  END IF;
+
+END;
+$$ LANGUAGE PLPGSQL;
 --Homemade types
 

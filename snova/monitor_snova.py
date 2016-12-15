@@ -68,8 +68,7 @@ class monitor_snova( ds_project_base ):
         self._skip_ref_status = None
         self._skip_status = None
         self._seb=""
-        self._removed_runs_list=[]
-	self._seb_occupancy = int(0.8)
+	self._seb_occupancy = int(0.5)
 
 	self._queue_run_deletion=collections.OrderedDict()
 
@@ -116,7 +115,6 @@ class monitor_snova( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
 
-
         seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
                                                             self._parent_seb_names)
         self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
@@ -135,7 +133,6 @@ class monitor_snova( ds_project_base ):
 	for seb in self._parent_seb_names:
             seb_del_map[seb] = ""
 
-	self._removed_runs_list = []
 
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
@@ -158,12 +155,13 @@ class monitor_snova( ds_project_base ):
                       run_list_map[run].append(seb)
 	    
 
-	run = run_list_map.keys()[0]
+        if len(run_list_map.keys())<1: return
+        run_list_map= collections.OrderedDict(sorted(run_list_map.iteritems()))
+        run = run_list_map.keys()[0]
 
 	self.info("Got run %s"%str(run))
 
-	if run >= 9195: return
-	if run != 8100: return
+	if run >= 9000: return
 
         sebs_v = run_list_map[run]
 	
@@ -171,11 +169,13 @@ class monitor_snova( ds_project_base ):
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
 
 	for seb in sebs_v:
-            ctr=-1;
+            self.info("inspecting seb... %s run... %d"%(seb,run))
 
 	    seb_del = ""
 	    subruns=reader.get_subruns("fragmentruntable_%s"%seb,run,500)
+	    self.info(str(subruns))
 	    valid_subruns=[]
+
 	    for subrun in subruns:
                 seb_status = None
 		try:
@@ -190,16 +190,23 @@ class monitor_snova( ds_project_base ):
 
 		seb_del += str(fname + " ")
 		valid_subruns.append(subrun)
+	    
+            if len(valid_subruns) < 1 : 
+                continue
 
 	    self.info("removing @ %s..."%seb)
-	    self.info("valid subruns... %s"%str(valid_subruns))
+	    self.info("valid # subruns... %s" % str(valid_subruns))
+	    self.info(seb_del)
 	    ret = exec_system(["ssh", "root@%s"%seb, "rm -rf %s"%seb_del])
-	    #ret = exec_system(["ssh", "root@%s"%seb, "file %s"%seb_del])
-	    self.info(ret)
+	    self.info(str(ret))
+            self.info("is this a list? : %s"%str(type(valid_subruns) is list))
 	    runtable="fragmentruntable_%s"%seb
-	    for subrun in valid_subruns:
-		self.info("...removing %s %d %d"%(runtable,run,subrun))
-                rundbWriter.star_destroyer(runtable,run,subrun);
+	    self.info("...removing %s... %d... %s"%(runtable,run,str(valid_subruns)))
+	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
+	    runtable="get_binary_filename__%s"%seb
+	    self.info("...removing %s... %d... %s"%(runtable,run,str(valid_subruns)))
+	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
+	    self.info("...done...")
 
         return
 

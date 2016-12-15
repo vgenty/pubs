@@ -189,16 +189,13 @@ class ds_reader(pubdb_reader):
 
     ## Function to get earliest run
     def get_subruns(self,table,runnumber,limit=100):
-
+        
         query = 'SELECT SubRunNumber FROM %s WHERE RunNumber=%d ORDER BY SubRunNumber LIMIT %d' % (table,runnumber,limit)
-        
+        print query
         if not self.execute(query):
-            return -1
-
+            return []
         res = self.fetchall()
-
-        if not res: return -1
-        
+        if not res: return []
         return [int(r[0]) for r in res]
 
 
@@ -276,6 +273,8 @@ class ds_reader(pubdb_reader):
 
         query = query % (info._project, info._run, info._subrun, info._seq)
 
+        print query
+
         if not self.execute(query):
             self._logger.error('Failed querying project status')
             return info
@@ -292,7 +291,7 @@ class ds_reader(pubdb_reader):
         try:
             info._status = int(status)
         except Exception:
-            self._logger.error('Retrieved status is non-integer: %s' % status)
+            self._logger.error('Retrieved status is non-integer: %s data was %s' % (status,data))
             raise Exception
         info._data   = data
         return info
@@ -1242,25 +1241,35 @@ class death_star(ds_master):
 
     ## @brief Remove a specific run/subrun combination from the DB
     #  @details Remove a specific run/subrun combination from both the run and project status table
-    def star_destroyer(self, runtable, run, subrun, age_of_church=None):
+    def star_destroyer(self, runtable, run, subrun=None, age_of_church=None):
 
         if not age_of_church == pub_env.kAGE_OF_CHURCH:
-
-            self._logger.error('A star destroyer cannot ship out w/o Church')
-
+            pass
+            # self._logger.error('A star destroyer cannot ship out w/o Church')
             # return False
+        query = ''
+        if type(subrun) is int:
+            query = 'Select RemoveRun(\'%s\',%d,%d);' % (runtable,run,subrun)
+        elif type(subrun) is list:
+            query_subruns = ''
+            for index in xrange(len(subrun)):
+                if index==0:
+                    query_subruns += 'ARRAY[%d::INT' % subrun[index]
+                else:
+                    query_subruns += (',%d::INT' % subrun[index] )
+            query_subruns += ']'
 
-        query = 'Select RemoveRun(\'%s\',%d,%d);' % (runtable,run,subrun)
+            query = 'Select RemoveSubRuns(\'%s\',%d,%s);' % (runtable,run,query_subruns)
+        else:
+            self._logger.error('Fuxked')
 
         result = self.commit(query)
 
         if result:
-
             #self._logger.warning('Star Destroyer is shipped your way with FedEx ground.')
             pass
 
         else:
-
             self._logger.warning('Sorry. Your credit card was not accepted.')
 
         return result

@@ -17,7 +17,7 @@ from dstream import ds_multiprocess
 from ds_online_util import *
 from snova_util import *
 import traceback
-
+from collections import OrderedDict
 import subprocess
 
 class construct_filename( ds_project_base ):
@@ -65,6 +65,7 @@ class construct_filename( ds_project_base ):
 
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
+        self._min_run = 0
 
         if ( 'NSKIP' in resource and
              'SKIP_REF_PROJECT' in resource and
@@ -106,17 +107,14 @@ class construct_filename( ds_project_base ):
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
         
-
-        runlist = self.get_runs(self._project,1)
-        runlist.reverse()
-        #ctr = self._nruns
-        ctr = 10000
+        ctr = 1000
+        runlist = self.get_runs(self._project,1,False,ctr)
         in_file_v = []
         runid_v = []
         
         #slice the run list
-        sliced_runlist = runlist[:ctr]
-        #self.info(sliced_runlist)
+        sliced_runlist=runlist
+        self.info(sliced_runlist)
         # base_cmd="find /datalocal/supernova/ -type f -regex '.*\("
         # run_str=["%07d-%05d"%(r[0],r[1]) for r in sliced_runlist]
 
@@ -128,10 +126,7 @@ class construct_filename( ds_project_base ):
         #execute a single command to get all files in snova directory
         dir_flist=exec_system(["ssh", self._seb, "ls -f -1 /datalocal/supernova/"])[2:]
 
-        # self.info("Sorting dir_flist size: %s",str(len(dir_flist)))
-        dir_flist.sort(key=lambda x : int("".join(x.split('.')[0].split('_')[-1].split('-')[1:])))
-
-        file_map={}
+        file_map=OrderedDict()
         
         for res in dir_flist:
             split_ = res.split('.')[0].split('_')[-1].split('-')
@@ -152,39 +147,19 @@ class construct_filename( ds_project_base ):
             # Report starting
             self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
 
-            statusCode = kSTATUS_INIT
-            
-            filelist=[file_map[(run,subrun)]]
-
-            if (len(filelist)<1):
-                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
-                continue
-
-            if (len(filelist)>1):
-                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.log_status( ds_status( project = self._project,
-                                            run     = run,
-                                            subrun  = subrun,
-                                            seq     = 0,
-                                            status  = kSTATUS_ERROR_INPUT_FILE_NOT_UNIQUE ) )
-                continue
-
-            in_file_v.append(filelist[0])
-            runid_v.append((run,subrun))
             statusCode=kSTATUS_DONE
-            self._data=filelist[0]
-            self.log_status( ds_status( project = self._project,
-                                        run     = run,
-                                        subrun  = subrun,
-                                        seq     = 0,
-                                        status  = statusCode,
-                                        data    = self._data ) )
-
+            self._data=file_map[(run,subrun)]
+            self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
+            ret = self.log_status( ds_status( project = self._project,
+                                              run     = run,
+                                              subrun  = subrun,
+                                              seq     = 0,
+                                              status  = kSTATUS_DONE,
+                                              data    = self._data ) )
+            self.info("Return of log status was %s"%str(ret))
+            self.info("Checking........")
+            seb_status = self._api.get_status( ds_status( self._project , run, subrun, kSTATUS_DONE ))
+            self.info("Data is........ %s"%seb_status._data)
 
 if __name__ == '__main__':
 
