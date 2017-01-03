@@ -191,7 +191,9 @@ class ds_reader(pubdb_reader):
     def get_subruns(self,table,runnumber,limit=100):
         
         query = 'SELECT SubRunNumber FROM %s WHERE RunNumber=%d ORDER BY SubRunNumber LIMIT %d' % (table,runnumber,limit)
-        print query
+
+        #print query
+
         if not self.execute(query):
             return []
         res = self.fetchall()
@@ -273,7 +275,7 @@ class ds_reader(pubdb_reader):
 
         query = query % (info._project, info._run, info._subrun, info._seq)
 
-        print query
+        #print query
 
         if not self.execute(query):
             self._logger.error('Failed querying project status')
@@ -1170,17 +1172,18 @@ class death_star(ds_master):
     def clear_death_star(self,tablename):
         self._logger.warning("Attempting to clear death star %s" % tablename)
 
-        #query = 'SELECT 1 FROM %s LIMIT 1' % tablename;  
-        #result = self.commit(query)
-        #
-        #if result == False:
-        #    self._logger.warning("New run table %s is already empty." % newtablename)
-        #    return 2
+        query = 'SELECT 1 FROM %s LIMIT 1' % tablename;
+        
+        result = self.execute(query)
+        res = self.fetchone()
+
+        if res is None:
+           self._logger.warning("New run table %s is already empty." % tablename)
+           return 2
 
 	query = 'SELECT ClearTestRunTable(\'%s\');' % tablename
 	result = self.commit(query)
 	
-        res = None
 	if result:
 	    self._logger.warning("Cleared.")
             res = 1
@@ -1209,25 +1212,26 @@ class death_star(ds_master):
     def copy_death_star(self,tablename,newtablename):
 	
 	self._logger.warning("Attempting to copy a death star from %s to %s" % (tablename,newtablename) )
-        
         query = 'SELECT 1 FROM %s LIMIT 1' % newtablename;
         
-        result = self.commit(query)
+        result = self.execute(query)
+        res = self.fetchone()
 
-        if result == True:
-            self._logger.warning("New run table %s is already filled." % newtablename)
-            return 2
+        if res is not None:
+           self._logger.warning("New run table %s is already filled." % newtablename)
+           return 2
                                  
         query = 'SELECT CopyTestRunTable(\'%s\',\'%s\');' % ( tablename, newtablename)
 	
 	result = self.commit(query)
-	res = None
+
 	if result:
 	    self._logger.warning('New run table %s is filled.' % newtablename)
             res = 1
 	else:
 	    self._logger.warning('Failed.')
             res = 0
+
 
         return res
 

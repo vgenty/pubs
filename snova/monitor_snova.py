@@ -133,7 +133,7 @@ class monitor_snova( ds_project_base ):
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
 
-	self.info("Asking for earliest runs...")
+	#self.info("Asking for earliest runs...")
 	
 	run_list_map=collections.OrderedDict()
 	
@@ -160,7 +160,7 @@ class monitor_snova( ds_project_base ):
 	    run = run_
 	    break
 	    
-	self.info("Got run %s"%str(run))
+	#self.info("Got run %s"%str(run))
 
 	if run >= self._max_run: return
 
@@ -170,11 +170,11 @@ class monitor_snova( ds_project_base ):
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
 
 	for seb_ in sebs_v:
-            self.info("inspecting seb... %s run... %d"%(seb_,run))
+            #self.info("inspecting seb... %s run... %d"%(seb_,run))
 
 	    seb_del = ""
 	    subruns=reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,500)
-	    self.info(str(subruns))
+	    #self.info(str(subruns))
 	    valid_subruns=[]
 
 	    for subrun_ in subruns:
@@ -201,10 +201,8 @@ class monitor_snova( ds_project_base ):
 	    # self.info(ret)
 	    runtable = "%s_%s"%(self._parent_prefix,seb_)
             self.info("...removing %s %d \n%s"%(runtable,run,str(valid_subruns)))
-	    self.info("is this a list? : %s"%str(type(valid_subruns) is list))
-	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
 	    #rundbWriter.star_destroyer(runtable,run,valid_subruns);
-	    runtable="get_binary_filename__%s"%seb_
+	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
 	    #rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    self.info("...done...")
 

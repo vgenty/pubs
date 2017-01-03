@@ -127,7 +127,7 @@ class construct_filename( ds_project_base ):
             ctr -= 1
 
             # Report starting
-            self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
+            #self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             statusCode=kSTATUS_DONE
             self._data=file_map[(run,subrun)]

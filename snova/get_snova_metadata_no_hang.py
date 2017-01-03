@@ -78,9 +78,9 @@ class get_metadata( ds_project_base ):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-#        self._out_dir = '%s' % (resource['OUTDIR'])
-        self._in_dir = '%s' % (resource['INDIR'])
-        self._infile_format = resource['INFILE_FORMAT']
+        # self._out_dir = '%s' % (resource['OUTDIR'])
+        # self._in_dir = '%s' % (resource['INDIR'])
+        # self._infile_format = resource['INFILE_FORMAT']
         self._parent_project = resource['PARENT_PROJECT']
 
         if not 'METADATA_TYPE' in resource:
@@ -103,7 +103,7 @@ class get_metadata( ds_project_base ):
         if 'MAX_RUN' in resource:
             self._max_run = int(resource['MAX_RUN'])
 
-        self._ref_project = resource['REF_PROJECT']
+        self._ref_project = resource['PARENT_PROJECT']
 
         if ( 'NSKIP' in resource and
              'SKIP_REF_PROJECT' in resource and
@@ -116,8 +116,8 @@ class get_metadata( ds_project_base ):
             status_name(self._skip_ref_status)
             status_name(self._skip_status)        
 
-        #self._nretrial = int(resource['NRETRIAL'])
-        self._seb="seb01"
+        self._seb = resource["SEB"]
+
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -163,7 +163,6 @@ class get_metadata( ds_project_base ):
             self.info('processing new run: run=%d, subrun=%d ...' % (run,subrun))
 
             status = kSTATUS_INIT
-
 
             ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, 0 ) )
 
@@ -222,6 +221,7 @@ class get_metadata( ds_project_base ):
             
             if data is None:
                 data = ''
+
             if data and type(data) == type(dict()):
                 fname = os.path.basename(infile_v[index_run])
                 sfname=fname.split(".")
@@ -229,6 +229,7 @@ class get_metadata( ds_project_base ):
                 fout = open('/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,fname), 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
+
             # Create a status object to be logged to DB (if necessary)
             data = infile_v[index_run]
             self.log_status ( ds_status( project = self._project,
@@ -614,7 +615,7 @@ class get_metadata( ds_project_base ):
             jsonData = { 'file_name': fname, 
                          'file_type': "data", 
                          'file_size': fsize, 
-                         'file_format': "binaryraw-compressed", 
+                         'file_format': "snbinary-suppressed", 
                          'runs': [ [run,  subrun, run_type] ], 
                          'first_event': sevt, 
                          'start_time': stime, 
@@ -622,10 +623,10 @@ class get_metadata( ds_project_base ):
                          'last_event':eevt, 
                          'group': 'uboone', 
                          "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
-                         "application": {  "family": "online",  "name": "assembler", "version": ver }, 
+                         "application": {  "family": "online",  "name": "sn_daq", "version": ver }, 
                          "data_tier": "raw", "event_count": num_events,
                          "ub_project.name": "online", 
-                         "ub_project.stage": "assembler", 
+                         "ub_project.stage": "sn_binary", 
                          "ub_project.version": self._pubsver,
                          'online.start_time_usec': str(gps_stime_usec),
                          'online.end_time_usec': str(gps_etime_usec)}
@@ -686,7 +687,7 @@ class get_metadata( ds_project_base ):
             sin_file=in_file.split(".")
             in_file=sin_file[0]+self._seb+sin_file[1]
 
-            out_file = '/home/vgenty/snova_metadata/%s.json' % in_file
+            out_file = '/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,in_file)
 
             if os.path.isfile(out_file):
                 self.info("Ok see in_file %s and out_file %s"%(in_file,out_file))
@@ -734,7 +735,12 @@ class get_metadata( ds_project_base ):
 
             status = 1
 
-            filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+            #filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
+
+            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, status ) )
+            file_ = ref_status._data.split(":")[0]
+            filelist=[file_]
+
             if (len(filelist)<1):
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 status_code=100
