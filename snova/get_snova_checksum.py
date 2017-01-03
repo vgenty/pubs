@@ -58,13 +58,15 @@ class get_checksum( ds_project_base ):
         resource = self._api.get_resource( self._project )
 
         self._nruns = int(resource['NRUNS'])
-        self._in_dir = '%s' % (resource['INDIR'])
-        self._infile_format = resource['INFILE_FORMAT']
+        #self._in_dir = '%s' % (resource['INDIR'])
+        #self._infile_format = resource['INFILE_FORMAT']
 
         if 'PARENT_PROJECT' in resource:
             self._parent_project = resource['PARENT_PROJECT']
 
-        self._experts = resource['EXPERTS']
+        self._lock_file = resource['LOCK_FILE']
+
+	self._experts = resource['EXPERTS']
 
         if 'PARALLELIZE' in resource:
             self._parallelize = int(resource['PARALLELIZE'])
@@ -98,22 +100,6 @@ class get_checksum( ds_project_base ):
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
             self.get_resource()
-
-        if self._nskip and self._skip_ref_project:
-            ctr = self._nskip
-            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
-                                          [kSTATUS_INIT,self._skip_ref_status]):
-                if ctr<=0: break
-                self.log_status( ds_status( project = self._project,
-                                            run     = int(x[0]),
-                                            subrun  = int(x[1]),
-                                            seq     = 0,
-                                            status  = self._skip_status) )
-                ctr -= 1
-
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
-        
 
         # Fetch runs from DB and process for # runs specified for this instance.
         runlist=[]
@@ -203,7 +189,6 @@ class get_checksum( ds_project_base ):
 
         mp = ds_multiprocess(self._project)
 
-        #cmd_template = 'python -c "import samweb_client.utility;print samweb_client.utility.fileEnstoreChecksum(\'%s\')"'
         cmd_template ="ssh -T "+self._seb+" 'source /uboonenew/setup_online.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s'"
 
         for f in in_file_v:
@@ -263,8 +248,6 @@ class get_checksum( ds_project_base ):
             self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
 
             statusCode = kSTATUS_TO_BE_VALIDATED
-            in_file_name = self._infile_format % ( run, subrun )
-            in_file = '%s/%s' % ( self._in_dir, in_file_name )
 
             # Get status object
             status = self._api.get_status(ds_status(self._project,
@@ -276,10 +259,8 @@ class get_checksum( ds_project_base ):
             if self._data:
                statusCode = 0
             else:
-                subject = 'Checksum of the file %s not in database' % in_file
-                text = """File: %s
-Checksum is not in database
-                """ % ( in_file )
+                subject = 'Checksum of the run %s and subrun %s not in database' % (str(run),str(subrun))
+                text = """Checksum for run %s and subrun %s is not in database""" % ( str(run),str(subrun))
 
                 pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
 

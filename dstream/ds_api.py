@@ -1166,6 +1166,71 @@ class death_star(ds_master):
 
         return result
 
+    # Clear death star
+    def clear_death_star(self,tablename):
+        self._logger.warning("Attempting to clear death star %s" % tablename)
+
+        #query = 'SELECT 1 FROM %s LIMIT 1' % tablename;  
+        #result = self.commit(query)
+        #
+        #if result == False:
+        #    self._logger.warning("New run table %s is already empty." % newtablename)
+        #    return 2
+
+	query = 'SELECT ClearTestRunTable(\'%s\');' % tablename
+	result = self.commit(query)
+	
+        res = None
+	if result:
+	    self._logger.warning("Cleared.")
+            res = 1
+	else:
+	    self._logger.warning("Failed.")
+            res = 0
+            
+        return res
+
+    # Duplicate one run table to another		
+    def duplicate_death_star(self,tablename,newtablename):
+	
+	self._logger.warning("Attempting to duplicate a death star from %s to %s" % (tablename,newtablename) )
+        query = 'SELECT DuplicateTestRunTable(\'%s\',\'%s\');' % ( tablename, newtablename)
+	
+	result = self.commit(query)
+	
+	if result:
+	    self._logger.warning('New run table %s is created.' % newtablename)
+	else:
+	    self._logger.warning('Failed.')
+            
+        return result
+
+    # Copy one run table to another		
+    def copy_death_star(self,tablename,newtablename):
+	
+	self._logger.warning("Attempting to copy a death star from %s to %s" % (tablename,newtablename) )
+        
+        query = 'SELECT 1 FROM %s LIMIT 1' % newtablename;
+        
+        result = self.commit(query)
+
+        if result == True:
+            self._logger.warning("New run table %s is already filled." % newtablename)
+            return 2
+                                 
+        query = 'SELECT CopyTestRunTable(\'%s\',\'%s\');' % ( tablename, newtablename)
+	
+	result = self.commit(query)
+	res = None
+	if result:
+	    self._logger.warning('New run table %s is filled.' % newtablename)
+            res = 1
+	else:
+	    self._logger.warning('Failed.')
+            res = 0
+
+        return res
+
     ## @brief Fill Anakin the absolute power of dark-side
     #  @details
     #  Recreate a run table of the specified name, filled with run/subruns. It fails if any project is currently using this table.

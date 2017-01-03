@@ -21,25 +21,6 @@ from snova_util import *
 #import pdb
 import subprocess
 
-## @Class dstream_online.get_metadata
-#  @brief Get metadata from a binary or a swizzled file
-#  @details
-#  This project opens daq bin files mv'd by mv_assembler_daq_files project, 
-#  opens it and extracts some metadata,\n
-#  stuffs this into and writes out a json file.
-#  Next process registers the file with samweb *.ubdaq and mv's it to a dropbox directory for SAM to whisk it away...
-
-#There are several file types that we're going to start including in the metadata for run
-#PhysicsRun -> physics
-#TestRun -> test
-#NoiseRun -> noise
-#CalibrationRun -> calibration
-#PMTCalibrationRun -> pmtcalibration
-#TPCCalibrationRun -> tpccalibration
-#LaserCalibrationRun -> lasercalibration
-#BeamOff -> beamoff
-# unknown is if we get bad metadata from a file.
-
 class get_metadata( ds_project_base ):
 
 
@@ -73,12 +54,10 @@ class get_metadata( ds_project_base ):
         self._jsevt = -12
         self._jver = -12
         self._pubsver = "v6_00_00"
-        #Kirby - I think this should actually be the assembler version
-        # since this is the version of the ub_project and it's online/assembler/v6_00_00 in the pnfs area
-        # and it's stored based on that, but the storage location is independent of the pubs version 
 
         self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_files,
                              kSWIZZLED_METADATA : self.process_swizzled_files }
+
         self._metadata_type = kMAXTYPE_METADATA        
         self._max_proc_time = 50
         self._parallelize = 0
@@ -159,22 +138,6 @@ class get_metadata( ds_project_base ):
             self.get_resource()
 
         self.info('Here, self._nruns=%d ... ' % (self._nruns))
-
-        if self._nskip and self._skip_ref_project:
-            ctr = self._nskip
-            for x in self.get_xtable_runs([self._project,self._skip_ref_project],
-                                          [kSTATUS_INIT,self._skip_ref_status]):
-                if ctr<=0: break
-                self.log_status( ds_status( project = self._project,
-                                            run     = int(x[0]),
-                                            subrun  = int(x[1]),
-                                            seq     = 0,
-                                            status  = self._skip_status) )
-                ctr -= 1
-
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
-            self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
-        
 
         action = self.get_action()
 
@@ -263,7 +226,7 @@ class get_metadata( ds_project_base ):
                 fname = os.path.basename(infile_v[index_run])
                 sfname=fname.split(".")
                 fname = sfname[0] + self._seb + sfname[1]
-                fout = open('/home/vgenty/snova_metadata/%s.json' % fname, 'w+')
+                fout = open('/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,fname), 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
             # Create a status object to be logged to DB (if necessary)

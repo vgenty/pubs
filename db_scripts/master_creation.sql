@@ -287,6 +287,101 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- Clear TestRunTable
+DROP FUNCTION IF EXISTS ClearTestRunTable();
+DROP FUNCTION IF EXISTS ClearTestRunTable(TEXT);
+
+CREATE OR REPLACE FUNCTION ClearTestRunTable(RunTableName TEXT) RETURNS VOID AS $$
+DECLARE
+query TEXT;
+mybool BOOLEAN;
+BEGIN
+
+  -- Cannot remove run table --
+  SELECT DoesTableExist(RunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '+++++++++ Run Table w/ name % does not exist ++++++++++',RunTableName;
+  END IF;
+
+  query := format( ' TRUNCATE %s; ', RunTableName ); 
+  EXECUTE query;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- Duplicate TestRunTable
+DROP FUNCTION IF EXISTS DuplicateTestRunTable();
+DROP FUNCTION IF EXISTS DuplicateTestRunTable(TEXT,TEXT);
+
+CREATE OR REPLACE FUNCTION DuplicateTestRunTable(InRunTableName TEXT, OutRunTableName TEXT) RETURNS VOID AS $$
+DECLARE
+query TEXT;
+mybool BOOLEAN;
+BEGIN
+
+  -- Does input table exist? --
+  SELECT DoesTableExist(InRunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '++++++++ Run Table w/ name % does not exist +++++++++++',InRunTableName;
+  END IF;
+
+  -- Does output table exist? --
+  SELECT DoesTableExist(OutRunTableName) INTO mybool;
+  IF mybool THEN
+    RAISE EXCEPTION '+++++++++ Run Table w/ name % already exists ++++++++++',OutRunTableName;
+  END IF;
+
+  query := format( 'CREATE TABLE %s (LIKE %s INCLUDING ALL);
+                    INSERT INTO %s SELECT * FROM %s;', 
+		    OutRunTableName, InRunTableName,
+		    OutRunTableName, InRunTableName);
+
+  
+  EXECUTE query;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
+-- Copy TestRunTable
+DROP FUNCTION IF EXISTS CopyTestRunTable();
+DROP FUNCTION IF EXISTS CopyTestRunTable(TEXT,TEXT);
+
+CREATE OR REPLACE FUNCTION CopyTestRunTable(InRunTableName TEXT, OutRunTableName TEXT) RETURNS VOID AS $$
+DECLARE
+query TEXT;
+mybool BOOLEAN;
+BEGIN
+
+  -- Does input table exist? --
+  SELECT DoesTableExist(InRunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '++++++++ Run Table w/ name % does not exist +++++++++++',InRunTableName;
+  END IF;
+
+  -- Does output table exist? --
+  SELECT DoesTableExist(OutRunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '+++++++++ Run Table w/ name % does not exist ++++++++++',OutRunTableName;
+  END IF;
+
+  query := format( 'INSERT INTO %s SELECT * FROM %s;', 
+		    OutRunTableName, InRunTableName);
+
+  
+  EXECUTE query;
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
 
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--

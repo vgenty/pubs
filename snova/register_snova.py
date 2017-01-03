@@ -34,8 +34,13 @@ class register_snova(ds_project_base):
         self._sebname=sebname
         
         self._observed_files = {}
-
+         
+        self._locked = False
+        self._lock_file = None
+      
         self.get_resource()
+
+
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -44,7 +49,8 @@ class register_snova(ds_project_base):
 
         self._data_dir  = resource['DATADIR']
         self._runtable  = resource['RUNTABLE']
-        
+        self._lock_file = resource['LOCK_FILE']
+ 
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
 
@@ -53,16 +59,14 @@ class register_snova(ds_project_base):
 	    self.error('Cannot connect to DB! Aborting...')
             return
 
+        if self._locked == True: 
+            self.info("Locked.")
+            return
+
         data_path = self._data_dir
 
-        # self.info('Start access in data directory %s'%data_path)
-        # self.info('Looking for data files in: %s'%data_path)
-        
         #execute a single command to get all files in snova directory
         dir_flist=exec_system(["ssh", self._sebname, "ls -f -1 %s"%data_path])[2:]
-
-        # self.info("Sorting dir_flist size: %s",str(len(dir_flist)))
-        # dir_flist.sort(key=lambda x : int("".join(x.split('.')[0].split('_')[-1].split('-')[1:])))
 
         od = OrderedDict()
         for res_ in dir_flist:
@@ -70,7 +74,8 @@ class register_snova(ds_project_base):
             run_    = int(split_[1])
             subrun_ = int(split_[2])
             od[tuple((run_,subrun_))] = [res_,0.0,0.0]
-
+        
+        #order by run and subrun
         od = OrderedDict(sorted(od.iteritems()))
 
         # create a dictionary to keep track of
@@ -84,7 +89,7 @@ class register_snova(ds_project_base):
 
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
-        last_recorded_info   = reader.get_last_run_subrun(self._runtable)
+        last_recorded_info = reader.get_last_run_subrun(self._runtable)
 
         file_info=OrderedDict()
         
@@ -92,17 +97,19 @@ class register_snova(ds_project_base):
         ikmax=1000
         self.info("Got last recorded info %s"%str(last_recorded_info))
 
-        for k,v in od.iteritems():
-            if ( k[0] < last_recorded_info[0] ): continue
-            if ( k[0] == last_recorded_info[0] and k[1] <= last_recorded_info[1]): continue
-            file_info[k]=v
+        for k_,v_ in od.iteritems():
+            if ( k_[0]  < last_recorded_info[0] ): continue
+            if ( k_[0] == last_recorded_info[0] and 
+                 k_[1] <= last_recorded_info[1]): continue
+
+            file_info[k_]=v_
             ik+=1
             if ik==ikmax: break
                 
 
         file_info.popitem()
 
-        #lets do a big query for the creation and modified times for these files over ssh
+        #lets do a large query for the creation and modified times for these files over ssh
         sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
                                    stdin=subprocess.PIPE, 
                                    stdout = subprocess.PIPE, 
@@ -173,14 +180,32 @@ class register_snova(ds_project_base):
                                     data    = os.path.join(data_path,run_info[0]))
 
                     
-
-                
             except:
                     
                 # we did not succeed in adding this (run,subrun)
                 self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
 
-                
+    def monitor_lock(self):
+        self.info("Observing lock @ %s. Current state: %r"  % (self._lock_file,self._locked))
+
+        # Attempt to connect DB. If failure, abort
+        if not self.connect():
+            self.error('Cannot connect to DB! Aborting...')
+            return
+
+        # check if the lock file exists, if so
+        if os.path.isfile(self._lock_file) == False:
+            self.info("Lock does not exist.")
+            self._locked = False
+	    return
+
+	self._locked = True
+
+        self.info("Lock exists. Current state: %r" % self._locked)
+
+	return
+			
+ 
 
 # A unit test section
 if __name__ == '__main__':
@@ -188,6 +213,8 @@ if __name__ == '__main__':
     proj_name = 'register_snova_%s'%sys.argv[1]
 
     test_obj = register_snova( proj_name , sys.argv[1] )
+    
+    test_obj.monitor_lock()
 
     test_obj.process_newruns()
 

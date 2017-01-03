@@ -39,10 +39,7 @@ class construct_filename( ds_project_base ):
         self._nruns = None
         self._in_dir = ''
         self._infile_format = ''
-        self._parent_project = ''
-        self._experts = ''
         self._data = ''
-        self._min_run = 0
 
         self._nskip = 0
         self._skip_ref_project = []
@@ -59,12 +56,6 @@ class construct_filename( ds_project_base ):
         self._in_dir = '%s' % (resource['INDIR'])
         self._infile_format = resource['INFILE_FORMAT']
 
-        if 'PARENT_PROJECT' in resource:
-            self._parent_project = resource['PARENT_PROJECT']
-        self._experts = resource['EXPERTS']
-
-        if 'MIN_RUN' in resource:
-            self._min_run = int(resource['MIN_RUN'])
         self._min_run = 0
 
         if ( 'NSKIP' in resource and
@@ -107,32 +98,23 @@ class construct_filename( ds_project_base ):
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._project)
             self._api.commit('DROP TABLE IF EXISTS temp%s' % self._skip_ref_project)
         
-        ctr = 1000
-        runlist = self.get_runs(self._project,1,False,ctr)
+        ctr = self._nruns 
+        sliced_runlist = self.get_runs(self._project,1,False,ctr)
         in_file_v = []
         runid_v = []
         
-        #slice the run list
-        sliced_runlist=runlist
-        self.info(sliced_runlist)
-        # base_cmd="find /datalocal/supernova/ -type f -regex '.*\("
-        # run_str=["%07d-%05d"%(r[0],r[1]) for r in sliced_runlist]
-
-        # base_cmd+="\|".join(run_str)
-        # base_cmd+="\)'.ubdaq"
-
-        # res_ = exec_system(["ssh", self._seb, base_cmd])
-
-        #execute a single command to get all files in snova directory
-        dir_flist=exec_system(["ssh", self._seb, "ls -f -1 /datalocal/supernova/"])[2:]
+	datadir = self._in_dir
+       
+	#execute a single command to get all files in snova directory
+     	dir_flist=exec_system(["ssh", self._seb, "ls -f -1 %s"%datadir])[2:]
 
         file_map=OrderedDict()
         
         for res in dir_flist:
-            split_ = res.split('.')[0].split('_')[-1].split('-')
+            split_  = res.split('.')[0].split('_')[-1].split('-')
             run_    = int(split_[1])
             subrun_ = int(split_[2])
-            file_map[tuple((run_,subrun_))]=os.path.join("/datalocal/supernova/",res)
+            file_map[tuple((run_,subrun_))]=os.path.join(datadir,res)
             
         for x in sliced_runlist:
             # Break from loop if counter became 0
@@ -149,18 +131,13 @@ class construct_filename( ds_project_base ):
 
             statusCode=kSTATUS_DONE
             self._data=file_map[(run,subrun)]
-            self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
+            #self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
             ret = self.log_status( ds_status( project = self._project,
                                               run     = run,
                                               subrun  = subrun,
                                               seq     = 0,
                                               status  = kSTATUS_DONE,
                                               data    = self._data ) )
-            self.info("Return of log status was %s"%str(ret))
-            self.info("Checking........")
-            seb_status = self._api.get_status( ds_status( self._project , run, subrun, kSTATUS_DONE ))
-            self.info("Data is........ %s"%seb_status._data)
-
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]
