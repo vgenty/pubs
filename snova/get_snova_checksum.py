@@ -58,13 +58,9 @@ class get_checksum( ds_project_base ):
         resource = self._api.get_resource( self._project )
 
         self._nruns = int(resource['NRUNS'])
-        #self._in_dir = '%s' % (resource['INDIR'])
-        #self._infile_format = resource['INFILE_FORMAT']
 
         if 'PARENT_PROJECT' in resource:
             self._parent_project = resource['PARENT_PROJECT']
-
-        self._lock_file = resource['LOCK_FILE']
 
 	self._experts = resource['EXPERTS']
 
@@ -72,20 +68,8 @@ class get_checksum( ds_project_base ):
             self._parallelize = int(resource['PARALLELIZE'])
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
-
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
-
-        if ( 'NSKIP' in resource and
-             'SKIP_REF_PROJECT' in resource and
-             'SKIP_REF_STATUS' in resource and
-             'SKIP_STATUS' in resource ):
-            self._nskip = int(resource['NSKIP'])
-            self._skip_ref_project = resource['SKIP_REF_PROJECT']
-            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
-            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
-            status_name(self._skip_ref_status)
-            status_name(self._skip_status)
 
         self._seb = resource["SEB"]
 
@@ -105,6 +89,7 @@ class get_checksum( ds_project_base ):
         runlist=[]
         if self._parent_project:
             runlist = self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] )
+
         else:
             runlist = self.get_runs(self._project,1)
         ctr = self._nruns

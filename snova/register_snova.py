@@ -31,12 +31,13 @@ class register_snova(ds_project_base):
 
         self._runtable = ''
 
-        self._sebname=sebname
+        self._sebname = sebname
         
         self._observed_files = {}
          
-        self._locked = False
         self._lock_file = None
+        
+        self._locked = False
       
         self.get_resource()
 
@@ -56,10 +57,10 @@ class register_snova(ds_project_base):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
-	    self.error('Cannot connect to DB! Aborting...')
+            self.error('Cannot connect to DB! Aborting...')
             return
 
-        if self._locked == True: 
+        if self._locked == True :
             self.info("Locked.")
             return
 
@@ -67,7 +68,8 @@ class register_snova(ds_project_base):
 
         #execute a single command to get all files in snova directory
         dir_flist=exec_system(["ssh", self._sebname, "ls -f -1 %s"%data_path])[2:]
-
+        
+        #create dictionary, split off snova filename for run/subrun, store in dict run/subrun
         od = OrderedDict()
         for res_ in dir_flist:
             split_ = res_.split('.')[0].split('_')[-1].split('-')
@@ -94,6 +96,7 @@ class register_snova(ds_project_base):
         file_info=OrderedDict()
         
         ik=0
+        # only register 1000 files at a time
         ikmax=1000
         self.info("Got last recorded info %s"%str(last_recorded_info))
 
@@ -107,9 +110,10 @@ class register_snova(ds_project_base):
             if ik==ikmax: break
                 
 
-        file_info.popitem()
+        file_info.popitem() # remove the last file
 
-        #lets do a large query for the creation and modified times for these files over ssh
+        # lets do a large query for the creation and modified times for these files over ssh
+        # open SSH connection and call `stat` for all necessary files at once
         sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
                                    stdin=subprocess.PIPE, 
                                    stdout = subprocess.PIPE, 
@@ -117,7 +121,7 @@ class register_snova(ds_project_base):
 
         for f_ in file_info:
             filepath=os.path.join(data_path,file_info[f_][0])
-
+            # call `stat`
             cmd="stat -c %%Y-%%Z %s"%filepath
 
             sshproc.stdin.write("%s\n"%cmd)
@@ -125,26 +129,26 @@ class register_snova(ds_project_base):
 
         sshproc.stdin.close()
 
-        values=[]
-
-        ic=0
+        values = []
+        
+        # get the return
         for return_ in sshproc.stdout:
             if return_.rstrip('\n')!="END":
                 values.append(return_.rstrip('\n'))
-                ic+=1
                 
         for ix,run_subrun in enumerate(file_info):
             
-            time_create,time_modify=values[ix].split("-")
+            time_create,time_modify = values[ix].split("-")
             
-            file_info[run_subrun][1]=time_create
-            file_info[run_subrun][2]=time_modify
+            file_info[run_subrun][1] = time_create
+            file_info[run_subrun][2] = time_modify
 
         logger = pub_logger.get_logger('death_star')
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
             
         # loop through dictionary keys and write to DB info
         # for runs/subruns not yet stored
+        # this mostly stolen from DC
         for info in file_info:
             
             self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
@@ -171,7 +175,7 @@ class register_snova(ds_project_base):
 
 
                 # Report starting
-                # self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
+                self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
                 status = ds_status( project = self._project,
                                     run     = run,
                                     subrun  = subrun,
@@ -184,7 +188,7 @@ class register_snova(ds_project_base):
                     
                 # we did not succeed in adding this (run,subrun)
                 self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
-
+			 
     def monitor_lock(self):
         self.info("Observing lock @ %s. Current state: %r"  % (self._lock_file,self._locked))
 
@@ -197,15 +201,14 @@ class register_snova(ds_project_base):
         if os.path.isfile(self._lock_file) == False:
             self.info("Lock does not exist.")
             self._locked = False
-	    return
+            return
 
-	self._locked = True
+        self._locked = True
 
         self.info("Lock exists. Current state: %r" % self._locked)
 
-	return
-			
- 
+        return
+
 
 # A unit test section
 if __name__ == '__main__':
@@ -215,7 +218,7 @@ if __name__ == '__main__':
     test_obj = register_snova( proj_name , sys.argv[1] )
     
     test_obj.monitor_lock()
-
+    
     test_obj.process_newruns()
 
 

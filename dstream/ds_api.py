@@ -1209,7 +1209,7 @@ class death_star(ds_master):
         return result
 
     # Copy one run table to another		
-    def copy_death_star(self,tablename,newtablename):
+    def copy_death_star(self,tablename,newtablename,selected_runs=None):
 	
 	self._logger.warning("Attempting to copy a death star from %s to %s" % (tablename,newtablename) )
         query = 'SELECT 1 FROM %s LIMIT 1' % newtablename;
@@ -1220,8 +1220,20 @@ class death_star(ds_master):
         if res is not None:
            self._logger.warning("New run table %s is already filled." % newtablename)
            return 2
-                                 
-        query = 'SELECT CopyTestRunTable(\'%s\',\'%s\');' % ( tablename, newtablename)
+        if selected_runs == None:
+            query = 'SELECT CopyTestRunTable(\'%s\',\'%s\');' % ( tablename, newtablename )
+        else : 
+
+            assert type(selected_runs) is list
+            query_runs = ''
+            for index in xrange(len(selected_runs)):
+                if index==0:
+                    query_runs += 'ARRAY[%d::INT' % selected_runs[index]
+                else:
+                    query_runs += (',%d::INT' % selected_runs[index] )
+            query_runs += ']'
+
+            query = 'SELECT CopySomeTestRunTable(\'%s\',\'%s\',%s);' % (tablename, newtablename,query_runs)
 	
 	result = self.commit(query)
 

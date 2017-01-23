@@ -9,3 +9,5 @@ def exec_system(input_):
 
 def argmax(arr_):
     return max(izip(arr_, xrange(len(arr_))))[1]
+
+

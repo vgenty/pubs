@@ -105,17 +105,6 @@ class get_metadata( ds_project_base ):
 
         self._ref_project = resource['PARENT_PROJECT']
 
-        if ( 'NSKIP' in resource and
-             'SKIP_REF_PROJECT' in resource and
-             'SKIP_REF_STATUS' in resource and
-             'SKIP_STATUS' in resource ):
-            self._nskip = int(resource['NSKIP'])
-            self._skip_ref_project = resource['SKIP_REF_PROJECT']
-            exec('self._skip_ref_status=int(%s)' % resource['SKIP_REF_STATUS'])
-            exec('self._skip_status=int(%s)' % resource['SKIP_STATUS'])
-            status_name(self._skip_ref_status)
-            status_name(self._skip_status)        
-
         self._seb = resource["SEB"]
 
     def get_action(self):

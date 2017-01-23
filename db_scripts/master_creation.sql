@@ -386,6 +386,45 @@ $$ LANGUAGE PLPGSQL;
 ---------------------------------------------------------------------
 --/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
 ---------------------------------------------------------------------
+-- Copy TestRunTable
+DROP FUNCTION IF EXISTS CopySomeTestRunTable();
+DROP FUNCTION IF EXISTS CopySomeTestRunTable(TEXT,TEXT,INT[]);
+
+CREATE OR REPLACE FUNCTION CopySomeTestRunTable(InRunTableName TEXT, OutRunTableName TEXT, Runs INT[]) RETURNS VOID AS $$
+DECLARE
+query TEXT;
+mybool BOOLEAN;
+Run INT;
+BEGIN
+
+  -- Does input table exist? --
+  SELECT DoesTableExist(InRunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '++++++++ Run Table w/ name % does not exist +++++++++++',InRunTableName;
+  END IF;
+
+  -- Does output table exist? --
+  SELECT DoesTableExist(OutRunTableName) INTO mybool;
+  IF NOT mybool THEN
+    RAISE EXCEPTION '+++++++++ Run Table w/ name % does not exist ++++++++++',OutRunTableName;
+  END IF;
+
+  FOREACH Run in ARRAY Runs
+  LOOP
+         query := format( 'INSERT INTO %s SELECT * FROM %s WHERE %s.runnumber=%s;',
+	       	           OutRunTableName, InRunTableName, InRunTableName, Run);
+
+  
+	 EXECUTE query;
+  END LOOP;
+
+  RETURN;
+END;
+$$ LANGUAGE PLPGSQL;
+
+---------------------------------------------------------------------
+--/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/--
+---------------------------------------------------------------------
 -- Delete TestRunTable
 DROP FUNCTION IF EXISTS RemoveTestRunTable(TEXT);
 CREATE OR REPLACE FUNCTION RemoveTestRunTable(RunTableName TEXT) RETURNS VOID AS $$
