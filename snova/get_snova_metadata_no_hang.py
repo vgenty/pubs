@@ -71,6 +71,9 @@ class get_metadata( ds_project_base ):
         self._skip_status = None
         
         self._seb = None
+        self._remote_host = None
+
+        self.get_resource()
 
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource(self):
@@ -78,9 +81,7 @@ class get_metadata( ds_project_base ):
         resource = self._api.get_resource(self._project)
         
         self._nruns = int(resource['NRUNS'])
-        # self._out_dir = '%s' % (resource['OUTDIR'])
-        # self._in_dir = '%s' % (resource['INDIR'])
-        # self._infile_format = resource['INFILE_FORMAT']
+
         self._parent_project = resource['PARENT_PROJECT']
 
         if not 'METADATA_TYPE' in resource:
@@ -106,7 +107,10 @@ class get_metadata( ds_project_base ):
         self._ref_project = resource['PARENT_PROJECT']
 
         self._seb = resource["SEB"]
-
+        
+        if "REMOTE_HOST" in resource:
+            self._remote_host = resource["REMOTE_HOST"]
+        
     def get_action(self):
 
         if not self._metadata_type in self._action_map:
@@ -339,7 +343,7 @@ class get_metadata( ds_project_base ):
 
             out,err = mp.communicate(index_run)
             
-            fsize = exec_system(["ssh","-T",self._seb,"stat -c %%s %s"%in_file])
+            fsize = exec_system(["ssh","-T","vgenty@%s"%self._remote_host,"stat -c %%s %s"%in_file])
 
             run,subrun = runid_v[index_run]
 

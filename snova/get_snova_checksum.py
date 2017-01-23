@@ -50,7 +50,11 @@ class get_checksum( ds_project_base ):
         self._skip_ref_project = []
         self._skip_ref_status = None
         self._skip_status = None
-        self._seb=""
+        self._seb= ""
+	self._remote_host = None
+	self._file_destination = None
+        self.get_resource()
+        
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -73,6 +77,11 @@ class get_checksum( ds_project_base ):
 
         self._seb = resource["SEB"]
 
+	if 'REMOTE_HOST' in resource:
+            self._remote_host = str(resource['REMOTE_HOST'])
+	if 'FILE_DESTINATION' in resource:
+            self._file_destination = str(resource['FILE_DESTINATION'])
+
     ## @brief calculate the checksum of a file
     def calculate_checksum( self ):
 
@@ -84,14 +93,16 @@ class get_checksum( ds_project_base ):
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
             self.get_resource()
+            
+        self.info("Calculating checksum")
 
         # Fetch runs from DB and process for # runs specified for this instance.
         runlist=[]
         if self._parent_project:
             runlist = self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] )
-
         else:
             runlist = self.get_runs(self._project,1)
+
         ctr = self._nruns
         in_file_v = []
         runid_v = []
@@ -113,7 +124,7 @@ class get_checksum( ds_project_base ):
             self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
             
             ref_status = self._api.get_status( ds_status( self._parent_project, run, subrun, kSTATUS_DONE ) )
-            fname = ref_status._data
+            fname = os.path.join(self._file_destination, self._seb, os.path.basename(ref_status._data))
 
             if "ubdaq" not in fname:
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
@@ -134,7 +145,7 @@ class get_checksum( ds_project_base ):
             
             self.info("Got return %s"%str(out))
             if err or not out:
-                self.error('Checksum calculculation failed for %s' % in_file_v[i])
+                self.error('Checksum calculation failed for %s' % in_file_v[i])
                 self.error(err)
                 self.log_status( ds_status( project = self._project,
                                             run     = runid_v[i][0],
@@ -146,11 +157,13 @@ class get_checksum( ds_project_base ):
 
             statusCode = kSTATUS_INIT
             try:
-                metadata=None
-                exec('metadata = %s' % out)
-                self._data = in_file_v[i]+":"+metadata['crc_value']
+                exec("checksum = %s " % out)
+                checksum = checksum[0].split(":")[-1]
+
+                self._data = in_file_v[i]+":"+checksum
                 statusCode = kSTATUS_DONE
-                self.info("Set CRC: %s on file: %s"%(self._data,in_file_v[i]))
+                self.info("Set CRC: %s on file: %s"%(checksum,in_file_v[i]))
+
             except Exception:
                 errorMessage = traceback.print_exc()
                 subject = 'Failed to obtain the checksum of the file %s' % in_file_v[i]
@@ -174,7 +187,8 @@ class get_checksum( ds_project_base ):
 
         mp = ds_multiprocess(self._project)
 
-        cmd_template ="ssh -T "+self._seb+" 'source /uboonenew/setup_online.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s'"
+        cmd_template  = "ssh -T vgenty@" + self._remote_host 
+        cmd_template += " 'source /grid/fermiapp/products/uboone/setup_uboone.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s'"
 
         for f in in_file_v:
             self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
