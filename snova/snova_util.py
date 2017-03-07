@@ -6,7 +6,6 @@ def exec_system(input_):
  
 # thanks daniel
 # http://lemire.me/blog/2004/11/25/computing-argmax-fast-in-python/
-
 def argmax(arr_):
     return max(izip(arr_, xrange(len(arr_))))[1]
 

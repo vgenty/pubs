@@ -14,12 +14,17 @@ from dstream import ds_status
 from dstream import ds_multiprocess
 from ds_online_constants import *
 from ds_online_util import *
-#from ROOT import *
 import datetime, json
 from snova_util import *
-#import extractor_dict
-#import pdb
 import subprocess
+
+
+def insert_sebname(in_file_name,seb):
+    out_file_name = in_file_name.split("-")
+    out_file_name.insert(2,seb)
+    out_file_name = "-".join(out_file_name)
+
+    return out_file_name
 
 class get_metadata( ds_project_base ):
 
@@ -40,7 +45,7 @@ class get_metadata( ds_project_base ):
         self._project = arg
 
         self._nruns = None
-#        self._out_dir = ''
+        #self._out_dir = ''
         self._in_dir = ''
         self._infile_format = ''
         self._parent_project = ''
@@ -55,8 +60,7 @@ class get_metadata( ds_project_base ):
         self._jver = -12
         self._pubsver = "v6_00_00"
 
-        self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_files,
-                             kSWIZZLED_METADATA : self.process_swizzled_files }
+        self._action_map = { kUBDAQ_METADATA    : self.process_ubdaq_files }
 
         self._metadata_type = kMAXTYPE_METADATA        
         self._max_proc_time = 50
@@ -196,7 +200,8 @@ class get_metadata( ds_project_base ):
 
             checksum_v.append(checksum_)
             infile_v.append(filelist[0])
-            outfile_v.append('%s.json' % infile_v[-1])
+            out_file_name=insert_sebname(infile_v[-1],self._seb)
+            outfile_v.append('%s.json' % out_file_name)
             runid_v.append((run,subrun))
             ctr -= 1
 
@@ -215,11 +220,11 @@ class get_metadata( ds_project_base ):
             if data is None:
                 data = ''
 
+            fout=None
             if data and type(data) == type(dict()):
                 fname = os.path.basename(infile_v[index_run])
-                sfname=fname.split(".")
-                fname = sfname[0] + self._seb + sfname[1]
-                fout = open('/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,fname), 'w+')
+                out_file_name = insert_sebname(fname,self._seb)
+                fout = open('/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,out_file_name), 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
 
@@ -232,34 +237,14 @@ class get_metadata( ds_project_base ):
                                          status  = status,
                                          data    = data ) )
         
-    def process_swizzled_files(self,in_file_v,runid_v,checksum_v=[]):
-        
-        status_v=[]
-        for in_file in in_file_v:
 
-            status_v.append((0,''))
-            jsonData = None
-            try:
-                status = 100                
-                self.error('I dont do ROOT files')
-                jsonData = extractor_dict.getmetadata( in_file )
-                status = 3
-                self.info('Successfully extract metadata from the swizzled file.')
-            except:
-                
-                self.error('Failed extracting metadata from the swizzled file.')
-                    
-            status_v[-1]=(status,jsonData)
-
-        return status_v
-            
     def process_ubdaq_files(self,in_file_v,runid_v,checksum_v=[]):
 
         if not len(in_file_v) == len(runid_v):
             raise DSException('Input file list and runid list has different length!')
 
         #cmd_template =   "dumpEventHeaders %s 1000000; echo SPLIT_HERE; dumpEventHeaders %s 1;"
-        cmd_template =   "echo hi"
+        cmd_template = "echo hi"
 
         mp = ds_multiprocess(self._project)
 
@@ -267,7 +252,7 @@ class get_metadata( ds_project_base ):
 
             in_file = in_file_v[index_run]
             
-            #cmd = cmd_template % (in_file,in_file)
+            # cmd = cmd_template % (in_file,in_file)
             cmd=cmd_template
             index, active_counter = mp.execute(cmd)
 
@@ -343,7 +328,7 @@ class get_metadata( ds_project_base ):
 
             out,err = mp.communicate(index_run)
             
-            fsize = exec_system(["ssh","-T","vgenty@%s"%self._remote_host,"stat -c %%s %s"%in_file])
+            file_size = long(exec_system(["ssh","-T","vgenty@%s"%self._remote_host,"stat -c %%s %s"%in_file])[0])
 
             run,subrun = runid_v[index_run]
 
@@ -369,7 +354,7 @@ class get_metadata( ds_project_base ):
             
             badJsonData = { 'file_name': os.path.basename(in_file), 
                             'file_type': "data", 
-                            'file_size': fsize, 
+                            'file_size': file_size, 
                             'file_format': "binaryraw-compressed", 
                             'runs': [ [run,  subrun, run_type] ], 
                             'first_event': 0,
@@ -600,29 +585,45 @@ class get_metadata( ds_project_base ):
             # run number and subrun number in the metadata seem to be funny,
             # and currently we are using the values in the file name.
             # Also add ub_project.name/stage/version, and data_tier by hand
-            fname = os.path.basename(in_file)
-            sfname=fname.split(".")
-            fname = sfname[0] + self._seb + "." + sfname[1]
-            stime=14
-            etime=15
-            jsonData = { 'file_name': fname, 
-                         'file_type': "data", 
-                         'file_size': fsize, 
-                         'file_format': "snbinary-suppressed", 
-                         'runs': [ [run,  subrun, run_type] ], 
-                         'first_event': sevt, 
-                         'start_time': stime, 
-                         'end_time': etime, 
-                         'last_event':eevt, 
-                         'group': 'uboone', 
-                         "crc": { "crc_value":str(checksum),  "crc_type":"adler 32 crc type" }, 
-                         "application": {  "family": "online",  "name": "sn_daq", "version": ver }, 
-                         "data_tier": "raw", "event_count": num_events,
-                         "ub_project.name": "online", 
-                         "ub_project.stage": "sn_binary", 
-                         "ub_project.version": self._pubsver,
-                         'online.start_time_usec': str(gps_stime_usec),
-                         'online.end_time_usec': str(gps_etime_usec)}
+
+            in_file_name = os.path.basename(in_file)
+            out_file_name=insert_sebname(in_file_name,self._seb)
+            
+            run_type='test'
+            first_event=1
+            #TIME_FORMAT='%d-%02d-%02d:T%02d:%02d:%02d'                                                                                                                                                  
+            tmp_str=None
+            tmp_str=in_file_name.split("-")[2].split('_')
+            start_time=datetime_obj = datetime.datetime.strptime(" ".join(tmp_str),'%Y %m %d %H %M %S')
+            tmp_str=None
+            start_time = start_time.isoformat()
+            end_time=1
+            last_event=1
+            daq_version="v6_21_05"
+            event_count=1
+            ub_project_version="v6_00_00"
+            gps_end_time_usec=1
+            gps_start_time_usec=2
+            
+            jsonData = { 'file_name': out_file_name,
+                         'file_type': "data",
+                         'file_size': file_size,
+                         'file_format': "snbinaryraw-suppressed",
+                         'runs': [ [run,  subrun, run_type] ],
+                         'first_event': first_event,
+                         'start_time': start_time,
+                         'end_time': end_time,
+                         'last_event':last_event,
+                         'group': 'uboone',
+                         "crc": { "crc_value" : str(checksum),  "crc_type":"adler 32 crc type" },
+                         "application": {  "family": "online",  "name": "sn_daq", "version": daq_version },
+                         "data_tier": "raw", "event_count": event_count,
+                         "ub_project.name": "online",
+                         "ub_project.stage": "sn_binary",
+                         "ub_project.version": ub_project_version,
+                         'online.start_time_usec': str(gps_start_time_usec),
+                         'online.end_time_usec': str(gps_end_time_usec)}
+
             status_v[index_run] = (kSTATUS_TO_BE_VALIDATED,jsonData)
 
         return status_v
@@ -676,14 +677,14 @@ class get_metadata( ds_project_base ):
                                             seq     = 0,
                                             status  = kSTATUS_ERROR_OUTPUT_FILE_NOT_UNIQUE ) )
 
-            in_file = os.path.basename(filelist[0])
-            sin_file=in_file.split(".")
-            in_file=sin_file[0]+self._seb+sin_file[1]
 
-            out_file = '/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,in_file)
+            in_file_name = os.path.basename(filelist[0])
+            out_file_name=insert_sebname(in_file_name,self._seb)
 
-            if os.path.isfile(out_file):
-                self.info("Ok see in_file %s and out_file %s"%(in_file,out_file))
+            out_file_path = '/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,out_file_name)
+
+            if os.path.isfile(out_file_path):
+                self.info("Ok see in_file %s and out_file %s"%(in_file_name,out_file_name))
                 status = 0
             else:
                 self.info("Was fucked")
@@ -702,89 +703,13 @@ class get_metadata( ds_project_base ):
             # Break from loop if counter became 0
             if not ctr: break
 
-    ## @brief access DB and retrieves runs for which 1st process failed. Clean up.
-    def error_handle(self):
-
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-	    self.error('Cannot connect to DB! Aborting...')
-	    return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
-        # Fetch runs from DB and process for # runs specified for this instance.
-        ctr = self._nruns
-        for x in self.get_runs(self._project,100):
-
-            # Counter decreases by 1
-            ctr -=1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('cleaning failed run: run=%d, subrun=%d ...' % (run,subrun))
-
-            status = 1
-
-            #filelist = find_run.find_file(self._in_dir,self._infile_format,run,subrun)
-
-            ref_status = self._api.get_status( ds_status( self._ref_project, run, subrun, status ) )
-            file_ = ref_status._data.split(":")[0]
-            filelist=[file_]
-
-            if (len(filelist)<1):
-                self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                status_code=100
-                status = ds_status( project = self._project,
-                                    run     = run,
-                                    subrun  = subrun,
-                                    seq     = 0,
-                                    status  = status_code )
-                self.log_status( status )                
-                continue
-
-            if (len(filelist)>1):
-                self.error('Found too many files for (run,subrun) = %s @ %s !!!' % (run,subrun))
-                self.error('List of files found %s' % filelist)
-
-            in_file = filelist[0]
-            out_file = '%s.json' % in_file
-
-            if os.path.isfile(out_file):
-                os.system('rm %s' % out_file)
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = int(x[0]),
-                                subrun  = int(x[1]),
-                                seq     = 0,
-                                status  = status )
-            
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
-
-    # def get_ubdaq_metadata()
 
 # A unit test section
 if __name__ == '__main__':
-
     proj_name = sys.argv[1]
-
     test_obj = get_metadata( proj_name )
-
     test_obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-
     test_obj.get_resource()
-
     test_obj.process_newruns()
-
-#    test_obj.error_handle()
-
     test_obj.validate()
-
     test_obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

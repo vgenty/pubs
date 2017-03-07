@@ -20,22 +20,123 @@ from dstream import ds_api
 from ds_online_util import *
 from snova_util import *
 import collections
-import traceback
+from multiprocessing.dummy import Pool as ThreadPool 
+import threading
+import Queue
+#import ifdh
 
-def query_seb_snova_size(parent_seb_ids,parent_seb_names):
+def copy_subruns2(q,data):
+    q.put(copy_subruns(data))
+
+def copy_subruns(data):
+    seb_    = str(data[0])
+    run     = int(data[1])
+    obj     = data[2]
+    subruns = data[3]
+    force_overwrite = data[4]
+
+    valid_subruns = list(subruns)
+
+    while len(valid_subruns) > 0:
+        subrun_ = valid_subruns.pop(0)
+
+	# get the filenames to transfer for this seb
+        obj.connect()
+        obj.info("Query status of %s"%("%s_%s"%(obj._parent_prefix,seb_)))
+        status=ds_status( "%s_%s"%(obj._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE )
+	seb_status = obj._api.get_status(status)
+	fname = seb_status._data
+        obj.info("Got file name "+str(fname))
+	
+	if fname is None: 
+            obj.error("Cannot lock on %s for run %s and subrun %s. Filename project not complete."% (seb_,str(run),str(subrun_)))
+	    valid_subruns.append(subrun_)
+	    continue
+			
+	dst_dir  = os.path.join(obj._file_destination,seb_)
+	dst_file = os.path.join(dst_dir,os.path.basename(fname))
+	
+	# determine if file is already there
+	SS = ["ssh",
+              "-T",
+	      "vgenty@%s" % obj._remote_host,
+	      "if [ -e %s ]; then echo 1; else echo 0; fi" % dst_file ]
+	obj.info(str(SS))
+	ret = int(exec_system(SS)[0])
+
+
+	if ret == 1:
+           obj.info("File exists already in destination directory @ %s"%seb_)
+           
+           if force_overwrite:
+               # delete whats over there
+               obj.info("FORCING OVERWRITE @ %s!"%seb_)
+               SS = ["ssh",
+                     "-T",
+                     "vgenty@%s" % obj._remote_host,
+                     "rm -rf %s" % dst_file ]
+               obj.info(str(SS))
+               del_ = int(exec_system(SS)[0])
+
+           else:
+               continue
+	
+
+
+
+
+	obj.info(" ==> Copying @ %s..."%seb_)
+	SS=["ssh",
+	    "-T",
+	    "root@%s"%seb_,
+	    "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) ]		
+	obj.info(str(SS))
+	ret = exec_system(SS)
+	
+	# confirm the copied files is the same number of bytes else we have to try again
+	obj.info("Confirm the copied size @ remote location")
+	SS = ["ssh",
+	      "-T",
+	      "vgenty@%s" % obj._remote_host,
+	      "stat -c %%s %s" % dst_file ]
+	obj.info(str(SS))
+	dst_fsize = int(exec_system(SS)[0])
+	
+	obj.info(" ==> Checking file %s @ seb %s"%(fname,seb_))
+	SS = ["ssh",
+	      "-T",
+	      "vgenty@%s" % seb_,
+	      "stat -c %%s %s" % fname ]
+	obj.info(str(SS))
+	org_fsize = int(exec_system(SS)[0])
+	
+	if dst_fsize != org_fsize:
+            obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
+	    # delete whats over there
+	    SS = ["ssh",
+		  "-T",
+		  "vgenty@%s" % obj._remote_host,
+		  "rm -rf %s" % dst_file ]
+	    obj.info(str(SS))
+	    del_ = int(exec_system(SS)[0])
+	    
+	    valid_subruns.append(subrun_)
+        obj.info("%s valid subruns are %s"%(seb_,str(valid_subruns)))
+
+def query_seb_snova_size(seb_ids,seb_names):
         # go through each of the SEBS and calculate the disk usage, if it's 
         # above 80% on a single SEB we have to start slashing
 
-        seb_datalocal_size_v = [0.0]*len(parent_seb_ids)
+        seb_size_v = [0.0]*len(seb_ids)
 
-        for ix,seb in enumerate(parent_seb_names):
+        for ix,seb in enumerate(seb_names):
             ret_ = exec_system(["ssh", seb, "df /datalocal/"])
             size_, used_, unused_ = ret_[-1].split(" ")[6:9]
-            seb_datalocal_size_v[ix] = float(used_) / float(size_)
+            seb_size_v[ix] = float(used_) / float(size_)
         
-        max_idx = argmax(seb_datalocal_size_v)
+        max_idx = argmax(seb_size_v)
 
-        return seb_datalocal_size_v, max_idx
+        return seb_size_v, max_idx
 
 class monitor_snova( ds_project_base ):
 
@@ -62,7 +163,7 @@ class monitor_snova( ds_project_base ):
 
         self._parent_prefix = None
 	self._fragment_prefix = None
-	self._parent_seb_ids = None
+	self._seb_ids = None
 	self._ignore_runs = []
 	self._max_run = None
 	self._lock_file = None
@@ -82,22 +183,22 @@ class monitor_snova( ds_project_base ):
       
  	self._fragment_prefix = resource['FRAGMENT_PREFIX']
       
-        self._parent_seb_ids = resource['SEBS'].split("-")
+        self._seb_ids = resource['SEBS'].split("-")
 
-        self._parent_seb_names    = ["seb%02d"%(int(parent_seb_id)) for parent_seb_id in self._parent_seb_ids]
-        self._parent_seb_projects = ["%s_%s"%(self._parent_prefix,seb_name) for seb_name in self._parent_seb_names]
-        self._parent_seb_rtables  = ["%s_%s"%(self._fragment_prefix,seb_name) for seb_name in self._parent_seb_names]
+        self._seb_names    = ["seb%02d"%(int(parent_seb_id)) for parent_seb_id in self._seb_ids]
+        self._seb_projectss = ["%s_%s"%(self._parent_prefix,seb_name) for seb_name in self._seb_names]
 
         if 'SEB_OCCUPANCY' in resource:
 	    self._seb_occupancy = float(resource['SEB_OCCUPANCY'])
 
 	if 'REMOTE_HOST' in resource:
             self._remote_host = str(resource['REMOTE_HOST'])
+
 	if 'FILE_DESTINATION' in resource:
             self._file_destination = str(resource['FILE_DESTINATION'])
 
-
-	self._ignore_runs = [int(r_) for r_ in resource['IGNORE_RUNS'].split("-")]
+        if resource['IGNORE_RUNS'] != "":
+            self._ignore_runs = [int(r_) for r_ in resource['IGNORE_RUNS'].split("-")]
 
 	self._max_run = int(resource['MAX_RUN'])
 
@@ -115,20 +216,20 @@ class monitor_snova( ds_project_base ):
 	    self.info("Locked.")	
             return 
 
-        seb_datalocal_size_v,max_idx = query_seb_snova_size(self._parent_seb_ids,
-                                                            self._parent_seb_names)
+        seb_size_v,max_idx = query_seb_snova_size(self._seb_ids,
+						  self._seb_names)
 
-        self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._parent_seb_names[max_idx],str(seb_datalocal_size_v[max_idx])))
+        self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._seb_names[max_idx],str(seb_size_v[max_idx])))
 	
 	# if the largest SEB size is less than the occupancy don't do anything
 	self._seb_occupancy = float(0.1)
-	self.info("Comparing %s and %s" % (seb_datalocal_size_v[max_idx], self._seb_occupancy))
-        if seb_datalocal_size_v[max_idx] < self._seb_occupancy: 
+	self.info("Comparing %s and %s" % (seb_size_v[max_idx], self._seb_occupancy))
+        if seb_size_v[max_idx] < self._seb_occupancy: 
             self.info("Occupancy threshold %s not met" % str(self._seb_occupancy))
             return
 
         # fetch runs from DB and process for # runs specified for this instance.
-        status_v=[kSTATUS_DONE]*len(self._parent_seb_projects)
+        status_v=[kSTATUS_DONE]*len(self._seb_projectss)
         
         # each subrun is 1.5GB 
         ctr=-1
@@ -136,12 +237,12 @@ class monitor_snova( ds_project_base ):
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
 
-	#self.info("Asking for earliest runs...")
+	# self.info("Asking for earliest runs...")
 	
 	run_list_map=collections.OrderedDict()
 	
 	# for each seb get the earliest runs, add them to run_list_map
-	for seb in self._parent_seb_names:
+	for seb in self._seb_names:
             runs = reader.get_earliest_runs( "%s_%s"%(self._fragment_prefix,seb) )
 
 	    if type(runs) is not list: continue
@@ -169,7 +270,7 @@ class monitor_snova( ds_project_base ):
 	self.info("Got run %s"%str(run))
 
 	# delete a single run
-	self._max_run = 10000
+	self._max_run = 100000
 	if run >= self._max_run: return
 
 	# get the sebs associated to this run
@@ -180,12 +281,12 @@ class monitor_snova( ds_project_base ):
 
 	for seb_ in sebs_v:
 
-            # self.info("inspecting seb... %s run... %d"%(seb_,run)) 
             # ask a single seb for this runs subruns -- limit the return to 500 subruns
 	    seb_del = ""
 	    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,500)
-
-	    #self.info(str(subruns))
+            
+            self.info("Got subruns...")
+	    self.info(str(subruns))
 
 	    valid_subruns=[]
 	    
@@ -241,7 +342,7 @@ class monitor_snova( ds_project_base ):
 	# check if the lock file exists, if so
 	if os.path.isfile(self._lock_file) == False:
             self.info("Lock file does not exist.")
-	    for seb_ in self._parent_seb_names:
+	    for seb_ in self._seb_names:
 		runtable = 'lockedruntable_%s'%seb_
 	 	res = rundbWriter.clear_death_star(runtable)	
 		if res==2: self.info("Already cleared run table: %s"%runtable)
@@ -253,7 +354,7 @@ class monitor_snova( ds_project_base ):
 	
 	# read the lock file
 	data = None
-	with open(self._lock_file) as lf_:
+	with open(self._lock_file,'r') as lf_:
             data = json.load(lf_)
 
 	# get the runs to copy
@@ -261,47 +362,47 @@ class monitor_snova( ds_project_base ):
 	if data['transferall'] == False:
             copyruns = data['copyruns']
 
+        self.info("Read the lock file and copyruns = %s"%str(copyruns))
+
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
 	
 	if data['transfered'] == False:
             # we need to transfer the data
             for run in copyruns:
-                for seb_ in self._parent_seb_names:
-		    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run)
-		    seb_cpy = "scp "
-		    valid_subruns = []
-		    for subrun_ in subruns:
-                        # get the filenames to transfer for this seb
-                        seb_status = self._api.get_status( ds_status( "%s_%s"%(self._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE ) )
-			fname = seb_status._data
-			if fname is None: 
-                            self.error("Cannot lock on %s for run %s and subrun %s. Filename project not complete."% (seb_,str(run),str(subrun_)))
-			    continue
-			
-			# determine if file is already there
-			SS = ["ssh",
-			      "vgenty@%s" % self._remote_host,
-			      "if [ -e %s ]; then echo 1; else echo 0; fi" % os.path.join(self._file_destination,seb_,os.path.basename(fname)) ]
-			ret = int(exec_system(SS)[0])
+                # parallelize...
+                self.info("Parallelize run %d"%run)
+                q=Queue.Queue()
+                threads=[]
 
-			if ret == 1:
-                            self.info("File exists already in destination directory")
-                            continue
+                for seb in self._seb_names:
+                    data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run),False)
+                    self.info(data)
+                    t=threading.Thread(target=copy_subruns2,args=(q,data_))
+                    t.daemon=True
+                    t.start()
+                    time.sleep(1)
 
-			self.info(" ==> Copying @ %s..."%seb_)
-			SS=["ssh",
-			    "root@%s"%seb_,
-			    "scp %s vgenty@%s:%s" % (fname,
-						 self._remote_host,
-						 os.path.join(self._file_destination,seb_)) ]		
-			self.info(str(SS))
-			ret = exec_system(SS)
+                for ix_ in xrange(len(self._seb_names)):
+                    q.get()
 
-		    		    
+
+                ####### Thread pool doesn't work
+                ######
+                #pool_size = 10 # 10 sebs..
+		#pool = ThreadPool(pool_size)
+		#seb_run_v = [(seb,
+                #              run,
+                #              self,
+                #              reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run)) for seb in self._seb_names]
+                #mp = ds_multiprocess(self._project)
+                #results = pool.map(copy_subruns, seb_run_v)
+		#print "Waiting for transfer..."
+	        #pool.close()
+		#pool.join()
 
 	# copy over the run tables
-        for seb_ in self._parent_seb_names:
+        for seb_ in self._seb_names:
 	    inruntable  = 'fragmentruntable_%s' % seb_   
 	    outruntable = 'lockedruntable_%s'   % seb_
 
@@ -310,7 +411,10 @@ class monitor_snova( ds_project_base ):
    	    if res==2: self.info("Copy of %s into %s exists" % (inruntable,outruntable))
    	    if res==1: self.info("Created copy of %s into %s" % (inruntable,outruntable))
 	    if res==0: self.info("Failure to copy %s into %s" % (inruntable,outruntable))
-	    
+        
+        data['transfered']=True
+	with open(self._lock_file,'w') as lf_:
+            json.dump(data,lf_)
 
 	self._locked = True
 	return
@@ -329,3 +433,4 @@ if __name__ == '__main__':
     obj.monitor_sebs()
 
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
+

@@ -281,13 +281,8 @@ class get_checksum( ds_project_base ):
 
 
 if __name__ == '__main__':
-
     proj_name = sys.argv[1]
-
     obj = get_checksum( proj_name )
-
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-
     obj.calculate_checksum()
-
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

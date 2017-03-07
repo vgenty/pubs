@@ -1,13 +1,23 @@
+echo "Setup pubs"
 source /home/vgenty/sw/pubs/config/setup.sh
-
+echo "Setup online"
 source /uboonenew/setup_online.sh
+echo "Setup gcc"
 setup gcc v4_9_2
+echo "Setup python"
 setup python v2_7_9
+echo "Setup postgres"
 setup postgresql v9_3_6 -q p279
+echo "Setup psycopg"
 setup psycopg2 v2_5_4
+echo "Setup git"
 setup git v2_3_0
+echo "Setup sam"
 setup sam_web_client
-kx509
+echo "Setup ifdhc"
+setup ifdhc
+#echo "kx509"
+#kx509
 
 # SQL reader account config
 export PUB_PSQL_READER_HOST=genty.servebeer.com
