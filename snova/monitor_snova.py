@@ -1,8 +1,3 @@
-## @namespace dstream_online.get_checksum
-#  @ingroup get_checksum
-#  @brief Defines a project get_checksum
-#  @author vgenty
-
 # python include
 import time, os, sys, json
 # pub_dbi package include
@@ -20,13 +15,18 @@ from dstream import ds_api
 from ds_online_util import *
 from snova_util import *
 import collections
-from multiprocessing.dummy import Pool as ThreadPool 
 import threading
 import Queue
-#import ifdh
 
-def copy_subruns2(q,data):
-    q.put(copy_subruns(data))
+def thread_worker(q):
+    print "thread worker instantiated"
+    while True:
+        data = q.get()
+        print "@ thread worker got data %s"
+        copy_subruns(data)
+        print "...complete"
+        q.task_done()
+        time.sleep(1)
 
 def copy_subruns(data):
     seb_    = str(data[0])
@@ -43,7 +43,7 @@ def copy_subruns(data):
 	# get the filenames to transfer for this seb
         obj.connect()
         obj.info("Query status of %s"%("%s_%s"%(obj._parent_prefix,seb_)))
-        status=ds_status( "%s_%s"%(obj._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE )
+        status = ds_status( "%s_%s"%(obj._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE )
 	seb_status = obj._api.get_status(status)
 	fname = seb_status._data
         obj.info("Got file name "+str(fname))
@@ -57,13 +57,8 @@ def copy_subruns(data):
 	dst_file = os.path.join(dst_dir,os.path.basename(fname))
 	
 	# determine if file is already there
-	SS = ["ssh",
-              "-T",
-	      "vgenty@%s" % obj._remote_host,
-	      "if [ -e %s ]; then echo 1; else echo 0; fi" % dst_file ]
-	obj.info(str(SS))
-	ret = int(exec_system(SS)[0])
-
+        SS = "if [ -e %s ]; then echo 1; else echo 0; fi" % dst_file
+	ret = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 
 	if ret == 1:
            obj.info("File exists already in destination directory @ %s"%seb_)
@@ -71,66 +66,45 @@ def copy_subruns(data):
            if force_overwrite:
                # delete whats over there
                obj.info("FORCING OVERWRITE @ %s!"%seb_)
-               SS = ["ssh",
-                     "-T",
-                     "vgenty@%s" % obj._remote_host,
-                     "rm -rf %s" % dst_file ]
-               obj.info(str(SS))
-               del_ = int(exec_system(SS)[0])
+               SS = "rm -rf %s" % dst_file 
+               del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 
            else:
+               obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
                continue
 	
-
-
-
-
 	obj.info(" ==> Copying @ %s..."%seb_)
-	SS=["ssh",
-	    "-T",
-	    "root@%s"%seb_,
-	    "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) ]		
-	obj.info(str(SS))
-	ret = exec_system(SS)
+        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
+        ret = exec_ssh("root",seb_,SS)
 	
 	# confirm the copied files is the same number of bytes else we have to try again
 	obj.info("Confirm the copied size @ remote location")
-	SS = ["ssh",
-	      "-T",
-	      "vgenty@%s" % obj._remote_host,
-	      "stat -c %%s %s" % dst_file ]
-	obj.info(str(SS))
-	dst_fsize = int(exec_system(SS)[0])
+        SS = "stat -c %%s %s" % dst_file
+        dst_fsize = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 	
-	obj.info(" ==> Checking file %s @ seb %s"%(fname,seb_))
-	SS = ["ssh",
-	      "-T",
-	      "vgenty@%s" % seb_,
-	      "stat -c %%s %s" % fname ]
-	obj.info(str(SS))
-	org_fsize = int(exec_system(SS)[0])
+        SS = "stat -c %%s %s" % fname
+        org_fsize = int(exec_ssh("vgenty",seb_,SS)[0])
 	
 	if dst_fsize != org_fsize:
             obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
+
 	    # delete whats over there
-	    SS = ["ssh",
-		  "-T",
-		  "vgenty@%s" % obj._remote_host,
-		  "rm -rf %s" % dst_file ]
-	    obj.info(str(SS))
-	    del_ = int(exec_system(SS)[0])
+            SS = "rm -rf %s" % dst_file
+            del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 	    
 	    valid_subruns.append(subrun_)
-        obj.info("%s valid subruns are %s"%(seb_,str(valid_subruns)))
+        else:
+            obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
+
+    obj.info("Thread @ %s complete"%seb_)
 
 def query_seb_snova_size(seb_ids,seb_names):
-        # go through each of the SEBS and calculate the disk usage, if it's 
-        # above 80% on a single SEB we have to start slashing
+        # go through each of the SEBS and calculate the disk usage
 
         seb_size_v = [0.0]*len(seb_ids)
 
         for ix,seb in enumerate(seb_names):
-            ret_ = exec_system(["ssh", seb, "df /datalocal/"])
+            ret_ = exec_ssh("vgenty",seb,"df /datalocal/")
             size_, used_, unused_ = ret_[-1].split(" ")[6:9]
             seb_size_v[ix] = float(used_) / float(size_)
         
@@ -159,7 +133,7 @@ class monitor_snova( ds_project_base ):
         self._infile_format = ''
         self._data = ''
 
-	self._seb_occupancy = float(0.8)
+	self._seb_occupancy = float(0.7)
 
         self._parent_prefix = None
 	self._fragment_prefix = None
@@ -222,7 +196,7 @@ class monitor_snova( ds_project_base ):
         self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._seb_names[max_idx],str(seb_size_v[max_idx])))
 	
 	# if the largest SEB size is less than the occupancy don't do anything
-	self._seb_occupancy = float(0.1)
+	self._seb_occupancy = float(0.7)
 	self.info("Comparing %s and %s" % (seb_size_v[max_idx], self._seb_occupancy))
         if seb_size_v[max_idx] < self._seb_occupancy: 
             self.info("Occupancy threshold %s not met" % str(self._seb_occupancy))
@@ -239,7 +213,7 @@ class monitor_snova( ds_project_base ):
 
 	# self.info("Asking for earliest runs...")
 	
-	run_list_map=collections.OrderedDict()
+	run_list_map = collections.OrderedDict()
 	
 	# for each seb get the earliest runs, add them to run_list_map
 	for seb in self._seb_names:
@@ -318,13 +292,14 @@ class monitor_snova( ds_project_base ):
 
 	    self.info(" ==> removing @ %s..."%seb_)
 	    self.info("valid # subruns... %s" % str(valid_subruns))
-	    # ret = exec_system(["ssh", "root@%s"%seb_, "rm -rf %s"%seb_del])
-	    # self.info(ret)
+            SS = "rm -rf %s"%seb_del
+            ret = exec_ssh("root",seb_,SS)
+	    self.info(ret)
 	    runtable = "%s_%s"%(self._parent_prefix,seb_)
             self.info("... removing %s %d \n%s"%(runtable,run,str(valid_subruns)))
-	    #rundbWriter.star_destroyer(runtable,run,valid_subruns);
+	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
-	    #rundbWriter.star_destroyer(runtable,run,valid_subruns);
+	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    self.info("...done...")
 
         return
@@ -347,7 +322,7 @@ class monitor_snova( ds_project_base ):
 	 	res = rundbWriter.clear_death_star(runtable)	
 		if res==2: self.info("Already cleared run table: %s"%runtable)
 		if res==1: self.info("Clear a valid run table: %s"%runtable)
-		if res==0: self.info("No runtable by name %s exist" % runtable)
+                if res==0: self.info("No runtable by name %s exist" % runtable)
 
 	    self._locked = False
 	    return
@@ -366,41 +341,37 @@ class monitor_snova( ds_project_base ):
 
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
-	
+
 	if data['transfered'] == False:
-            # we need to transfer the data
+
             for run in copyruns:
-                # parallelize...
+
                 self.info("Parallelize run %d"%run)
-                q=Queue.Queue()
-                threads=[]
+                q = Queue.Queue()
+                threads = []
 
                 for seb in self._seb_names:
                     data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run),False)
-                    self.info(data)
-                    t=threading.Thread(target=copy_subruns2,args=(q,data_))
-                    t.daemon=True
-                    t.start()
-                    time.sleep(1)
-
+                    self.info(data_)
+                    q.put(data_)
+                    self.info("Moving onto next seb @ %s qsize %d" % (seb,q.qsize()))
+                
                 for ix_ in xrange(len(self._seb_names)):
-                    q.get()
+                    t = threading.Thread(target=thread_worker,args=(q,))
+                    t.daemon = True
+                    threads.append(t)
+
+                for iy,thread in enumerate(threads):
+                    thread.start()
+                    self.info("Kicking off thread %d"%iy)
+                    time.sleep(2)
+
+                self.info("Blocking until complete")
+                q.join() 
+                self.info("Done copying run %d ?" % run)
 
 
-                ####### Thread pool doesn't work
-                ######
-                #pool_size = 10 # 10 sebs..
-		#pool = ThreadPool(pool_size)
-		#seb_run_v = [(seb,
-                #              run,
-                #              self,
-                #              reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run)) for seb in self._seb_names]
-                #mp = ds_multiprocess(self._project)
-                #results = pool.map(copy_subruns, seb_run_v)
-		#print "Waiting for transfer..."
-	        #pool.close()
-		#pool.join()
-
+        self.info("Done transfering?")
 	# copy over the run tables
         for seb_ in self._seb_names:
 	    inruntable  = 'fragmentruntable_%s' % seb_   
@@ -408,12 +379,12 @@ class monitor_snova( ds_project_base ):
 
 	    res = rundbWriter.copy_death_star(inruntable,outruntable,copyruns)
 
-   	    if res==2: self.info("Copy of %s into %s exists" % (inruntable,outruntable))
+   	    if res==2: self.info("Copy of %s into %s exists"  % (inruntable,outruntable))
    	    if res==1: self.info("Created copy of %s into %s" % (inruntable,outruntable))
 	    if res==0: self.info("Failure to copy %s into %s" % (inruntable,outruntable))
         
         data['transfered']=True
-	with open(self._lock_file,'w') as lf_:
+	with open(self._lock_file,'w+') as lf_:
             json.dump(data,lf_)
 
 	self._locked = True
@@ -427,9 +398,11 @@ if __name__ == '__main__':
     obj = monitor_snova( proj_name )
 
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-    
+
+    obj.info('Observe lock')
     obj.lock_observer()
 
+    obj.info('Monitor sebs')
     obj.monitor_sebs()
 
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

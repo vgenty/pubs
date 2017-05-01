@@ -1,8 +1,3 @@
-## @namespace dstream_online.get_checksum
-#  @ingroup get_checksum
-#  @brief Defines a project get_checksum
-#  @author yuntse
-
 # python include
 import time, os, sys
 # pub_dbi package include
@@ -17,18 +12,18 @@ from dstream import ds_multiprocess
 from ds_online_util import *
 from snova_util import *
 import traceback
+from snova_util import *
 
-import subprocess
 
-class get_checksum( ds_project_base ):
+class binary_to_dropbox( ds_project_base ):
 
-    _project = 'get_checksum'
+    _project = 'binary_to_dropbox'
 
     ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
         # Call base class ctor
-        super( get_checksum, self ).__init__( arg )
+        super( binary_to_dropbox, self ).__init__( arg )
 
         if not arg:
             self.error('No project name specified!')
@@ -68,22 +63,16 @@ class get_checksum( ds_project_base ):
 
 	self._experts = resource['EXPERTS']
 
-        if 'PARALLELIZE' in resource:
-            self._parallelize = int(resource['PARALLELIZE'])
-        if 'MAX_PROC_TIME' in resource:
-            self._max_proc_time = int(resource['MAX_PROC_TIME'])
-        if 'MIN_RUN' in resource:
-            self._min_run = int(resource['MIN_RUN'])
+        self._parallelize = int(1)
 
-        self._seb = resource["SEB"]
+        self._seb = resource['SEB']
+        self._remote_host = str(resource['REMOTE_HOST'])
+        self._binary_location = str(resource['BINARY_LOCATION'])
+        self._json_location = str(resource['JSON_LOCATION'])
+        self._dropbox_location = str(resource['DROPBOX_LOCATION'])
 
-	if 'REMOTE_HOST' in resource:
-            self._remote_host = str(resource['REMOTE_HOST'])
-	if 'FILE_DESTINATION' in resource:
-            self._file_destination = str(resource['FILE_DESTINATION'])
 
-    ## @brief calculate the checksum of a file
-    def calculate_checksum( self ):
+    def transfer_files( self ):
 
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -94,22 +83,24 @@ class get_checksum( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
             
-        self.info("Calculating checksum")
+        self.info("Attempting file transfer...")
 
         # Fetch runs from DB and process for # runs specified for this instance.
         runlist=[]
-        if self._parent_project:
-            runlist = self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] )
-        else:
-            runlist = self.get_runs(self._project,1)
+
+        runlist = self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] )
+        #runlist = self.get_xtable_runs( [self._project, self._parent_project], [132, kSTATUS_DONE] )
 
         ctr = self._nruns
         in_file_v = []
+        json_file_v = []
         runid_v = []
         
-        #slice the run list
+        # Slice the run list
         sliced_runlist = runlist[:ctr]
-            
+
+        self.info("See %s"%str(sliced_runlist))
+
         for x in sliced_runlist:
             # Break from loop if counter became 0
             if ctr <= 0: break
@@ -120,12 +111,11 @@ class get_checksum( ds_project_base ):
             # Counter decreases by 1
             ctr -= 1
 
-            # Report starting
-            self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-            
             ref_status = self._api.get_status( ds_status( self._parent_project, run, subrun, kSTATUS_DONE ) )
-            fname = os.path.join(self._file_destination, self._seb, os.path.basename(ref_status._data))
-
+            json_file = os.path.join(self._json_location, self._seb, os.path.basename(ref_status._data))
+            
+            fname = os.path.basename(".".join(json_file.split(".")[:-1]))
+            
             if "ubdaq" not in fname:
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
                 self.log_status( ds_status( project = self._project,
@@ -135,17 +125,22 @@ class get_checksum( ds_project_base ):
                                             status  = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND ) )
                 continue
             
+            fname = os.path.join(self._binary_location,self._seb,fname)
             in_file_v.append(fname)
+            json_file_v.append(json_file)
             runid_v.append((run,subrun))
-            
-        mp = self.process_files(in_file_v)
+
+        self.info("Processing in_file_v %s"%str(in_file_v))
+        self.info("Processing json_file_v %s"%str(json_file_v))
+
+        mp = self.process_files(in_file_v,json_file_v)
         
         for i in xrange(len(in_file_v)):
             (out,err) = mp.communicate(i)
             
             self.info("Got return %s"%str(out))
-            if err or not out:
-                self.error('Checksum calculation failed for %s' % in_file_v[i])
+            if err or out:
+                self.error('Binary transfer failed for %s' % in_file_v[i])
                 self.error(err)
                 self.log_status( ds_status( project = self._project,
                                             run     = runid_v[i][0],
@@ -155,26 +150,7 @@ class get_checksum( ds_project_base ):
                                             data    = '' ) )
                 continue
 
-            statusCode = kSTATUS_INIT
-            try:
-                exec("checksum = %s " % out)
-                checksum = checksum[0].split(":")[-1]
-
-                self._data = in_file_v[i]+":"+checksum
-                statusCode = kSTATUS_DONE
-                self.info("Set CRC: %s on file: %s"%(checksum,in_file_v[i]))
-
-            except Exception:
-                errorMessage = traceback.print_exc()
-                subject = 'Failed to obtain the checksum of the file %s' % in_file_v[i]
-                text = """File: %s
-                          Error message:
-                          %s
-                """ % ( in_file_v[i], errorMessage )
-
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-                self._data = ''
-                
+            statusCode = kSTATUS_DONE
             self.log_status( ds_status( project = self._project,
                                         run     = runid_v[i][0],
                                         subrun  = runid_v[i][1],
@@ -183,18 +159,43 @@ class get_checksum( ds_project_base ):
                                         data    = self._data ) )
 
     ## @brief process multiple files checksum calculation
-    def process_files(self, in_file_v):
+    def process_files(self, in_file_v, in_json_v):
 
         mp = ds_multiprocess(self._project)
+        cmd_template  = ""
+        cmd_template += "scp %s vgenty@" + self._remote_host + ":/build/vgenty/tmp ; "
+        cmd_template += "ssh -T -x vgenty@" + self._remote_host + " "
+        cmd_template += "'source /build/vgenty/setupsam.sh 1>/dev/null 2>/dev/null; "
+        cmd_template += "ifdh cp /build/vgenty/tmp/%s %s;"
+        cmd_template += "ifdh cp %s %s; '"
 
-        cmd_template  = "ssh -T vgenty@%s " % self._remote_host 
-        cmd_template += "'source /grid/fermiapp/products/uboone/setup_uboone.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s'"
 
-        for f in in_file_v:
-            self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
-            cmd = cmd_template % f
+        for in_file,in_json in zip(in_file_v,in_json_v):
+            
+            in_file_origin = in_file
+            in_file_name = os.path.basename(in_file)
+            in_file_destination = os.path.join(self._dropbox_location,in_file_name)
+            
 
-            index,active_ctr = mp.execute(cmd)
+            in_file_pre_name = os.path.basename(in_file)
+            in_file_pre_name = in_file.split("-")
+            in_file_pre_name = in_file_pre_name[:2] + in_file_pre_name[3:]
+            in_file_pre_name = "-".join(in_file_pre_name)
+            in_file_pre_origin = os.path.join(self._binary_location,self._seb,in_file_pre_name)
+            
+            
+            in_json_origin = in_json
+            in_json_file_name = os.path.basename(in_json_origin)
+            in_json_destination = os.path.join(self._dropbox_location,in_json_file_name)
+
+            cmd = cmd_template % (in_json_origin,
+                                  in_json_file_name,
+                                  in_json_destination,
+                                  in_file_pre_origin,
+                                  in_file_destination)
+            
+            self.info(cmd)
+            index, active_ctr = mp.execute(cmd)
 
             if not self._parallelize:
                 mp.communicate(index)
@@ -221,68 +222,11 @@ class get_checksum( ds_project_base ):
                 break
         return mp
         
-    ## @brief check the checksum is in the table
-    def check_db( self ):
-        # Attempt to connect DB. If failure, abort
-        if not self.connect():
-            self.error('Cannot connect to DB! Aborting...')
-            return
-
-        # If resource info is not yet read-in, read in.
-        if self._nruns is None:
-            self.get_resource()
-
-        self.info('Here, self._nruns=%d ... ' % (self._nruns))
-
-        # Fetch runs from DB and process for # runs specified for this instance.
-        ctr = self._nruns
-        for x in self.get_runs( self._project, 2 ):
-
-            # Counter decreases by 1
-            ctr -= 1
-
-            (run, subrun) = (int(x[0]), int(x[1]))
-
-            # Report starting
-            self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-
-            statusCode = kSTATUS_TO_BE_VALIDATED
-
-            # Get status object
-            status = self._api.get_status(ds_status(self._project,
-                                                    x[0],x[1],x[2]))
-
-            self._data = status._data
-            self._data = str( self._data )
-
-            if self._data:
-               statusCode = 0
-            else:
-                subject = 'Checksum of the run %s and subrun %s not in database' % (str(run),str(subrun))
-                text = """Checksum for run %s and subrun %s is not in database""" % ( str(run),str(subrun))
-
-                pub_smtp( os.environ['PUB_SMTP_ACCT'], os.environ['PUB_SMTP_SRVR'], os.environ['PUB_SMTP_PASS'], self._experts, subject, text )
-
-                statusCode = 100
-
-            # Create a status object to be logged to DB (if necessary)
-            status = ds_status( project = self._project,
-                                run     = run,
-                                subrun  = subrun,
-                                seq     = 0,
-                                status  = statusCode,
-                                data    = self._data )
-
-            # Log status
-            self.log_status( status )
-
-            # Break from loop if counter became 0
-            if not ctr: break
 
 
 if __name__ == '__main__':
     proj_name = sys.argv[1]
-    obj = get_checksum( proj_name )
+    obj = binary_to_dropbox( proj_name )
     obj.info('Start project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))
-    obj.calculate_checksum()
+    obj.transfer_files()
     obj.info('End project @ %s' % time.strftime('%Y-%m-%d %H:%M:%S'))

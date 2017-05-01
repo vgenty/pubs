@@ -75,7 +75,7 @@ class register_snova(ds_project_base):
             split_ = res_.split('.')[0].split('_')[-1].split('-')
             run_    = int(split_[1])
             subrun_ = int(split_[2])
-            od[tuple((run_,subrun_))] = [res_,0.0,0.0]
+            od[tuple((run_,subrun_))] = [res_,0,0]
         
         #order by run and subrun
         od = OrderedDict(sorted(od.iteritems()))
@@ -93,7 +93,7 @@ class register_snova(ds_project_base):
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
         last_recorded_info = reader.get_last_run_subrun(self._runtable)
 
-        file_info=OrderedDict()
+        file_info = OrderedDict()
         
         ik=0
         # only register 1000 files at a time
@@ -106,7 +106,7 @@ class register_snova(ds_project_base):
                  k_[1] <= last_recorded_info[1]): continue
 
             file_info[k_]=v_
-            ik+=1
+            ik += 1
             if ik==ikmax: break
                 
 
@@ -115,15 +115,14 @@ class register_snova(ds_project_base):
         # lets do a large query for the creation and modified times for these files over ssh
         # open SSH connection and call `stat` for all necessary files at once
         sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
-                                   stdin=subprocess.PIPE, 
+                                   stdin = subprocess.PIPE, 
                                    stdout = subprocess.PIPE, 
-                                   universal_newlines=True,bufsize=0)
+                                   universal_newlines = True,
+                                   bufsize = 0)
 
         for f_ in file_info:
             filepath=os.path.join(data_path,file_info[f_][0])
-            # call `stat`
             cmd="stat -c %%Y-%%Z %s"%filepath
-
             sshproc.stdin.write("%s\n"%cmd)
             sshproc.stdin.write("echo END\n")
 
@@ -136,7 +135,7 @@ class register_snova(ds_project_base):
             if return_.rstrip('\n')!="END":
                 values.append(return_.rstrip('\n'))
                 
-        for ix,run_subrun in enumerate(file_info):
+        for ix, run_subrun in enumerate(file_info):
             
             time_create,time_modify = values[ix].split("-")
             

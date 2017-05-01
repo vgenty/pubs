@@ -1,8 +1,3 @@
-## @namespace dstream_online.get_checksum
-#  @ingroup get_filename
-#  @brief Defines a project get_filename
-#  @author yuntse
-
 # python include
 import time, os, sys
 # pub_dbi package include
@@ -45,7 +40,7 @@ class construct_filename( ds_project_base ):
         self._skip_ref_project = []
         self._skip_ref_status = None
         self._skip_status = None
-        self._seb= ""
+        self._seb = ""
         
     ## @brief method to retrieve the project resource information if not yet done
     def get_resource( self ):
@@ -81,9 +76,9 @@ class construct_filename( ds_project_base ):
 	datadir = self._in_dir
        
 	# once again, ask for files in the snova directory (return is unsorted)
-     	dir_flist=exec_system(["ssh", self._seb, "ls -f -1 %s"%datadir])[2:]
-
-        file_map=OrderedDict()
+        SS="ls -f -1 %s" % datadir
+        dir_flist = exec_ssh("vgenty",self._seb,SS)[2:]
+        file_map = OrderedDict()
         
         for res in dir_flist:
             split_  = res.split('.')[0].split('_')[-1].split('-')
@@ -105,9 +100,9 @@ class construct_filename( ds_project_base ):
             # Report starting
             self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
 
-            statusCode=kSTATUS_DONE
+            statusCode = kSTATUS_DONE
 
-            self._data=file_map[(run,subrun)]
+            self._data = file_map[(run,subrun)]
 
             #self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
 

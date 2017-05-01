@@ -111,7 +111,9 @@ class get_metadata( ds_project_base ):
         self._ref_project = resource['PARENT_PROJECT']
 
         self._seb = resource["SEB"]
-        
+
+        self._json_location = resource['JSON_LOCATION']
+
         if "REMOTE_HOST" in resource:
             self._remote_host = resource["REMOTE_HOST"]
         
@@ -224,7 +226,7 @@ class get_metadata( ds_project_base ):
             if data and type(data) == type(dict()):
                 fname = os.path.basename(infile_v[index_run])
                 out_file_name = insert_sebname(fname,self._seb)
-                fout = open('/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,out_file_name), 'w+')
+                fout = open('%s/%s/%s.json' % (self._json_location,self._seb,out_file_name), 'w+')
                 json.dump(data, fout, sort_keys = True, indent = 4, ensure_ascii=False)
                 data = ''
 
@@ -328,9 +330,10 @@ class get_metadata( ds_project_base ):
 
             out,err = mp.communicate(index_run)
             
-            file_size = long(exec_system(["ssh","-T","vgenty@%s"%self._remote_host,"stat -c %%s %s"%in_file])[0])
+            SS= "stat -c %%s %s" %in_file
+            file_size = long(exec_ssh("vgenty",self._remote_host,SS)[0])
 
-            run,subrun = runid_v[index_run]
+            run, subrun = runid_v[index_run]
 
             checksum = ''
             if checksum_v:
@@ -681,7 +684,7 @@ class get_metadata( ds_project_base ):
             in_file_name = os.path.basename(filelist[0])
             out_file_name=insert_sebname(in_file_name,self._seb)
 
-            out_file_path = '/home/vgenty/snova_metadata/%s/%s.json' % (self._seb,out_file_name)
+            out_file_path = '%s/%s/%s.json' % (self._json_location,self._seb,out_file_name)
 
             if os.path.isfile(out_file_path):
                 self.info("Ok see in_file %s and out_file %s"%(in_file_name,out_file_name))
