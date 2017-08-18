@@ -109,6 +109,9 @@ class register_snova(ds_project_base):
             ik += 1
             if ik==ikmax: break
                 
+        if len(file_info)==0:
+            self.info("No new file information, return")
+            return
 
         file_info.popitem() # remove the last file
 

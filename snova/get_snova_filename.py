@@ -11,7 +11,6 @@ from dstream import ds_status
 from dstream import ds_multiprocess
 from ds_online_util import *
 from snova_util import *
-import traceback
 from collections import OrderedDict
 import subprocess
 
@@ -84,7 +83,7 @@ class construct_filename( ds_project_base ):
             split_  = res.split('.')[0].split('_')[-1].split('-')
             run_    = int(split_[1])
             subrun_ = int(split_[2])
-            file_map[tuple((run_,subrun_))]=os.path.join(datadir,res)
+            file_map[tuple((run_,subrun_))] = os.path.join(datadir,res)
             
         for x in sliced_runlist:
             # Break from loop if counter became 0
@@ -99,19 +98,23 @@ class construct_filename( ds_project_base ):
 
             # Report starting
             self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
-
-            statusCode = kSTATUS_DONE
-
-            self._data = file_map[(run,subrun)]
+            try:
+                self._data = file_map[(run,subrun)]
+            except KeyError:
+                self.info('Warning! (run,subrun)=(%d,%d) does not exist in file map (sz=%d)'%(run,subrun,len(file_map)))
+                continue
+            
 
             #self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
-
+            statusCode = kSTATUS_DONE
             ret = self.log_status( ds_status( project = self._project,
                                               run     = run,
                                               subrun  = subrun,
                                               seq     = 0,
                                               status  = kSTATUS_DONE,
                                               data    = self._data ) )
+        return
+
 if __name__ == '__main__':
 
     proj_name = sys.argv[1]

@@ -1,8 +1,5 @@
-## @namespace dstream_online.get_metadata
-#  @ingroup dstream_online
-#  @brief Defines a project dstream_online.get_metadata
-#  @author echurch, yuntse
-
+# psycopg2 include for
+import psycopg2
 # python include
 import time, os, shutil, sys, gc
 # pub_dbi package include
@@ -128,9 +125,13 @@ class get_metadata( ds_project_base ):
     def process_newruns(self):
 
         # Attempt to connect DB. If failure, abort
-        if not self.connect():
-	    self.error('Cannot connect to DB! Aborting...')
-	    return
+        try:
+            if not self.connect():
+                self.error('Cannot connect to DB! Aborting...')
+                return
+        except psycopg2.InternalError:
+            self.error('Empty table! Return.')
+            return
 
         # If resource info is not yet read-in, read in.
         if self._nruns is None:
