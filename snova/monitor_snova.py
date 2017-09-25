@@ -19,14 +19,18 @@ import threading
 import Queue
 
 def thread_worker(q):
-    print "thread worker instantiated"
     while True:
         data = q.get()
-        print "@ thread worker got data %s"
+        data[2].info("@ thread worker got data seb: %s for run: %d" % (str(data[0]),int(data[1])))
         copy_subruns(data)
-        print "...complete"
+        data[2].info("...complete @ seb: %s for run: %d" % (str(data[0]),int(data[1])))
         q.task_done()
+        data[2].info("...called task_done()")
         time.sleep(1)
+        data[2].info("...slept")
+        data[2].info("q.qsize(): %d" % int(q.qsize()))
+        data[2].info("q.empty(): %d" % int(q.empty()))
+    return
 
 def copy_subruns(data):
     seb_    = str(data[0])
@@ -70,14 +74,57 @@ def copy_subruns(data):
                del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 
            else:
-               obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
-               continue
-	
-	obj.info(" ==> Copying @ %s..."%seb_)
-        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
+
+               # confirm the copied files is the same number of bytes else we have to try again
+               obj.info("Confirm the copied size @ remote location")
+               SS = "stat -c %%s %s" % dst_file
+               dst_fsize = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
+               
+               SS = "stat -c %%s %s" % fname
+               org_fsize = int(exec_ssh("vgenty",seb_,SS)[0])
+               
+               if dst_fsize != org_fsize:
+                   obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
+                   # delete whats over there
+                   SS = "rm -rf %s" % dst_file
+                   del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
+                   
+                   valid_subruns.append(subrun_)
+
+               else:
+                   obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
+                   continue
+        
+        #
+        # copy
+        #
+	# obj.info(" ==> Copying @ %s..."%seb_)
+        # SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
+        # ret = exec_ssh("root",seb_,SS)
+        # obj.info(" ==> Copied @ %s..."%seb_)
+
+        #
+        # alternate copy
+        #
+        obj.info(" ==> Alternate copy from %s"%seb_)
+        alt_dir = "/build/vgenty/scratch/%s" % seb_
+
+        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,alt_dir) 
+        obj.info(SS)
         ret = exec_ssh("root",seb_,SS)
-	
+
+        alt_fout = os.path.join(alt_dir,os.path.basename(fname))
+        SS = "scp %s %s" % (alt_fout,dst_dir) 
+        obj.info(SS)
+        ret = exec_ssh("vgenty",obj._remote_host,SS)
+
+        SS = "rm -rf %s" % alt_fout
+        obj.info(SS)
+        ret = exec_ssh("vgenty",obj._remote_host,SS)
+
+        #
 	# confirm the copied files is the same number of bytes else we have to try again
+        #
 	obj.info("Confirm the copied size @ remote location")
         SS = "stat -c %%s %s" % dst_file
         dst_fsize = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
@@ -85,6 +132,9 @@ def copy_subruns(data):
         SS = "stat -c %%s %s" % fname
         org_fsize = int(exec_ssh("vgenty",seb_,SS)[0])
 	
+        #
+        # is it the same size?
+        #
 	if dst_fsize != org_fsize:
             obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
 
@@ -94,9 +144,10 @@ def copy_subruns(data):
 	    
 	    valid_subruns.append(subrun_)
         else:
-            obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
+            obj.info("Copy complete @ %s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
 
     obj.info("Thread @ %s complete"%seb_)
+    return
 
 def query_seb_snova_size(seb_ids,seb_names):
         # go through each of the SEBS and calculate the disk usage
@@ -292,6 +343,7 @@ class monitor_snova( ds_project_base ):
 
 	    self.info(" ==> removing @ %s..."%seb_)
 	    self.info("valid # subruns... %s" % str(valid_subruns))
+            
             SS = "rm -rf %s"%seb_del
             ret = exec_ssh("root",seb_,SS)
 	    self.info(ret)
@@ -346,29 +398,32 @@ class monitor_snova( ds_project_base ):
 
             for run in copyruns:
 
-                self.info("Parallelize run %d"%run)
-                q = Queue.Queue()
-                threads = []
+                # if run < 12442: continue
+                
+                self.info("Parallelize @ run %d"%run)
+                # q = Queue.Queue()
+                # threads = []
 
                 for seb in self._seb_names:
-                    data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run),False)
-                    self.info(data_)
-                    q.put(data_)
-                    self.info("Moving onto next seb @ %s qsize %d" % (seb,q.qsize()))
+                    data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run,1000),False)
+                    copy_subruns(data_)
+                    
+                #     q.put(data_)
+                #     self.info("Moving onto next seb @ %s qsize %d" % (seb,q.qsize()))
                 
-                for ix_ in xrange(len(self._seb_names)):
-                    t = threading.Thread(target=thread_worker,args=(q,))
-                    t.daemon = True
-                    threads.append(t)
+                # for ix_ in xrange(len(self._seb_names)):
+                #     t = threading.Thread(target=thread_worker,args=(q,))
+                #     t.daemon = True
+                #     threads.append(t)
 
-                for iy,thread in enumerate(threads):
-                    thread.start()
-                    self.info("Kicking off thread %d"%iy)
-                    time.sleep(2)
+                # for iy,thread in enumerate(threads):
+                #     thread.start()
+                #     self.info("Kicking off thread %d"%iy)
+                #     time.sleep(10)
 
-                self.info("Blocking until complete")
-                q.join() 
-                self.info("Done copying run %d ?" % run)
+                # self.info("Blocking until complete, calling join...")
+                # q.join() 
+                self.info("... done copying run %d ?" % run)
 
 
         self.info("Done transfering?")
@@ -389,7 +444,6 @@ class monitor_snova( ds_project_base ):
 
 	self._locked = True
 	return
-	
 
 if __name__ == '__main__':
 	

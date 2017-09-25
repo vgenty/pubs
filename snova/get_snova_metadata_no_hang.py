@@ -113,6 +113,7 @@ class get_metadata( ds_project_base ):
 
         if "REMOTE_HOST" in resource:
             self._remote_host = resource["REMOTE_HOST"]
+            self._remote_host = "uboonegpvm03.fnal.gov"
         
     def get_action(self):
 

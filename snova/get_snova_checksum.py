@@ -72,6 +72,7 @@ class get_checksum( ds_project_base ):
             self._parallelize = int(resource['PARALLELIZE'])
         if 'MAX_PROC_TIME' in resource:
             self._max_proc_time = int(resource['MAX_PROC_TIME'])
+            self._max_proc_time = 60
         if 'MIN_RUN' in resource:
             self._min_run = int(resource['MIN_RUN'])
 
@@ -79,6 +80,8 @@ class get_checksum( ds_project_base ):
 
 	if 'REMOTE_HOST' in resource:
             self._remote_host = str(resource['REMOTE_HOST'])
+            # self._remote_host = "uboonegpvm03.fnal.gov"
+
 	if 'FILE_DESTINATION' in resource:
             self._file_destination = str(resource['FILE_DESTINATION'])
 
@@ -94,7 +97,7 @@ class get_checksum( ds_project_base ):
         if self._nruns is None:
             self.get_resource()
             
-        self.info("Calculating checksum")
+        self.info("Calculating checksum...")
 
         # Fetch runs from DB and process for # runs specified for this instance.
         runlist=[]
@@ -124,7 +127,9 @@ class get_checksum( ds_project_base ):
             self.info('Calculating the file checksum: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
             
             ref_status = self._api.get_status( ds_status( self._parent_project, run, subrun, kSTATUS_DONE ) )
+            self.info("Got ref_status: %s" % str(ref_status._data))
             fname = os.path.join(self._file_destination, self._seb, os.path.basename(ref_status._data))
+            self.info("Got fname: %s" % str(fname))
 
             if "ubdaq" not in fname:
                 self.error('Failed to find the file for (run,subrun) = %s @ %s !!!' % (run,subrun))
@@ -138,15 +143,27 @@ class get_checksum( ds_project_base ):
             in_file_v.append(fname)
             runid_v.append((run,subrun))
             
-        mp = self.process_files(in_file_v)
-        
-        for i in xrange(len(in_file_v)):
-            (out,err) = mp.communicate(i)
+        # mp = self.process_files(in_file_v)
             
-            self.info("Got return %s"%str(out))
-            if err or not out:
+        cmd_template = "source /grid/fermiapp/products/uboone/setup_uboone.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s"
+
+        for i in xrange(len(in_file_v)):
+            self.info("Communicate @ i=%d"%int(i))
+            f = in_file_v[i]
+
+            self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
+            cmd = cmd_template % f
+            self.info(cmd)
+
+            out = exec_ssh("vgenty",self._remote_host,cmd)
+            
+            # (out,err) = mp.communicate(i)
+            
+            self.info("Got return %s"%str(out[0]))
+            #if err or not out:
+            if not out:
                 self.error('Checksum calculation failed for %s' % in_file_v[i])
-                self.error(err)
+                self.error(out)
                 self.log_status( ds_status( project = self._project,
                                             run     = runid_v[i][0],
                                             subrun  = runid_v[i][1],
@@ -157,7 +174,7 @@ class get_checksum( ds_project_base ):
 
             statusCode = kSTATUS_INIT
             try:
-                exec("checksum = %s " % out)
+                exec("checksum = %s " % out[0])
                 checksum = checksum[0].split(":")[-1]
 
                 self._data = in_file_v[i]+":"+checksum
@@ -193,8 +210,12 @@ class get_checksum( ds_project_base ):
         for f in in_file_v:
             self.info('Calculating checksum for: %s @ %s' % (f,time.strftime('%Y-%m-%d %H:%M:%S')))
             cmd = cmd_template % f
-
+            
+            self.info("%s" % str(cmd))
+            
             index,active_ctr = mp.execute(cmd)
+            
+            self.info("Active counter: %d @ index: %d" % (int(active_ctr),int(index)))
 
             if not self._parallelize:
                 mp.communicate(index)
@@ -204,7 +225,7 @@ class get_checksum( ds_project_base ):
                     time.sleep(0.2)
                     time_slept += 0.2
                     active_ctr = mp.active_count()
-
+                    self.info("Active counter: %d" % int(active_ctr))
                     if time_slept > self._max_proc_time:
                         self.error('Exceeding time limit %s ... killing %d jobs...' % (self._max_proc_time,active_ctr))
                         mp.kill()
@@ -214,10 +235,12 @@ class get_checksum( ds_project_base ):
         time_slept=0
 
         while mp.active_count():
+            self.info("Waited for... %f" % float(time_slept))
             time.sleep(0.2)
             time_slept += 0.2
             if time_slept > self._max_proc_time:
                 mp.kill()
+                self.info("Waited too long, kill!")
                 break
         return mp
         

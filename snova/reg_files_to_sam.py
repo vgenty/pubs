@@ -106,17 +106,21 @@ class reg_files_to_sam( ds_project_base ):
             self.get_resource()
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
-        #self._project_requirement[0] = kSTATUS_INIT 
-        #self._project_requirement[0] = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND
-        self._project_requirement[0] = 112
+        self._project_requirement[0] = kSTATUS_INIT 
+        # self._project_requirement[0] = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND
+        # self._project_requirement[0] = 112
+        # self._project_requirement[0] = 112000
 
-        # Fetch runs from DB and process for # runs specified for this instance.
+        # fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns
         runid_v = []
         files_v = []
         json_v = []
 
         self.info("Asking for ctr: %s"%str(ctr))
+        
+        self.info("project list %s " % str(self._project_list))
+        self.info("project req %s " % str(self._project_requirement))
 
         for x in self.get_xtable_runs(self._project_list,
                                       self._project_requirement):

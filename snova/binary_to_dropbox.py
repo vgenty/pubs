@@ -63,7 +63,8 @@ class binary_to_dropbox( ds_project_base ):
 
 	self._experts = resource['EXPERTS']
 
-        self._parallelize = int(1)
+        # self._parallelize = int(1)
+        self._parallelize = int(0)
 
         self._seb = resource['SEB']
         self._remote_host = str(resource['REMOTE_HOST'])
@@ -87,6 +88,9 @@ class binary_to_dropbox( ds_project_base ):
 
         # Fetch runs from DB and process for # runs specified for this instance.
         runlist=[]
+        
+        self.info("@ parent         %s " % str(self._project))
+        self.info("@ parent project %s " % str(self._parent_project))
 
         runlist = self.get_xtable_runs( [self._project, self._parent_project], [kSTATUS_INIT, kSTATUS_DONE] )
         #runlist = self.get_xtable_runs( [self._project, self._parent_project], [132, kSTATUS_DONE] )
@@ -163,10 +167,12 @@ class binary_to_dropbox( ds_project_base ):
 
         mp = ds_multiprocess(self._project)
         cmd_template  = ""
-        cmd_template += "scp %s vgenty@" + self._remote_host + ":/build/vgenty/tmp ; "
+        #cmd_template += "scp %s vgenty@" + self._remote_host + ":/build/vgenty/tmp ; "
+        cmd_template += "scp %s vgenty@" + self._remote_host + ":/nashome/v/vgenty/tmp ; "
         cmd_template += "ssh -T -x vgenty@" + self._remote_host + " "
-        cmd_template += "'source /build/vgenty/setupsam.sh 1>/dev/null 2>/dev/null; "
-        cmd_template += "ifdh cp /build/vgenty/tmp/%s %s;"
+        #cmd_template += "'source /build/vgenty/setupsam.sh 1>/dev/null 2>/dev/null; "
+        cmd_template += "'source /nashome/v/vgenty/setupsam.sh 1>/dev/null 2>/dev/null; "
+        cmd_template += "ifdh cp /nashome/v/vgenty/tmp/%s %s;"
         cmd_template += "ifdh cp %s %s; '"
 
 
@@ -175,14 +181,12 @@ class binary_to_dropbox( ds_project_base ):
             in_file_origin = in_file
             in_file_name = os.path.basename(in_file)
             in_file_destination = os.path.join(self._dropbox_location,in_file_name)
-            
 
             in_file_pre_name = os.path.basename(in_file)
             in_file_pre_name = in_file.split("-")
             in_file_pre_name = in_file_pre_name[:2] + in_file_pre_name[3:]
             in_file_pre_name = "-".join(in_file_pre_name)
             in_file_pre_origin = os.path.join(self._binary_location,self._seb,in_file_pre_name)
-            
             
             in_json_origin = in_json
             in_json_file_name = os.path.basename(in_json_origin)
