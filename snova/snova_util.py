@@ -5,7 +5,7 @@ def exec_system(input_):
     return subprocess.Popen(input_,stdout=subprocess.PIPE).communicate()[0].split("\n")[:-1]
  
 def exec_ssh(who,where,what):
-    SS = ["ssh","-oStrictHostKeyChecking=no","-T","-x","%s@%s"%(who,where),what]
+    SS = ["ssh","-oStrictHostKeyChecking=no","-oGSSAPIAuthentication=yes","-T","-x","%s@%s"%(who,where),what]
     return exec_system(SS)
 
 # thanks daniel

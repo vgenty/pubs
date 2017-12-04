@@ -18,6 +18,21 @@ import collections
 import threading
 import Queue
 
+def start_drain():
+    with open('/home/vgenty/drain.txt','w+') as f: 
+        f.write(str(1))
+
+def stop_drain():
+    with open('/home/vgenty/drain.txt','w+') as f: 
+        f.write(str(0))
+
+def read_drain():
+    drain = None
+    with open('/home/vgenty/drain.txt','r') as f: 
+        drain = f.read()
+
+    return int(drain)
+
 def thread_worker(q):
     while True:
         data = q.get()
@@ -155,7 +170,7 @@ def query_seb_snova_size(seb_ids,seb_names):
         seb_size_v = [0.0]*len(seb_ids)
 
         for ix,seb in enumerate(seb_names):
-            ret_ = exec_ssh("vgenty",seb,"df /datalocal/")
+            ret_ = exec_ssh("vgenty",seb,"nice -19 ionice -c3 df /datalocal/")
             size_, used_, unused_ = ret_[-1].split(" ")[6:9]
             seb_size_v[ix] = float(used_) / float(size_)
         
@@ -243,15 +258,41 @@ class monitor_snova( ds_project_base ):
 
         seb_size_v,max_idx = query_seb_snova_size(self._seb_ids,
 						  self._seb_names)
+        
+        curr_occupancy = seb_size_v[max_idx]
 
-        self.info("Start of Monitor... Max index: %d which is SEB %s used: %s"%(max_idx,self._seb_names[max_idx],str(seb_size_v[max_idx])))
+        self.info("Monitor... max index: %d which is SEB %s used: %s"%(max_idx,
+                                                                       self._seb_names[max_idx],
+                                                                       str(seb_size_v[max_idx])))
 	
-	# if the largest SEB size is less than the occupancy don't do anything
-	self._seb_occupancy = float(0.7)
-	self.info("Comparing %s and %s" % (seb_size_v[max_idx], self._seb_occupancy))
-        if seb_size_v[max_idx] < self._seb_occupancy: 
+        self._seb_occupancy = 0.7
+
+        drain = read_drain()
+
+        self.info("Drain: %s" % str(drain))
+
+        if drain == 1:
+            self._seb_occupancy = 0.7
+            
+        if drain == 0: 
+            self._seb_occupancy = 0.80
+
+	self.info("Comparing %s and %s" % (curr_occupancy, self._seb_occupancy))
+
+        # start drain
+        if drain == False and curr_occupancy > 0.80:
+            start_drain()
+            self._seb_occupancy = 0.7
+
+        if  curr_occupancy < self._seb_occupancy: 
             self.info("Occupancy threshold %s not met" % str(self._seb_occupancy))
+            
+            # stop drain
+            if self._seb_occupancy == 0.7:
+                stop_drain()
+
             return
+        
 
         # fetch runs from DB and process for # runs specified for this instance.
         status_v=[kSTATUS_DONE]*len(self._seb_projectss)
@@ -306,11 +347,12 @@ class monitor_snova( ds_project_base ):
 
 	for seb_ in sebs_v:
 
-            # ask a single seb for this runs subruns -- limit the return to 500 subruns
+            # ask a single seb for this runs subruns -- limit the return to 5000 subruns
 	    seb_del = ""
-	    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,500)
+	    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,10000)
             
             self.info("Got subruns...")
+            self.info("hi vic")
 	    self.info(str(subruns))
 
 	    valid_subruns=[]
@@ -344,16 +386,29 @@ class monitor_snova( ds_project_base ):
 	    self.info(" ==> removing @ %s..."%seb_)
 	    self.info("valid # subruns... %s" % str(valid_subruns))
             
-            SS = "rm -rf %s"%seb_del
-            ret = exec_ssh("root",seb_,SS)
-	    self.info(ret)
+            sseb_del = list(seb_del.split(" "))
+            n = int(100)
+            sseb_del = [sseb_del[i:i + n] for i in xrange(0, len(sseb_del), n)]
+            
+            for seb_del in sseb_del:
+                self.info("A: seb_del=%s"%str(seb_del))
+                SD = ""
+                for sd in seb_del:
+                    SD += "\"" + sd + "\""
+                    SD += " "
+                self.info("B: SD=%s"%str(SD))
+                SS = "for f in %s; do nice -19 ionice -c3 rm -rf $f; done" % str(SD)
+                self.info(SS)
+                ret = exec_ssh("root",seb_,SS)
+                self.info("return: %s" % ret)
+
 	    runtable = "%s_%s"%(self._parent_prefix,seb_)
             self.info("... removing %s %d \n%s"%(runtable,run,str(valid_subruns)))
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    self.info("...done...")
-
+            
         return
 
     def lock_observer( self ) :

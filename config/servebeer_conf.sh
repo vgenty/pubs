@@ -20,7 +20,7 @@ setup ifdhc
 #kx509
 
 # SQL reader account config
-export PUB_PSQL_READER_HOST=genty.servebeer.com
+export PUB_PSQL_READER_HOST=genty.ddns.net
 export PUB_PSQL_READER_USER=vgenty
 export PUB_PSQL_READER_ROLE=""
 export PUB_PSQL_READER_DB=procdb
@@ -29,7 +29,7 @@ export PUB_PSQL_READER_CONN_NTRY=10
 export PUB_PSQL_READER_CONN_SLEEP=10
 
 # SQL writer account config
-export PUB_PSQL_WRITER_HOST=genty.servebeer.com
+export PUB_PSQL_WRITER_HOST=genty.ddns.net
 export PUB_PSQL_WRITER_USER=vgenty
 export PUB_PSQL_WRITER_ROLE=""
 export PUB_PSQL_WRITER_DB=procdb
@@ -38,7 +38,7 @@ export PUB_PSQL_WRITER_CONN_NTRY=10
 export PUB_PSQL_WRITER_CONN_SLEEP=10
 
 # SQL admin account config
-export PUB_PSQL_ADMIN_HOST=genty.servebeer.com
+export PUB_PSQL_ADMIN_HOST=genty.ddns.net
 export PUB_PSQL_ADMIN_USER=vgenty
 export PUB_PSQL_ADMIN_ROLE=""
 export PUB_PSQL_ADMIN_DB=procdb

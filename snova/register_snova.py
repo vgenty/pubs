@@ -67,7 +67,7 @@ class register_snova(ds_project_base):
         data_path = self._data_dir
 
         #execute a single command to get all files in snova directory
-        dir_flist=exec_system(["ssh", self._sebname, "ls -f -1 %s"%data_path])[2:]
+        dir_flist=exec_system(["ssh", self._sebname, "nice -19 ionice -c3 ls -f -1 %s" % data_path])[2:]
         
         #create dictionary, split off snova filename for run/subrun, store in dict run/subrun
         od = OrderedDict()
@@ -124,8 +124,8 @@ class register_snova(ds_project_base):
                                    bufsize = 0)
 
         for f_ in file_info:
-            filepath=os.path.join(data_path,file_info[f_][0])
-            cmd="stat -c %%Y-%%Z %s"%filepath
+            filepath = os.path.join(data_path,file_info[f_][0])
+            cmd="nice -19 ionice -c3 stat -c %%Y-%%Z %s" % filepath
             sshproc.stdin.write("%s\n"%cmd)
             sshproc.stdin.write("echo END\n")
 

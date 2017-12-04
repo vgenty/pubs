@@ -75,7 +75,7 @@ class construct_filename( ds_project_base ):
 	datadir = self._in_dir
        
 	# once again, ask for files in the snova directory (return is unsorted)
-        SS="ls -f -1 %s" % datadir
+        SS="nice -19 ionice -c3 ls -f -1 %s" % datadir
         dir_flist = exec_ssh("vgenty",self._seb,SS)[2:]
         file_map = OrderedDict()
         
