@@ -18,35 +18,52 @@ import collections
 import threading
 import Queue
 
+#
+# persistent file to determine if draining
+#
 def start_drain():
     with open('/home/vgenty/drain.txt','w+') as f: 
         f.write(str(1))
+    return
 
 def stop_drain():
     with open('/home/vgenty/drain.txt','w+') as f: 
         f.write(str(0))
+    return 
 
 def read_drain():
     drain = None
     with open('/home/vgenty/drain.txt','r') as f: 
         drain = f.read()
-
     return int(drain)
 
+#
+# worker thread for parallel rsync
+#
 def thread_worker(q):
     while True:
         data = q.get()
-        data[2].info("@ thread worker got data seb: %s for run: %d" % (str(data[0]),int(data[1])))
+
+        seb_ = str(data[0])
+        run = int(data[1])
+        obj = data[2]
+
+        obj.info("@ thread worker got data seb: %s for run: %d" % (seb_,run))
+
         copy_subruns(data)
-        data[2].info("...complete @ seb: %s for run: %d" % (str(data[0]),int(data[1])))
+
+        obj.info("...complete @ seb: %s for run: %d" % (seb_,run))
+
         q.task_done()
-        data[2].info("...called task_done()")
         time.sleep(1)
-        data[2].info("...slept")
-        data[2].info("q.qsize(): %d" % int(q.qsize()))
-        data[2].info("q.empty(): %d" % int(q.empty()))
+
+        obj.info("q.qsize(): %d & q.empty(): %d" % (int(q.qsize()),int(q.empty())))
+
     return
 
+#
+# thread function
+#
 def copy_subruns(data):
     seb_    = str(data[0])
     run     = int(data[1])
@@ -54,12 +71,18 @@ def copy_subruns(data):
     subruns = data[3]
     force_overwrite = data[4]
 
+    #
+    # copy subruns to valid_subruns
+    # one at a time we will copy each one
+    #
     valid_subruns = list(subruns)
 
     while len(valid_subruns) > 0:
+
+        # get one subrun
         subrun_ = valid_subruns.pop(0)
 
-	# get the filenames to transfer for this seb
+	# get the filename to transfer for this seb into fname
         obj.connect()
         obj.info("Query status of %s"%("%s_%s"%(obj._parent_prefix,seb_)))
         status = ds_status( "%s_%s"%(obj._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE )
@@ -68,7 +91,8 @@ def copy_subruns(data):
         obj.info("Got file name "+str(fname))
 	
 	if fname is None: 
-            obj.error("Cannot lock on %s for run %s and subrun %s. Filename project not complete."% (seb_,str(run),str(subrun_)))
+            # subrun does not exist in db yet
+            obj.error("Cannot lock on %s for run %s and subrun %s."% (seb_,str(run),str(subrun_)))
 	    valid_subruns.append(subrun_)
 	    continue
 			
@@ -80,7 +104,8 @@ def copy_subruns(data):
 	ret = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 
 	if ret == 1:
-           obj.info("File exists already in destination directory @ %s"%seb_)
+            # it's already here
+           obj.info("File exists already in destination directory @ %s" % seb_)
            
            if force_overwrite:
                # delete whats over there
@@ -89,8 +114,7 @@ def copy_subruns(data):
                del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
 
            else:
-
-               # confirm the copied files is the same number of bytes else we have to try again
+               # confirm the copied files is the same number of bytes, else we have to try again
                obj.info("Confirm the copied size @ remote location")
                SS = "stat -c %%s %s" % dst_file
                dst_fsize = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
@@ -99,43 +123,26 @@ def copy_subruns(data):
                org_fsize = int(exec_ssh("vgenty",seb_,SS)[0])
                
                if dst_fsize != org_fsize:
-                   obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
                    # delete whats over there
+                   obj.error("Subrun %s could not be copied to seb %s... reinserting"%(subrun_,seb_))
                    SS = "rm -rf %s" % dst_file
                    del_ = int(exec_ssh("vgenty",obj._remote_host,SS)[0])
                    
                    valid_subruns.append(subrun_)
 
                else:
+                   # it's fine move on
                    obj.info("%s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
                    continue
-        
+
+
         #
         # copy
         #
-	# obj.info(" ==> Copying @ %s..."%seb_)
-        # SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
-        # ret = exec_ssh("root",seb_,SS)
-        # obj.info(" ==> Copied @ %s..."%seb_)
-
-        #
-        # alternate copy
-        #
-        obj.info(" ==> Alternate copy from %s"%seb_)
-        alt_dir = "/build/vgenty/scratch/%s" % seb_
-
-        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,alt_dir) 
-        obj.info(SS)
+        obj.info(" ==> Copying @ %s..."%seb_)
+        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
         ret = exec_ssh("root",seb_,SS)
-
-        alt_fout = os.path.join(alt_dir,os.path.basename(fname))
-        SS = "scp %s %s" % (alt_fout,dst_dir) 
-        obj.info(SS)
-        ret = exec_ssh("vgenty",obj._remote_host,SS)
-
-        SS = "rm -rf %s" % alt_fout
-        obj.info(SS)
-        ret = exec_ssh("vgenty",obj._remote_host,SS)
+        obj.info(" ==> Copied @ %s..."%seb_)
 
         #
 	# confirm the copied files is the same number of bytes else we have to try again
@@ -159,14 +166,17 @@ def copy_subruns(data):
 	    
 	    valid_subruns.append(subrun_)
         else:
+            # it's there
             obj.info("Copy complete @ %s valid subruns are %s len=%d"%(seb_,str(valid_subruns),len(valid_subruns)))
 
     obj.info("Thread @ %s complete"%seb_)
     return
 
+#
+# query each seb and calculate the disk usage
+#
 def query_seb_snova_size(seb_ids,seb_names):
-        # go through each of the SEBS and calculate the disk usage
-
+    
         seb_size_v = [0.0]*len(seb_ids)
 
         for ix,seb in enumerate(seb_names):
@@ -178,11 +188,13 @@ def query_seb_snova_size(seb_ids,seb_names):
 
         return seb_size_v, max_idx
 
+#
+# monitor class
+#
 class monitor_snova( ds_project_base ):
 
     _project = 'monitor_snova'
 
-    ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' ):
 
         # Call base class ctor
@@ -194,117 +206,113 @@ class monitor_snova( ds_project_base ):
 
         self._project = arg
 
-        self._nruns = None
         self._in_dir = ''
         self._infile_format = ''
         self._data = ''
-
-	self._seb_occupancy = float(0.7)
-
-        self._parent_prefix = None
-	self._fragment_prefix = None
-	self._seb_ids = None
+        self._parent_prefix = str("")
+	self._fragment_prefix = str("")
+	self._seb_ids = []
 	self._ignore_runs = []
-	self._max_run = None
-	self._lock_file = None
+	self._lock_file = str("")
 	self._locked = False
-	self._remote_host = None
-	self._file_destination = None
+	self._remote_host = str("")
+	self._file_destination = str("")
+        self._min_occupancy = float(0.0)
+        self._max_occupancy = float(0.0)
 	self.get_resource()
-
-    ## @brief method to retrieve the project resource information if not yet done
-    def get_resource( self ):
+        
+    #
+    # fill class members from hstore
+    #
+    def get_resource(self):
 
         resource = self._api.get_resource( self._project )
 
-        self._nruns = int(resource['NRUNS'])
-        
         self._parent_prefix = resource['REG_PREFIX']
       
  	self._fragment_prefix = resource['FRAGMENT_PREFIX']
       
         self._seb_ids = resource['SEBS'].split("-")
 
-        self._seb_names    = ["seb%02d"%(int(parent_seb_id)) for parent_seb_id in self._seb_ids]
-        self._seb_projectss = ["%s_%s"%(self._parent_prefix,seb_name) for seb_name in self._seb_names]
+        self._seb_names = ["seb%02d"%(int(parent_seb_id)) for parent_seb_id in self._seb_ids]
 
-        if 'SEB_OCCUPANCY' in resource:
-	    self._seb_occupancy = float(resource['SEB_OCCUPANCY'])
+        self._min_occupancy = float(resource['SEB_MIN_OCCUPANCY'])
+        self._max_occupancy = float(resource['SEB_MAX_OCCUPANCY'])
 
-	if 'REMOTE_HOST' in resource:
-            self._remote_host = str(resource['REMOTE_HOST'])
+        self._remote_host = str(resource['REMOTE_HOST'])
 
-	if 'FILE_DESTINATION' in resource:
-            self._file_destination = str(resource['FILE_DESTINATION'])
+        self._file_destination = str(resource['FILE_DESTINATION'])
 
         if resource['IGNORE_RUNS'] != "":
             self._ignore_runs = [int(r_) for r_ in resource['IGNORE_RUNS'].split("-")]
 
-	self._max_run = int(resource['MAX_RUN'])
-
 	self._lock_file = resource['LOCK_FILE']
 
-    ## @brief monitor disk usage of data local
+    #
+    # monitor disk usage of supernova datalocal
+    #
     def monitor_sebs( self ):
 	    
         # Attempt to connect DB. If failure, abort
         if not self.connect():
             self.error('Cannot connect to DB! Aborting...')
             return
-
+        
+        # Locked in copy to persistent space 
 	if self._locked == True: 
-	    self.info("Locked.")	
+	    self.info("Locked!")	
             return 
 
-        seb_size_v,max_idx = query_seb_snova_size(self._seb_ids,
-						  self._seb_names)
+        # query sebs for occupancy
+        seb_size_v, max_idx = query_seb_snova_size(self._seb_ids, self._seb_names)
         
+        # max occupancy seb
         curr_occupancy = seb_size_v[max_idx]
 
-        self.info("Monitor... max index: %d which is SEB %s used: %s"%(max_idx,
-                                                                       self._seb_names[max_idx],
-                                                                       str(seb_size_v[max_idx])))
-	
-        self._seb_occupancy = 0.7
+        self.info("Monitor. max index: %d which is SEB %s used: %s"%(max_idx,
+                                                                     self._seb_names[max_idx],
+                                                                     str(seb_size_v[max_idx])))
 
+        seb_occupancy = 0.0
+
+        # are we draning?
         drain = read_drain()
-
         self.info("Drain: %s" % str(drain))
 
         if drain == 1:
-            self._seb_occupancy = 0.7
+            # yes drain down to 
+            seb_occupancy = float(self._min_occupancy)
             
         if drain == 0: 
-            self._seb_occupancy = 0.80
+            # no let it fill to self._max_occupancy
+            seb_occupancy = float(self._max_occupancy)
 
-	self.info("Comparing %s and %s" % (curr_occupancy, self._seb_occupancy))
+	self.info("Comparing %s and %s" % (curr_occupancy, seb_occupancy))
 
-        # start drain
-        if drain == False and curr_occupancy > 0.80:
+        if drain == False and curr_occupancy > self._max_occupancy:
+            # start drain
             start_drain()
-            self._seb_occupancy = 0.7
+            seb_occupancy = float(self._min_occupancy)
 
-        if  curr_occupancy < self._seb_occupancy: 
-            self.info("Occupancy threshold %s not met" % str(self._seb_occupancy))
+        if  curr_occupancy < seb_occupancy: 
+            # dont do anything
+            self.info("Occupancy threshold %s not met" % str(seb_occupancy))
             
             # stop drain
-            if self._seb_occupancy == 0.7:
+            if seb_occupancy == self._min_occupancy:
                 stop_drain()
 
             return
         
 
         # fetch runs from DB and process for # runs specified for this instance.
-        status_v=[kSTATUS_DONE]*len(self._seb_projectss)
+        status_v=[kSTATUS_DONE]*len(self._seb_names)
         
-        # each subrun is 1.5GB 
-        ctr=-1
+        ctr = -1
 
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
 
-	# self.info("Asking for earliest runs...")
-	
 	run_list_map = collections.OrderedDict()
 	
 	# for each seb get the earliest runs, add them to run_list_map
@@ -314,6 +322,7 @@ class monitor_snova( ds_project_base ):
 	    if type(runs) is not list: continue
 
 	    runs = [ int(run[0]) for run in runs ]
+
 	    for run in runs:
                  try:
                       run_list_map[run].append(seb)
@@ -324,8 +333,8 @@ class monitor_snova( ds_project_base ):
 	# no runs yet wait until next call
         if len(run_list_map.keys())<1: return
 
-        # there was something sort the run list
-	run_list_map= collections.OrderedDict(sorted(run_list_map.iteritems()))
+        # sort the run list by lowest run & subrun
+	run_list_map = collections.OrderedDict(sorted(run_list_map.iteritems()))
 
 	run = None
 	for run_ in run_list_map.keys():
@@ -335,10 +344,6 @@ class monitor_snova( ds_project_base ):
 	    
 	self.info("Got run %s"%str(run))
 
-	# delete a single run
-	self._max_run = 100000
-	if run >= self._max_run: return
-
 	# get the sebs associated to this run
         sebs_v = run_list_map[run]
 	
@@ -346,16 +351,11 @@ class monitor_snova( ds_project_base ):
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
 
 	for seb_ in sebs_v:
-
-            # ask a single seb for this runs subruns -- limit the return to 5000 subruns
+            # ask a single seb for this runs subruns -- limit the return to 1e6 subruns
 	    seb_del = ""
-	    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,10000)
-            
-            self.info("Got subruns...")
-            self.info("hi vic")
-	    self.info(str(subruns))
+	    subruns = reader.get_subruns("%s_%s"%(self._fragment_prefix,seb_),run,1e6)
 
-	    valid_subruns=[]
+	    valid_subruns = []
 	    
 	    for subrun_ in subruns:
                 seb_status = None
@@ -363,54 +363,55 @@ class monitor_snova( ds_project_base ):
 		# try getting the status from file name SEB, if it don't exist, move on
 		# to the next subrun
 		try:
-                    seb_status = self._api.get_status( ds_status( "%s_%s"%(self._parent_prefix,seb_) , run, subrun_, kSTATUS_DONE ) )
-		except : 
+                    seb_status = self._api.get_status(ds_status("%s_%s"%(self._parent_prefix,seb_), 
+                                                                run, 
+                                                                subrun_, 
+                                                                kSTATUS_DONE))
+		except: 
                     continue
 		
 		fname = seb_status._data
 		
 		# filename returned was None, move onto next subrun
-		if fname is None: 
-                    continue
+		if fname is None: continue
 		
 		# add this filename to the deletion string
 		seb_del += str(fname + " ")
 		
-		# was a valid subrun
+		# is valid subrun!
 		valid_subruns.append(subrun_)
 	    
 	    # at least 1 valid subrun not found, move onto next seb
-            if len(valid_subruns) < 1 : 
-                continue
+            if len(valid_subruns) < 1: continue
 
-	    self.info(" ==> removing @ %s..."%seb_)
-	    self.info("valid # subruns... %s" % str(valid_subruns))
+	    self.info("Removing @%s..."%seb_)
+	    self.info("...valid # subruns: %s" % str(valid_subruns))
             
+            # split argument list in the 100 file chunk
             sseb_del = list(seb_del.split(" "))
             n = int(100)
             sseb_del = [sseb_del[i:i + n] for i in xrange(0, len(sseb_del), n)]
             
             for seb_del in sseb_del:
-                self.info("A: seb_del=%s"%str(seb_del))
                 SD = ""
                 for sd in seb_del:
                     SD += "\"" + sd + "\""
                     SD += " "
-                self.info("B: SD=%s"%str(SD))
                 SS = "for f in %s; do nice -19 ionice -c3 rm -rf $f; done" % str(SD)
-                self.info(SS)
                 ret = exec_ssh("root",seb_,SS)
-                self.info("return: %s" % ret)
 
 	    runtable = "%s_%s"%(self._parent_prefix,seb_)
             self.info("... removing %s %d \n%s"%(runtable,run,str(valid_subruns)))
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
-	    self.info("...done...")
+	    self.info("done")
             
         return
 
+    #
+    # check if the lock file exists, if so, freeze
+    #
     def lock_observer( self ) :
 	
         # Attempt to connect DB. If failure, abort
@@ -421,10 +422,12 @@ class monitor_snova( ds_project_base ):
  	death_star  = pub_logger.get_logger('death_star')
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),death_star)
 
-	# check if the lock file exists, if so
+	# check if the lock file exists
 	if os.path.isfile(self._lock_file) == False:
+            # does not exist
             self.info("Lock file does not exist.")
 	    for seb_ in self._seb_names:
+                # clear the frozen run tables
 		runtable = 'lockedruntable_%s'%seb_
 	 	res = rundbWriter.clear_death_star(runtable)	
 		if res==2: self.info("Already cleared run table: %s"%runtable)
@@ -449,20 +452,29 @@ class monitor_snova( ds_project_base ):
         logger = pub_logger.get_logger(self._project)
         reader = ds_api.ds_reader(pubdb_conn_info.reader_info(), logger)
 
+        # has the data been trasnfered already?
 	if data['transfered'] == False:
 
             for run in copyruns:
-
-                # if run < 12442: continue
                 
-                self.info("Parallelize @ run %d"%run)
+                for seb in self._seb_names:
+                    data_ = (seb,
+                             run,
+                             self,
+                             reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run,1e6),False)
+
+                    copy_subruns(data_)
+                 
+                #
+                # parallelizing was a _sad_ failure
+                #
+
+                # self.info("Parallelize @ run %d"%run)
                 # q = Queue.Queue()
                 # threads = []
 
-                for seb in self._seb_names:
-                    data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run,1000),False)
-                    copy_subruns(data_)
-                    
+                # for seb in self._seb_names:
+                #     data_ = (seb,run,self,reader.get_subruns("%s_%s"%(self._fragment_prefix,seb),run,100000),False)
                 #     q.put(data_)
                 #     self.info("Moving onto next seb @ %s qsize %d" % (seb,q.qsize()))
                 
@@ -478,10 +490,11 @@ class monitor_snova( ds_project_base ):
 
                 # self.info("Blocking until complete, calling join...")
                 # q.join() 
-                self.info("... done copying run %d ?" % run)
+                self.info("... done copying run %d" % run)
 
 
-        self.info("Done transfering?")
+        self.info("Done transfering.")
+
 	# copy over the run tables
         for seb_ in self._seb_names:
 	    inruntable  = 'fragmentruntable_%s' % seb_   

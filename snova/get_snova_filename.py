@@ -86,6 +86,7 @@ class construct_filename( ds_project_base ):
             file_map[tuple((run_,subrun_))] = os.path.join(datadir,res)
             
         for x in sliced_runlist:
+
             # Break from loop if counter became 0
             if ctr <= 0: break
 
@@ -97,16 +98,20 @@ class construct_filename( ds_project_base ):
             ctr -= 1
 
             # Report starting
-            self.info('Calculating the file filename: run=%d subrun=%d @ %s' % (run,subrun,time.strftime('%Y-%m-%d %H:%M:%S')))
+            self.info('Filename: run=%d subrun=%d @ %s' % (run,
+                                                           subrun,
+                                                           time.strftime('%Y-%m-%d %H:%M:%S')))
             try:
                 self._data = file_map[(run,subrun)]
             except KeyError:
-                self.info('Warning! (run,subrun)=(%d,%d) does not exist in file map (sz=%d)'%(run,subrun,len(file_map)))
+                self.info('Warning! (run,subrun)=(%d,%d) does not exist in file map (sz=%d)'%(run,
+                                                                                              subrun,
+                                                                                              len(file_map)))
                 continue
             
 
-            #self.info("Inserting data... %s... status %s "%(str(self._data),str(kSTATUS_DONE)))
             statusCode = kSTATUS_DONE
+
             ret = self.log_status( ds_status( project = self._project,
                                               run     = run,
                                               subrun  = subrun,

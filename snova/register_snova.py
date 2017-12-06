@@ -1,5 +1,5 @@
-import time,subprocess
 import os, sys
+import time,subprocess
 from pub_dbi import DBException, pubdb_conn_info
 from pub_util import pub_logger
 from dstream import DSException
@@ -12,13 +12,10 @@ from collections import OrderedDict
 
 class register_snova(ds_project_base):
 
-    # Define project name as class attribute
     _project = 'register_snova'
 
-    ## @brief default ctor can take # runs to process for this instance
     def __init__( self, arg = '' , sebname = ''):
 
-        # Call base class ctor
         super(register_snova,self).__init__( arg )
 
         if not arg:
@@ -26,10 +23,11 @@ class register_snova(ds_project_base):
             raise Exception
 
         self._project = arg
+        
+        # list of directories where to find binary data
+        self._data_dir = [] 
 
-        self._data_dir = [] # list of directories where to find binary data
-
-        self._runtable = ''
+        self._runtable = ""
 
         self._sebname = sebname
         
@@ -39,8 +37,9 @@ class register_snova(ds_project_base):
         
         self._locked = False
       
-        self.get_resource()
+        self._max_register = int(0)
 
+        self.get_resource()
 
 
     ## @brief method to retrieve the project resource information if not yet done
@@ -48,10 +47,11 @@ class register_snova(ds_project_base):
 
         resource = self._api.get_resource( self._project )
 
-        self._data_dir  = resource['DATADIR']
-        self._runtable  = resource['RUNTABLE']
-        self._lock_file = resource['LOCK_FILE']
- 
+        self._data_dir     = str(resource['DATADIR'])
+        self._runtable     = str(resource['RUNTABLE'])
+        self._lock_file    = str(resource['LOCK_FILE'])
+        self._max_register = int(resource['MAX_REGISTER'])
+
     ## @brief access DB and retrieves new runs
     def process_newruns(self):
 
@@ -66,10 +66,10 @@ class register_snova(ds_project_base):
 
         data_path = self._data_dir
 
-        #execute a single command to get all files in snova directory
-        dir_flist=exec_system(["ssh", self._sebname, "nice -19 ionice -c3 ls -f -1 %s" % data_path])[2:]
-        
-        #create dictionary, split off snova filename for run/subrun, store in dict run/subrun
+        # execute a single command to get all files in snova directory
+        dir_flist = exec_system(["ssh", self._sebname, "nice -19 ionice -c3 ls -f -1 %s" % data_path])[2:]
+
+        # create dictionary, split off snova filename for run/subrun, store in dict run/subrun
         od = OrderedDict()
         for res_ in dir_flist:
             split_ = res_.split('.')[0].split('_')[-1].split('-')
@@ -77,7 +77,7 @@ class register_snova(ds_project_base):
             subrun_ = int(split_[2])
             od[tuple((run_,subrun_))] = [res_,0,0]
         
-        #order by run and subrun
+        # order by run and subrun
         od = OrderedDict(sorted(od.iteritems()))
 
         # create a dictionary to keep track of
@@ -95,9 +95,10 @@ class register_snova(ds_project_base):
 
         file_info = OrderedDict()
         
-        ik=0
-        # only register 1000 files at a time
-        ikmax=1000
+
+        # only register XXX files at a time
+        ik = 0
+        ikmax  = self._max_register
         self.info("Got last recorded info %s"%str(last_recorded_info))
 
         for k_,v_ in od.iteritems():
@@ -105,9 +106,9 @@ class register_snova(ds_project_base):
             if ( k_[0] == last_recorded_info[0] and 
                  k_[1] <= last_recorded_info[1]): continue
 
-            file_info[k_]=v_
+            file_info[k_] = v_
             ik += 1
-            if ik==ikmax: break
+            if ik == ikmax: break
                 
         if len(file_info)==0:
             self.info("No new file information, return")
@@ -115,7 +116,7 @@ class register_snova(ds_project_base):
 
         file_info.popitem() # remove the last file
 
-        # lets do a large query for the creation and modified times for these files over ssh
+        # query for the creation and modified times for these files over ssh
         # open SSH connection and call `stat` for all necessary files at once
         sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
                                    stdin = subprocess.PIPE, 
@@ -140,7 +141,7 @@ class register_snova(ds_project_base):
                 
         for ix, run_subrun in enumerate(file_info):
             
-            time_create,time_modify = values[ix].split("-")
+            time_create, time_modify = values[ix].split("-")
             
             file_info[run_subrun][1] = time_create
             file_info[run_subrun][2] = time_modify
@@ -150,7 +151,6 @@ class register_snova(ds_project_base):
             
         # loop through dictionary keys and write to DB info
         # for runs/subruns not yet stored
-        # this mostly stolen from DC
         for info in file_info:
             
             self.info('Trying to add to RunTable (run,subrun) = (%d,%d)'%(int(info[0]),int(info[1])))
@@ -175,8 +175,6 @@ class register_snova(ds_project_base):
                                                    file_creation,
                                                    file_closing)
 
-
-                # Report starting
                 self.info('recording info for new run: run=%d, subrun=%d ...' % (int(run),int(subrun)))
                 status = ds_status( project = self._project,
                                     run     = run,
@@ -187,10 +185,10 @@ class register_snova(ds_project_base):
 
                     
             except:
-                    
                 # we did not succeed in adding this (run,subrun)
                 self.info('FAILED to add run=%d, subrun=%d to RunTable'%(int(run),int(subrun)))
-			 
+        return 
+
     def monitor_lock(self):
         self.info("Observing lock @ %s. Current state: %r"  % (self._lock_file,self._locked))
 
@@ -212,10 +210,9 @@ class register_snova(ds_project_base):
         return
 
 
-# A unit test section
 if __name__ == '__main__':
 
-    proj_name = 'register_snova_%s'%sys.argv[1]
+    proj_name = 'register_snova_%s' % sys.argv[1]
 
     test_obj = register_snova( proj_name , sys.argv[1] )
     
