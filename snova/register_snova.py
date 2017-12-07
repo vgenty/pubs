@@ -24,19 +24,12 @@ class register_snova(ds_project_base):
 
         self._project = arg
         
-        # list of directories where to find binary data
         self._data_dir = [] 
-
         self._runtable = ""
-
         self._sebname = sebname
-        
         self._observed_files = {}
-         
         self._lock_file = None
-        
         self._locked = False
-      
         self._max_register = int(0)
 
         self.get_resource()
@@ -72,7 +65,7 @@ class register_snova(ds_project_base):
         # create dictionary, split off snova filename for run/subrun, store in dict run/subrun
         od = OrderedDict()
         for res_ in dir_flist:
-            split_ = res_.split('.')[0].split('_')[-1].split('-')
+            split_  = res_.split('.')[0].split('_')[-1].split('-')
             run_    = int(split_[1])
             subrun_ = int(split_[2])
             od[tuple((run_,subrun_))] = [res_,0,0]
@@ -95,7 +88,6 @@ class register_snova(ds_project_base):
 
         file_info = OrderedDict()
         
-
         # only register XXX files at a time
         ik = 0
         ikmax  = self._max_register
@@ -116,35 +108,8 @@ class register_snova(ds_project_base):
 
         file_info.popitem() # remove the last file
 
-        # query for the creation and modified times for these files over ssh
-        # open SSH connection and call `stat` for all necessary files at once
-        sshproc = subprocess.Popen(['ssh','-T',self._sebname], 
-                                   stdin = subprocess.PIPE, 
-                                   stdout = subprocess.PIPE, 
-                                   universal_newlines = True,
-                                   bufsize = 0)
-
-        for f_ in file_info:
-            filepath = os.path.join(data_path,file_info[f_][0])
-            cmd="nice -19 ionice -c3 stat -c %%Y-%%Z %s" % filepath
-            sshproc.stdin.write("%s\n"%cmd)
-            sshproc.stdin.write("echo END\n")
-
-        sshproc.stdin.close()
-
-        values = []
-        
-        # get the return
-        for return_ in sshproc.stdout:
-            if return_.rstrip('\n')!="END":
-                values.append(return_.rstrip('\n'))
-                
-        for ix, run_subrun in enumerate(file_info):
-            
-            time_create, time_modify = values[ix].split("-")
-            
-            file_info[run_subrun][1] = time_create
-            file_info[run_subrun][2] = time_modify
+        # query creation time
+        file_info = query_creation_times(data_path,file_info,self._sebname)
 
         logger = pub_logger.get_logger('death_star')
         rundbWriter = ds_api.death_star(pubdb_conn_info.admin_info(),logger)
@@ -159,7 +124,7 @@ class register_snova(ds_project_base):
 
                 # info is key (run,subrun)
                 # dictionary value @ key is array
-                # [file name, time_crate, time_modify]
+                # [file name, time_create, time_modify]
                 run           = info[0]
                 subrun        = info[1]
                 run_info      = file_info[info]

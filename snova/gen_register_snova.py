@@ -1,3 +1,8 @@
+#
+# generate config file for pubs registration
+# register_snova_template.cfg => register_snova.cfg
+#
+
 import os,sys
 INFILE = "register_snova_template.cfg"
 OUTFILE= "register_snova.cfg"
@@ -6,7 +11,6 @@ SEB_v = ["%02d" % id_ for id_ in xrange(1,11)]
 infile_data = None
 with open(INFILE,'r') as f_:
     infile_data = f_.read()
-
 
 fout = open(OUTFILE,'w+')
 

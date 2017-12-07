@@ -19,26 +19,7 @@ import threading
 import Queue
 
 #
-# persistent file to determine if draining
-#
-def start_drain():
-    with open('/home/vgenty/drain.txt','w+') as f: 
-        f.write(str(1))
-    return
-
-def stop_drain():
-    with open('/home/vgenty/drain.txt','w+') as f: 
-        f.write(str(0))
-    return 
-
-def read_drain():
-    drain = None
-    with open('/home/vgenty/drain.txt','r') as f: 
-        drain = f.read()
-    return int(drain)
-
-#
-# worker thread for parallel rsync
+# worker thread for parallel scp
 #
 def thread_worker(q):
     while True:
@@ -172,21 +153,6 @@ def copy_subruns(data):
     obj.info("Thread @ %s complete"%seb_)
     return
 
-#
-# query each seb and calculate the disk usage
-#
-def query_seb_snova_size(seb_ids,seb_names):
-    
-        seb_size_v = [0.0]*len(seb_ids)
-
-        for ix,seb in enumerate(seb_names):
-            ret_ = exec_ssh("vgenty",seb,"nice -19 ionice -c3 df /datalocal/")
-            size_, used_, unused_ = ret_[-1].split(" ")[6:9]
-            seb_size_v[ix] = float(used_) / float(size_)
-        
-        max_idx = argmax(seb_size_v)
-
-        return seb_size_v, max_idx
 
 #
 # monitor class
@@ -219,6 +185,7 @@ class monitor_snova( ds_project_base ):
 	self._file_destination = str("")
         self._min_occupancy = float(0.0)
         self._max_occupancy = float(0.0)
+        self._drain_file = str("")
 	self.get_resource()
         
     #
@@ -247,6 +214,8 @@ class monitor_snova( ds_project_base ):
             self._ignore_runs = [int(r_) for r_ in resource['IGNORE_RUNS'].split("-")]
 
 	self._lock_file = resource['LOCK_FILE']
+        
+        self._drain_file = resource['DRAIN_FILE']
 
     #
     # monitor disk usage of supernova datalocal
@@ -272,11 +241,10 @@ class monitor_snova( ds_project_base ):
         self.info("Monitor. max index: %d which is SEB %s used: %s"%(max_idx,
                                                                      self._seb_names[max_idx],
                                                                      str(seb_size_v[max_idx])))
-
         seb_occupancy = 0.0
 
         # are we draning?
-        drain = read_drain()
+        drain = read_drain(self._drain_file)
         self.info("Drain: %s" % str(drain))
 
         if drain == 1:
@@ -321,7 +289,7 @@ class monitor_snova( ds_project_base ):
 
 	    if type(runs) is not list: continue
 
-	    runs = [ int(run[0]) for run in runs ]
+	    runs = [int(run[0]) for run in runs]
 
 	    for run in runs:
                  try:
@@ -387,12 +355,13 @@ class monitor_snova( ds_project_base ):
 	    self.info("Removing @%s..."%seb_)
 	    self.info("...valid # subruns: %s" % str(valid_subruns))
             
-            # split argument list in the 100 file chunk
-            sseb_del = list(seb_del.split(" "))
+            # split argument list into a 100 file chunk (to avoid too-long-argument-list)
+            split_seb_del = list(seb_del.split(" "))
             n = int(100)
-            sseb_del = [sseb_del[i:i + n] for i in xrange(0, len(sseb_del), n)]
+            split_seb_del = [split_seb_del[i:i + n] for i in xrange(0, len(split_seb_del), n)]
             
-            for seb_del in sseb_del:
+            # delete
+            for seb_del in split_seb_del:
                 SD = ""
                 for sd in seb_del:
                     SD += "\"" + sd + "\""
@@ -400,9 +369,12 @@ class monitor_snova( ds_project_base ):
                 SS = "for f in %s; do nice -19 ionice -c3 rm -rf $f; done" % str(SD)
                 ret = exec_ssh("root",seb_,SS)
 
+            # get this sebs project table and remove the deleted runs
 	    runtable = "%s_%s"%(self._parent_prefix,seb_)
             self.info("... removing %s %d \n%s"%(runtable,run,str(valid_subruns)))
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
+
+            # get this sebs master runtable and remove the deleted runs
 	    runtable = "%s_%s"%(self._fragment_prefix,seb_)
 	    rundbWriter.star_destroyer(runtable,run,valid_subruns);
 	    self.info("done")
@@ -412,7 +384,7 @@ class monitor_snova( ds_project_base ):
     #
     # check if the lock file exists, if so, freeze
     #
-    def lock_observer( self ) :
+    def lock_observer(self) :
 	
         # Attempt to connect DB. If failure, abort
         if not self.connect():
@@ -427,7 +399,7 @@ class monitor_snova( ds_project_base ):
             # does not exist
             self.info("Lock file does not exist.")
 	    for seb_ in self._seb_names:
-                # clear the frozen run tables
+                # clear out the frozen run tables (may be empty already)
 		runtable = 'lockedruntable_%s'%seb_
 	 	res = rundbWriter.clear_death_star(runtable)	
 		if res==2: self.info("Already cleared run table: %s"%runtable)
@@ -466,7 +438,9 @@ class monitor_snova( ds_project_base ):
                     copy_subruns(data_)
                  
                 #
-                # parallelizing was a _sad_ failure
+                # parallelizing was a _sad_ failure, frequent
+                # ``** glibc detected *** python: double free or corruption''
+                # at random times
                 #
 
                 # self.info("Parallelize @ run %d"%run)
@@ -490,6 +464,7 @@ class monitor_snova( ds_project_base ):
 
                 # self.info("Blocking until complete, calling join...")
                 # q.join() 
+
                 self.info("... done copying run %d" % run)
 
 

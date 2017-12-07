@@ -31,14 +31,10 @@ class construct_filename( ds_project_base ):
         self._project = arg
 
         self._nruns = None
-        self._in_dir = ''
-        self._infile_format = ''
-        self._data = ''
-
-        self._nskip = 0
-        self._skip_ref_project = []
-        self._skip_ref_status = None
-        self._skip_status = None
+        self._in_dir = ""
+        self._infile_format = ""
+        self._data = ""
+        
         self._seb = ""
         
     ## @brief method to retrieve the project resource information if not yet done
@@ -70,21 +66,25 @@ class construct_filename( ds_project_base ):
         sliced_runlist = self.get_runs(self._project,1,False,ctr)
 
         in_file_v = []
-        runid_v = []
+        runid_v   = []
         
 	datadir = self._in_dir
-       
-	# once again, ask for files in the snova directory (return is unsorted)
+        
+    
+	# ask for files in the snova directory (the return is unsorted)
         SS="nice -19 ionice -c3 ls -f -1 %s" % datadir
         dir_flist = exec_ssh("vgenty",self._seb,SS)[2:]
         file_map = OrderedDict()
         
+        # make the file map
         for res in dir_flist:
             split_  = res.split('.')[0].split('_')[-1].split('-')
             run_    = int(split_[1])
             subrun_ = int(split_[2])
             file_map[tuple((run_,subrun_))] = os.path.join(datadir,res)
             
+
+        # match with sliced runlist and register to project data
         for x in sliced_runlist:
 
             # Break from loop if counter became 0
