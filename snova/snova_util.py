@@ -105,10 +105,11 @@ def query_creation_times(data_path,file_info,sebname):
 # query checksum on remote serve
 #
 def query_checksum(who,where,what):
-    cmd_template = "source /grid/fermiapp/products/uboone/setup_uboone.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s"
-    cmd = cmd_template % what
+    cmd = str("")
+    cmd = "source /grid/fermiapp/products/uboone/setup_uboone.sh 1>/dev/null 2>/dev/null; setup sam_web_client; samweb file-checksum %s;"  % what
     out = exec_ssh(who,where,cmd)
-    return
+    print out
+    return out
 
 #
 # insert sebname into frament name

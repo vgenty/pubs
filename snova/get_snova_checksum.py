@@ -61,8 +61,6 @@ class get_checksum( ds_project_base ):
 
         self._max_proc_time = int(60)
 
-        self._min_run = int(resource['MIN_RUN'])
-
         self._seb = resource["SEB"]
 
         self._remote_host = str(resource['REMOTE_HOST'])

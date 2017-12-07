@@ -107,9 +107,6 @@ class reg_files_to_sam( ds_project_base ):
 
         # self.info('Here, self._nruns=%d ... ' % (self._nruns))
         self._project_requirement[0] = kSTATUS_INIT 
-        # self._project_requirement[0] = kSTATUS_ERROR_INPUT_FILE_NOT_FOUND
-        # self._project_requirement[0] = 112
-        # self._project_requirement[0] = 112000
 
         # fetch runs from DB and process for # runs specified for this instance.
         ctr = self._nruns

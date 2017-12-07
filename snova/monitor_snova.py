@@ -121,8 +121,8 @@ def copy_subruns(data):
         # copy
         #
         obj.info(" ==> Copying @ %s..."%seb_)
-        SS = "scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
-        ret = exec_ssh("root",seb_,SS)
+        SS = "nice -19 ionice -c3 scp %s vgenty@%s:%s" % (fname,obj._remote_host,dst_dir) 
+        ret = exec_ssh("vgenty",seb_,SS)
         obj.info(" ==> Copied @ %s..."%seb_)
 
         #
@@ -186,6 +186,7 @@ class monitor_snova( ds_project_base ):
         self._min_occupancy = float(0.0)
         self._max_occupancy = float(0.0)
         self._drain_file = str("")
+        self._user = str("")
 	self.get_resource()
         
     #
@@ -215,6 +216,8 @@ class monitor_snova( ds_project_base ):
 
 	self._lock_file = resource['LOCK_FILE']
         
+        self._user = "vgenty"
+
         self._drain_file = resource['DRAIN_FILE']
 
     #
