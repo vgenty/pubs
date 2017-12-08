@@ -262,7 +262,7 @@ class monitor_snova( ds_project_base ):
 
         if drain == False and curr_occupancy > self._max_occupancy:
             # start drain
-            start_drain()
+            start_drain(self._drain_file)
             seb_occupancy = float(self._min_occupancy)
 
         if  curr_occupancy < seb_occupancy: 
@@ -271,7 +271,7 @@ class monitor_snova( ds_project_base ):
             
             # stop drain
             if seb_occupancy == self._min_occupancy:
-                stop_drain()
+                stop_drain(self._drain_file)
 
             return
         
